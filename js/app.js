@@ -50,7 +50,7 @@ function renderHeader() {
       : el('a', { class: 'btn ghost sm', href: '#/login' }, 'Entrar'),
   );
 
-  header.replaceChildren(
+  const partes = [
     el('div', { class: 'header-inner' },
       el('a', { class: 'marca', href: '#/' },
         el('img', { src: EMBLEMA, alt: 'Brasão do Colégio Pedro II', width: 40, height: 33 }),
@@ -58,10 +58,13 @@ function renderHeader() {
           el('strong', {}, APP.nome),
           el('span', {}, APP.setor))),
       nav, acoes),
-    s.mode === 'demo' ? el('div', { class: 'faixa-demo', role: 'note' },
+  ];
+  if (s.mode === 'demo') {
+    partes.push(el('div', { class: 'faixa-demo', role: 'note' },
       'Modo demonstração — dados fictícios armazenados apenas neste navegador. ',
-      el('a', { href: 'https://github.com/' + (window.__REPO || '') + '/blob/main/firebase/SETUP.md', target: '_blank', rel: 'noopener' }, 'Como ativar a produção')) : null,
-  );
+      el('a', { href: 'https://github.com/' + (window.__REPO || '') + '/blob/main/firebase/SETUP.md', target: '_blank', rel: 'noopener' }, 'Como ativar a produção')));
+  }
+  header.replaceChildren(...partes);
 }
 
 // ---- Roteador --------------------------------------------------------------------
