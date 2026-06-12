@@ -12,6 +12,13 @@ export function viewLogin(rerender) {
   const inSenha = el('input', { type: 'password', autocomplete: 'current-password', required: true, placeholder: '••••••••' });
   const btn = el('button', { class: 'btn primario', type: 'submit' }, 'Entrar');
 
+  const linkSenha = s.mode === 'firebase' ? el('button', { class: 'btn ghost sm', type: 'button', onclick: async () => {
+    try {
+      await s.resetSenha(inEmail.value);
+      toast('E-mail de redefinição de senha enviado. Verifique a caixa de entrada.');
+    } catch (err) { toast(err.message || 'Não foi possível enviar.', 'erro'); }
+  } }, 'Alterar / redefinir senha por e-mail') : null;
+
   const form = el('form', { class: 'login-form', onsubmit: async (e) => {
     e.preventDefault();
     btn.disabled = true; btn.textContent = 'Entrando…';
@@ -27,6 +34,7 @@ export function viewLogin(rerender) {
     campo('E-mail', inEmail),
     campo('Senha', inSenha),
     btn,
+    linkSenha,
   );
 
   const demo = s.mode === 'demo' ? el('div', { class: 'card demo-credenciais' },

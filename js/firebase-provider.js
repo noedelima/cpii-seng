@@ -106,6 +106,10 @@ export class FirebaseProvider {
     return this.user;
   }
   async logout() { await this._A.signOut(this.auth); }
+  async resetSenha(email) {
+    if (!email) throw new Error('Informe o e-mail no campo acima.');
+    await this._A.sendPasswordResetEmail(this.auth, email.trim());
+  }
 
   listDemandas() { return this._demandas; }
   getDemanda(id) { return this._demandas.find(d => d.id === id) || null; }
