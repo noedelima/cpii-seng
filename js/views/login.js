@@ -17,7 +17,7 @@ export function viewLogin(rerender) {
     btn.disabled = true; btn.textContent = 'Entrando…';
     try {
       await s.login(inEmail.value, inSenha.value);
-      toast(`Bem-vindo(a), ${s.user.nome}.`);
+      toast(`Bem-vindo(a), ${s.user?.nome || inEmail.value}.`);
       location.hash = '#/';
     } catch (err) {
       toast(err.message || 'Falha na autenticação.', 'erro');

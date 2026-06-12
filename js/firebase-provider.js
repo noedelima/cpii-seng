@@ -101,6 +101,8 @@ export class FirebaseProvider {
 
   async login(email, senha) {
     await this._A.signInWithEmailAndPassword(this.auth, email.trim(), senha);
+    // aguarda o onAuthStateChanged carregar o perfil de /usuarios/{uid}
+    for (let i = 0; i < 50 && !this.user; i++) await new Promise(r => setTimeout(r, 100));
     return this.user;
   }
   async logout() { await this._A.signOut(this.auth); }
