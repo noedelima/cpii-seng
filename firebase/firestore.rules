@@ -107,9 +107,10 @@ service cloud.firestore {
         && (!('email' in request.resource.data) || request.resource.data.email is string);
     }
 
-    // ---------- usuários — gestão pelo admin; sempre ao menos um admin -----------
+    // ---------- usuários — leitura p/ chefia (vínculo de profissionais);
+    //            gestão pelo admin; sempre ao menos um admin --------------------
     match /usuarios/{uid} {
-      allow read: if isAdmin() || (signedIn() && request.auth.uid == uid);
+      allow read: if isChefe() || (signedIn() && request.auth.uid == uid);
       allow create: if isAdmin()
         && request.resource.data.role in ['campus','engenharia','chefe','codir','admin']
         && request.resource.data.nome is string && request.resource.data.nome.size() <= 80;

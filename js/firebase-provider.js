@@ -86,10 +86,12 @@ export class FirebaseProvider {
     this._unsubPriv.push(fs.onSnapshot(fs.collection(this.db, 'profissionais'), (snap) => {
       this._profissionais = snap.docs.map(d => ({ id: d.id, ...d.data() })); this._emit();
     }, () => {}));
-    if (this.user?.role === 'admin') {
+    if (['admin', 'chefe'].includes(this.user?.role)) {
       this._unsubPriv.push(fs.onSnapshot(fs.collection(this.db, 'usuarios'), (snap) => {
         this._usuarios = snap.docs.map(d => ({ uid: d.id, ...d.data() })); this._emit();
       }, () => {}));
+    }
+    if (this.user?.role === 'admin') {
       this._unsubPriv.push(fs.onSnapshot(
         fs.query(fs.collection(this.db, 'logs'), fs.orderBy('ts', 'desc'), fs.limit(500)),
         (snap) => { this._logs = snap.docs.map(d => ({ id: d.id, ...d.data() })).reverse(); this._emit(); },

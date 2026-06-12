@@ -139,8 +139,9 @@ class DemoProvider {
     this._save(); return p.id;
   }
 
-  // --- Usuários (admin) — salvaguarda: sempre ao menos um administrador ------
-  listUsuarios() { return this.user?.role === 'admin' ? this.db.usuarios.map(u => this._pub(u)) : []; }
+  // --- Usuários — leitura para admin/chefe (vínculo de profissionais);
+  //     gestão (escrita) apenas pelo admin. Salvaguarda: sempre ≥1 admin. ------
+  listUsuarios() { return ['admin', 'chefe'].includes(this.user?.role) ? this.db.usuarios.map(u => this._pub(u)) : []; }
   async salvarUsuario(u) {
     if (this.user?.role !== 'admin') throw new Error('Apenas administradores gerenciam usuários.');
     const i = this.db.usuarios.findIndex(x => x.uid === u.uid);

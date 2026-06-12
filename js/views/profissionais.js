@@ -46,10 +46,30 @@ export function viewProfissionais(rerender) {
   });
 
   // ---- formulário (novo/edição) ------------------------------------------------
+  // O profissional é sempre um USUÁRIO já cadastrado (nome/e-mail derivados do
+  // cadastro de usuários); aqui se atribuem cargo, área, observação e situação.
   let formWrap = el('div', {});
   function abrirForm(p = {}) {
-    const inNome = el('input', { type: 'text', required: true, maxlength: 80, value: p.nome || '' });
-    const inEmail = el('input', { type: 'email', required: true, maxlength: 120, value: p.email || '', placeholder: 'nome@cp2.g12.br' });
+    const usuarios = (s.listUsuarios() || []).filter(u => u.ativo !== false);
+    const vinculados = new Set(profissionais.filter(x => x.id !== p.id).map(x => (x.email || '').toLowerCase()));
+    const elegiveis = usuarios.filter(u =>
+      !['campus', 'codir'].includes(u.role) && !vinculados.has((u.email || '').toLowerCase()));
+    const atual = p.email ? usuarios.find(u => (u.email || '').toLowerCase() === p.email.toLowerCase()) : null;
+
+    const opcoes = elegiveis.map(u => ({ id: u.uid, nome: `${u.nome} — ${u.email}` }));
+    if (atual && !elegiveis.some(u => u.uid === atual.uid)) opcoes.unshift({ id: atual.uid, nome: `${atual.nome} — ${atual.email}` });
+    if (!atual && p.id) opcoes.unshift({ id: '__manter', nome: `${p.nome} — ${p.email || 'sem e-mail'} (cadastro atual, sem usuário)` });
+
+    if (!opcoes.length) {
+      formWrap.replaceChildren(el('section', { class: 'card form-prof' },
+        el('h2', {}, 'Novo profissional'),
+        el('p', { class: 'nota' }, 'Todos os usuários elegíveis já estão cadastrados como profissionais — ou ainda não há usuários. Cadastre primeiro o usuário em Administração → Novo usuário (perfis Engenharia, Chefe ou Administrador) e volte aqui para atribuir cargo e especialidade.'),
+        el('div', { class: 'form-acoes' }, el('button', { class: 'btn ghost', onclick: () => formWrap.replaceChildren() }, 'Fechar'))));
+      formWrap.scrollIntoView({ behavior: 'smooth' });
+      return;
+    }
+
+    const selUsuario = select(opcoes, { value: atual?.uid || (p.id && !atual ? '__manter' : ''), required: true });
     const selCargo = select(CARGOS, { value: p.cargo || '', required: true });
     const selArea = select(AREAS, { value: p.area || '', required: true });
     const ckAtivo = el('input', { type: 'checkbox', ...((p.ativo ?? true) ? { checked: true } : {}) });
@@ -58,13 +78,19 @@ export function viewProfissionais(rerender) {
       el('h2', {}, p.id ? `Editar — ${p.nome}` : 'Novo profissional'),
       el('form', { class: 'form-grid', onsubmit: async (e) => {
         e.preventDefault();
+        let nome = p.nome, email = p.email;
+        if (selUsuario.value !== '__manter') {
+          const u = usuarios.find(x => x.uid === selUsuario.value);
+          if (!u) { toast('Selecione o usuário correspondente.', 'erro'); return; }
+          nome = u.nome; email = u.email;
+        }
         try {
-          await s.salvarProfissional({ ...(p.id ? { id: p.id } : {}), nome: inNome.value.trim(), email: inEmail.value.trim(), cargo: selCargo.value, area: selArea.value, ativo: ckAtivo.checked, obs: inObs.value.trim() });
+          await s.salvarProfissional({ ...(p.id ? { id: p.id } : {}), nome, email, cargo: selCargo.value, area: selArea.value, ativo: ckAtivo.checked, obs: inObs.value.trim() });
           toast('Profissional salvo.');
           formWrap.replaceChildren();
         } catch (err) { toast(err.message, 'erro'); }
       } },
-        el('div', { class: 'form-linha' }, campo('Nome *', inNome), campo('E-mail *', inEmail, 'Mesmo e-mail do login: vincula o usuário a este profissional.')),
+        campo('Usuário *', selUsuario, 'Nome e e-mail vêm do cadastro de usuários (vínculo automático com o login). Não achou? Cadastre em Administração → Novo usuário.'),
         el('div', { class: 'form-linha' }, campo('Cargo *', selCargo), campo('Área / especialidade *', selArea)),
         campo('Observação', inObs),
         el('label', { class: 'chip-check' }, ckAtivo, ' Ativo (disponível para alocação)'),
