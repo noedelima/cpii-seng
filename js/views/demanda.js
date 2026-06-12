@@ -203,9 +203,8 @@ export function viewDemanda(rerender, id) {
       });
       filhos.push(el('h3', {}, 'Alocação ', el('span', { class: 'sub' }, '(visível somente autenticado)')));
       filhos.push(el('div', { class: 'form-grid' },
-        el('div', { class: 'form-linha' },
-          campo('Fiscal técnico titular', selTit),
-          campo('Fiscal técnico substituto', selSub)),
+        campo('Fiscal técnico titular', selTit),
+        campo('Fiscal técnico substituto', selSub),
         campo('Integrantes técnicos — equipe de planejamento (art. 13)', el('div', { class: 'chips' }, eqChecks)),
         el('button', { class: 'btn primario', onclick: async () => {
           if (selTit.value && selTit.value === selSub.value) { toast('Titular e substituto devem ser diferentes.', 'erro'); return; }

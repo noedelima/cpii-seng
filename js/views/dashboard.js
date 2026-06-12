@@ -42,32 +42,6 @@ export function viewDashboard(rerender) {
   const filaCompleta = ordenarFila(todas.filter(d => d.status === 'fila'), params);
   const posFila = {}; filaCompleta.forEach((d, i) => { posFila[d.id] = i + 1; });
 
-  // ---- KPIs por status --------------------------------------------------------
-  const contagem = {};
-  for (const d of todas) contagem[d.status] = (contagem[d.status] || 0) + 1;
-  const kpis = el('div', { class: 'kpis', role: 'group', 'aria-label': 'Resumo por status' },
-    STATUS.map(st => el('button', {
-      class: `kpi ${st.cor} ${filtros.status === st.id ? 'ativo' : ''}`,
-      onclick: () => { filtros.status = filtros.status === st.id ? '' : st.id; rerender(); },
-      'aria-pressed': String(filtros.status === st.id),
-      title: `Filtrar por “${st.nome}”`,
-    },
-      el('span', { class: 'kpi-num' }, String(contagem[st.id] || 0)),
-      el('span', { class: 'kpi-label' }, st.nome),
-    )));
-
-  // ---- mini-gráficos (barras por campus e por tipo) ----------------------------
-  const porCampus = {};
-  for (const d of lista) porCampus[d.campus] = (porCampus[d.campus] || 0) + 1;
-  const grafCampus = miniBarras('Demandas por campus', porCampus, campusNome,
-    (k) => { filtros.campus = filtros.campus === k ? '' : k; rerender(); }, filtros.campus);
-
-  const porTipo = {};
-  for (const d of lista) { const t = d.aval?.tipoAtividade || 'sem-avaliacao'; porTipo[t] = (porTipo[t] || 0) + 1; }
-  const tipoNome = (id) => id === 'sem-avaliacao' ? 'Sem avaliação' : (TIPOS_ATIVIDADE.find(t => t.id === id) || {}).nome || id;
-  const grafTipo = miniBarras('Por tipo de atividade', porTipo, tipoNome,
-    (k) => { if (k !== 'sem-avaliacao') { filtros.tipo = filtros.tipo === k ? '' : k; rerender(); } }, filtros.tipo);
-
   // ---- barra de filtros ---------------------------------------------------------
   const inBusca = el('input', {
     type: 'search', placeholder: 'Buscar por objeto, descrição, campus…', value: filtros.busca,
@@ -78,11 +52,13 @@ export function viewDashboard(rerender) {
   selCampus.addEventListener('change', () => { filtros.campus = selCampus.value; rerender(); });
   const selStatus = select(STATUS, { value: filtros.status, placeholder: 'Todos os status', 'aria-label': 'Filtrar por status' });
   selStatus.addEventListener('change', () => { filtros.status = selStatus.value; rerender(); });
+  const selTipoF = select(TIPOS_ATIVIDADE, { value: filtros.tipo, placeholder: 'Todos os tipos de atividade', 'aria-label': 'Filtrar por tipo de atividade' });
+  selTipoF.addEventListener('change', () => { filtros.tipo = selTipoF.value; rerender(); });
   const selEsp = select(ESPECIALIDADES, { value: filtros.esp, placeholder: 'Todas as especialidades', 'aria-label': 'Filtrar por especialidade' });
   selEsp.addEventListener('change', () => { filtros.esp = selEsp.value; rerender(); });
 
   const chips = el('div', { class: 'filtros' },
-    inBusca, selCampus, selStatus, selEsp,
+    inBusca, selCampus, selStatus, selTipoF, selEsp,
     meuProf ? el('label', { class: 'chip-check' },
       el('input', { type: 'checkbox', ...(filtros.minhas ? { checked: true } : {}), onchange: (e) => { filtros.minhas = e.target.checked; rerender(); } }),
       ' Minhas atribuições') : null,
@@ -176,30 +152,12 @@ export function viewDashboard(rerender) {
       el('div', { class: 'hero-acoes' },
         user && can(user, 'criar') ? el('a', { class: 'btn primario', href: '#/nova' }, '+ Nova solicitação') : null,
         btnPdf)),
-    kpis,
-    el('div', { class: 'grid-2' }, grafCampus, grafTipo),
     el('section', { class: 'card' },
       el('h2', {}, 'Fila de demandas ', el('span', { class: 'sub' }, `${ordenadas.length} de ${todas.length}`)),
       chips, tabela,
       el('p', { class: 'nota' }, '* prioridade com fator de ajuste deliberado pelo CODIR. Clique em uma linha para ver os detalhes.')),
     painelProfs,
   );
-}
-
-// Gráfico de barras minimalista em CSS (clicável)
-function miniBarras(titulo, mapa, nomeFn, onClick, ativo) {
-  const entries = Object.entries(mapa).sort((a, b) => b[1] - a[1]).slice(0, 10);
-  const max = Math.max(1, ...entries.map(e => e[1]));
-  return el('section', { class: 'card graf' },
-    el('h2', {}, titulo),
-    entries.length ? entries.map(([k, v]) => el('button', {
-      class: `graf-linha ${ativo === k ? 'ativo' : ''}`, onclick: () => onClick(k),
-      'aria-pressed': String(ativo === k),
-    },
-      el('span', { class: 'graf-label' }, nomeFn(k)),
-      el('span', { class: 'graf-barra' }, el('span', { class: 'graf-fill', style: `width:${(v / max) * 100}%` })),
-      el('span', { class: 'graf-num' }, String(v)),
-    )) : el('p', { class: 'vazio' }, 'Sem dados para os filtros atuais.'));
 }
 
 function barra(usados, limite) {
