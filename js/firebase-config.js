@@ -1,18 +1,15 @@
 // =============================================================================
-// Configuração do Firebase (PRODUÇÃO)
+// Configuração do Firebase (PRODUÇÃO) — projeto cpii-seng
 // -----------------------------------------------------------------------------
-// Enquanto este objeto for `null`, o sistema opera em MODO DEMONSTRAÇÃO
-// (dados fictícios no navegador, sem backend).
-//
-// Para ativar a produção (~15 min): siga firebase/SETUP.md, crie o projeto no
-// console.firebase.google.com e cole aqui o objeto firebaseConfig do app Web:
-//
-// export const FIREBASE_CONFIG = {
-//   apiKey: '...', authDomain: '<projeto>.firebaseapp.com', projectId: '<projeto>',
-//   storageBucket: '<projeto>.firebasestorage.app', messagingSenderId: '...', appId: '...',
-// };
-//
-// Observação: a apiKey do Firebase Web não é um segredo — o controle de acesso
-// é feito pelas Security Rules (firebase/firestore.rules).
+// A apiKey do Firebase Web não é um segredo: o controle de acesso é feito
+// pelas Security Rules (firebase/firestore.rules) e pelo Firebase Auth.
+// Para voltar ao MODO DEMONSTRAÇÃO (dados fictícios), troque o objeto por null.
 // =============================================================================
-export const FIREBASE_CONFIG = null;
+export const FIREBASE_CONFIG = {
+  apiKey: 'AIzaSyBTrzbePWCr7OvTMptcaYr8GyZsY2363kc',
+  authDomain: 'cpii-seng.firebaseapp.com',
+  projectId: 'cpii-seng',
+  storageBucket: 'cpii-seng.firebasestorage.app',
+  messagingSenderId: '704635294862',
+  appId: '1:704635294862:web:560bf12df2f4c63acfe5df',
+};
