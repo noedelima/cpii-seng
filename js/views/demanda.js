@@ -91,7 +91,7 @@ export function viewDemanda(rerender, id) {
       const selU = select(ESCALA_U.map(x => ({ id: x.v, nome: `${x.v} — ${x.t}` })), { value: aval.u ?? '' });
       const selT = select(ESCALA_T.map(x => ({ id: x.v, nome: `${x.v} — ${x.t}` })), { value: aval.t ?? '' });
       const selAtv = select(TIPOS_ATIVIDADE, { value: aval.tipoAtividade ?? '' });
-      const inValor = el('input', { type: 'number', min: 0, step: 1000, value: aval.valorConsiderado ?? d.valorEstimado ?? '' });
+      const inValor = el('input', { type: 'number', min: 0, step: 'any', value: aval.valorConsiderado ?? d.valorEstimado ?? '' });
       const selPrazo = select(PRAZOS, { value: aval.prazoConsiderado ?? d.prazoEstimado ?? '' });
       const ckTombado = el('input', { type: 'checkbox', ...(aval.tombadoConf ? { checked: true } : {}) });
       const ckEspecial = el('input', { type: 'checkbox', ...(aval.especial ? { checked: true } : {}) });

@@ -20,7 +20,7 @@ export function viewSolicitacao() {
   const selProjeto = select(PROJETO_EXISTE, { required: true });
   const selTombado = select([{ id: 'sim', nome: 'Sim' }, { id: 'nao', nome: 'Não' }, { id: 'ns', nome: 'Não sei informar' }], { required: true });
   const selPrazo = select(PRAZOS, { placeholder: 'Sem previsão definida' });
-  const inValor = el('input', { type: 'number', min: 0, step: 1000, placeholder: 'Ex.: 250000 (opcional)' });
+  const inValor = el('input', { type: 'number', min: 0, step: 'any', placeholder: 'Ex.: 250000 (opcional)' });
   const inSuap = el('input', { type: 'text', maxlength: 25, placeholder: 'Ex.: 23040.001234/2026-11 (se houver)' });
   const inObjeto = el('input', { type: 'text', maxlength: 120, required: true, placeholder: 'Resumo do objeto — ex.: Reforma do telhado da quadra' });
   const inDesc = el('textarea', { rows: 5, maxlength: 4000, required: true, placeholder: 'Descreva o problema/necessidade, o objetivo e o resultado esperado.' });
