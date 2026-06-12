@@ -3,6 +3,11 @@
 // -----------------------------------------------------------------------------
 // A apiKey do Firebase Web não é um segredo: o controle de acesso é feito
 // pelas Security Rules (firebase/firestore.rules) e pelo Firebase Auth.
+// O alerta "Secrets detected" do GitHub para esta chave é falso positivo
+// esperado. Endurecimento aplicado: chave restrita às APIs do Firebase e a
+// requisições originadas de noedelima.github.io (+ localhost p/ dev) — fora
+// do site retorna 403 (testado). Gerencie em:
+// https://console.cloud.google.com/apis/credentials?project=cpii-seng
 // Para voltar ao MODO DEMONSTRAÇÃO (dados fictícios), troque o objeto por null.
 // =============================================================================
 export const FIREBASE_CONFIG = {

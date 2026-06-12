@@ -57,8 +57,12 @@ export const FIREBASE_CONFIG = {
 5. Faça commit/push — o GitHub Pages publica e o sistema sai do modo demonstração.
 
 > A `apiKey` do Firebase Web **não é segredo**: a segurança é garantida pelas
-> Security Rules. Mesmo assim, restrinja a chave ao domínio do Pages em
-> https://console.cloud.google.com/apis/credentials se desejar camada extra.
+> Security Rules. O alerta de "secret detected" do GitHub é falso positivo
+> esperado. Neste projeto a chave já está **restrita por referrer** (somente
+> `noedelima.github.io` + localhost) e às APIs do Firebase — requisições de
+> fora do site recebem 403. Gerencie em
+> https://console.cloud.google.com/apis/credentials?project=cpii-seng.
+> Se publicar o site em outro domínio, acrescente-o aos referrers da chave.
 
 ## 6. Cadastros iniciais no sistema
 Entre com o usuário `admin` e cadastre os profissionais da SENG (menu
