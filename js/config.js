@@ -8,7 +8,7 @@ export const APP = {
   orgao: 'Colégio Pedro II',
   setor: 'Seção de Engenharia — SENG/DECOF',
   portaria: 'Portaria nº 7503/REITORIA/CPII, de 24/11/2025',
-  versao: '1.0.0',
+  versao: '1.1.0',
 };
 
 // --- Parâmetros ajustáveis pelo Administrador (defaults) ---------------------
@@ -144,6 +144,7 @@ export const ROLES = [
   { id: 'campus',     nome: 'Campus (solicitante)' },
   { id: 'engenharia', nome: 'Engenharia' },
   { id: 'chefe',      nome: 'Chefe de Seção' },
+  { id: 'codir',      nome: 'CODIR (aprovação e ajuste)' },
   { id: 'admin',      nome: 'Administrador' },
 ];
 export const roleNome = (id) => (ROLES.find(r => r.id === id) || {}).nome || id;

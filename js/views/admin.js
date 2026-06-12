@@ -1,10 +1,12 @@
 // =============================================================================
 // Administração — usuários e parâmetros do sistema
 // =============================================================================
-import { el, frag, campo, select, toast, confirmar } from '../ui.js';
+import { el, frag, campo, select, toast, confirmar, fmtDataHora, debounce } from '../ui.js';
 import { ROLES, CAMPI, roleNome, campusNome } from '../config.js';
 import { store } from '../store.js';
 import { can } from '../auth.js';
+
+let filtroLog = '';
 
 export function viewAdmin(rerender) {
   const s = store();
@@ -42,39 +44,46 @@ export function viewAdmin(rerender) {
   // ---- Usuários ------------------------------------------------------------------
   if (can(user, 'usuarios')) {
     const usuarios = s.listUsuarios();
-    const profissionais = s.listProfissionais();
     const formWrap = el('div', {});
+    const adminsAtivos = usuarios.filter(x => x.role === 'admin' && x.ativo !== false);
 
     function abrirForm(u = {}) {
+      // Salvaguarda: o próprio admin não revoga seu perfil; sempre resta ≥1 admin
+      const ehProprioAdmin = u.uid && u.uid === user.uid && u.role === 'admin';
+      const ultimoAdmin = u.role === 'admin' && adminsAtivos.length <= 1;
+      const travaAdmin = ehProprioAdmin || ultimoAdmin;
       const inNome = el('input', { type: 'text', required: true, maxlength: 80, value: u.nome || '' });
       const inEmail = el('input', { type: 'email', required: true, maxlength: 120, value: u.email || '', ...(u.uid ? { disabled: true } : {}) });
-      const selRole = select(ROLES, { value: u.role || '', required: true });
+      const selRole = select(ROLES, { value: u.role || '', required: true, ...(travaAdmin ? { disabled: true } : {}) });
       const selCampus = select(CAMPI, { value: u.campus || '', placeholder: '— (não se aplica) —' });
-      const selProf = select(profissionais.map(p => ({ id: p.id, nome: p.nome })), { value: u.profissionalId || '', placeholder: '— vincular a profissional (opcional) —' });
-      const ckAtivo = el('input', { type: 'checkbox', ...((u.ativo ?? true) ? { checked: true } : {}) });
+      const ckAtivo = el('input', { type: 'checkbox', ...((u.ativo ?? true) ? { checked: true } : {}), ...(travaAdmin ? { disabled: true } : {}) });
       const inSenha = s.mode === 'demo' && !u.uid ? el('input', { type: 'text', value: 'cp2demo', maxlength: 40 }) : null;
       const inUid = s.mode === 'firebase' && !u.uid ? el('input', { type: 'text', required: true, placeholder: 'UID criado no console do Firebase' }) : null;
 
       formWrap.replaceChildren(el('section', { class: 'card' },
         el('h2', {}, u.uid ? `Editar — ${u.nome}` : 'Novo usuário'),
         s.mode === 'firebase' && !u.uid ? el('p', { class: 'nota' }, 'Produção: crie antes a credencial em Authentication → Users no console do Firebase e cole o UID aqui (ver firebase/SETUP.md).') : null,
+        travaAdmin ? el('p', { class: 'nota' }, ehProprioAdmin
+          ? 'Você não pode revogar o próprio perfil de administrador — somente outro administrador pode fazê-lo.'
+          : 'Único administrador ativo: cadastre outro administrador antes de alterar este perfil.') : null,
         el('form', { class: 'form-grid', onsubmit: async (e) => {
           e.preventDefault();
           try {
             await s.salvarUsuario({
               ...(u.uid ? { uid: u.uid } : (inUid ? { uid: inUid.value.trim() } : {})),
               nome: inNome.value.trim(), email: inEmail.value.trim(),
-              role: selRole.value, campus: selRole.value === 'campus' ? selCampus.value : (selCampus.value || null),
-              profissionalId: selProf.value || null, ativo: ckAtivo.checked,
+              role: travaAdmin ? 'admin' : selRole.value,
+              campus: selRole.value === 'campus' ? selCampus.value : (selCampus.value || null),
+              ativo: travaAdmin ? true : ckAtivo.checked,
               ...(inSenha ? { senha: inSenha.value } : {}),
             });
             toast('Usuário salvo.');
             formWrap.replaceChildren();
           } catch (err) { toast(err.message, 'erro'); }
         } },
-          el('div', { class: 'form-linha' }, campo('Nome *', inNome), campo('E-mail *', inEmail)),
-          el('div', { class: 'form-linha' }, campo('Perfil *', selRole, 'Campus: envia solicitações. Engenharia: trata demandas. Chefe: funções gerenciais. Administrador: usuários e parâmetros.'), campo('Campus (perfil Campus)', selCampus)),
-          el('div', { class: 'form-linha' }, campo('Profissional vinculado', selProf, 'Habilita o filtro “minhas atribuições”.'), inUid ? campo('UID (Firebase) *', inUid) : (inSenha ? campo('Senha (demo)', inSenha) : el('div', {}))),
+          el('div', { class: 'form-linha' }, campo('Nome *', inNome), campo('E-mail *', inEmail, 'Se for da Engenharia, use o mesmo e-mail do cadastro de profissionais — o vínculo é automático.')),
+          el('div', { class: 'form-linha' }, campo('Perfil *', selRole, 'Campus: solicita. Engenharia: trata. Chefe: gerencia. CODIR: aprova e ajusta prioridade. Administrador: tudo.'), campo('Campus (perfil Campus)', selCampus)),
+          inUid ? campo('UID (Firebase) *', inUid) : (inSenha ? campo('Senha (demo)', inSenha) : null),
           el('label', { class: 'chip-check' }, ckAtivo, ' Ativo'),
           el('div', { class: 'form-acoes' },
             el('button', { class: 'btn ghost', type: 'button', onclick: () => formWrap.replaceChildren() }, 'Fechar'),
@@ -96,6 +105,34 @@ export function viewAdmin(rerender) {
           el('td', {}, u.ativo === false ? 'Inativo' : 'Ativo'),
           el('td', {}, el('button', { class: 'btn ghost sm', onclick: () => abrirForm(u) }, 'Editar'))))))),
       formWrap));
+  }
+
+  // ---- Log de auditoria (visível somente ao administrador) ----------------------------
+  if (can(user, 'log')) {
+    const logs = (s.listLogs() || []).slice().reverse(); // mais recentes primeiro
+    const txt = filtroLog.trim().toLowerCase();
+    const filtrados = txt
+      ? logs.filter(l => `${l.nome} ${l.email} ${l.acao} ${l.alvo} ${l.detalhes}`.toLowerCase().includes(txt))
+      : logs;
+    const inFiltro = el('input', {
+      type: 'search', placeholder: 'Filtrar por usuário, ação, alvo…', value: filtroLog,
+      'aria-label': 'Filtrar registros do log',
+      oninput: debounce((e) => { filtroLog = e.target.value; rerender(); }, 220),
+    });
+    filhos.push(el('section', { class: 'card' },
+      el('div', { class: 'card-cab' },
+        el('h2', {}, 'Log de auditoria ', el('span', { class: 'sub' }, `${filtrados.length} registro(s)`)),
+        inFiltro),
+      el('div', { class: 'tabela-wrap' }, el('table', { class: 'tabela log-tabela' },
+        el('thead', {}, el('tr', {},
+          el('th', {}, 'Quando'), el('th', {}, 'Quem'), el('th', {}, 'Ação'), el('th', {}, 'Alvo'), el('th', {}, 'Detalhes'))),
+        el('tbody', {}, filtrados.length ? filtrados.slice(0, 300).map(l => el('tr', { class: 'log-linha' },
+          el('td', { class: 'sub' }, fmtDataHora(l.ts)),
+          el('td', {}, l.nome, l.email ? el('span', { class: 'sub' }, ` ${l.email}` ) : null),
+          el('td', {}, l.acao),
+          el('td', { class: 'mono' }, l.alvo || '—'),
+          el('td', { class: 'sub' }, l.detalhes || ''))) : el('tr', {}, el('td', { colspan: 5, class: 'vazio' }, 'Nenhum registro.'))))),
+      el('p', { class: 'nota' }, 'Registro de toda modificação no sistema: o quê, quando e por quem. Os registros não podem ser editados nem excluídos.')));
   }
 
   // ---- Modo demonstração: reinício dos dados -----------------------------------------

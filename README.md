@@ -24,10 +24,16 @@ controla a alocação de profissionais com a pontuação dos arts. 11–13.
   Em atendimento → Concluído, além de Suspenso, Cancelado e Não enquadrado).
 - **Trava funcional**: demandas em atendimento não podem ser excluídas nem
   ter classificação alterada (interface **e** Security Rules).
-- **Profissionais**: cadastro, alocação de Fiscal Técnico Titular/Substituto e
-  equipes de planejamento, contabilização automática de pontos (art. 11),
-  limite de 6 pontos (art. 12) e monitor do art. 13.
-- **Perfis**: Campus, Engenharia, Chefe de Seção e Administrador.
+- **Profissionais**: cadastro com **e-mail** (vinculado automaticamente ao
+  usuário de login com o mesmo e-mail), alocação de Fiscal Técnico
+  Titular/Substituto e equipes de planejamento, contabilização automática de
+  pontos (art. 11), limite de 6 pontos (art. 12) e monitor do art. 13.
+- **Perfis**: Campus, Engenharia, Chefe de Seção, **CODIR** (marca a aprovação
+  e define o fator de ajuste, após a análise GUT) e Administrador (executa
+  todas as ações). **Salvaguarda**: sempre há ao menos um administrador —
+  o perfil de admin só pode ser revogado por outro administrador.
+- **Log de auditoria** (somente administrador): registra toda modificação —
+  o quê, quando e por quem; imutável (append-only nas Security Rules).
 - Identidade visual CP2, **temas claro/escuro**, responsivo e acessível.
 
 ## Arquitetura

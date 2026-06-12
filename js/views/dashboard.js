@@ -27,11 +27,13 @@ export function viewDashboard(rerender) {
     (!filtros.esp || (d.especialidades || []).includes(filtros.esp)) &&
     (!txt || `${d.id} ${d.objeto} ${d.descricao} ${campusNome(d.campus)}`.toLowerCase().includes(txt))
   );
-  if (filtros.minhas && user?.profissionalId) {
+  // Profissional vinculado ao usuário pelo e-mail de login
+  const meuProf = user ? s.profissionalDoUsuario(user) : null;
+  if (filtros.minhas && meuProf) {
     lista = lista.filter(d => {
       const i = internas[d.id] || {};
-      return i.fiscalTitular === user.profissionalId || i.fiscalSubstituto === user.profissionalId ||
-             (i.equipePlanejamento || []).includes(user.profissionalId);
+      return i.fiscalTitular === meuProf.id || i.fiscalSubstituto === meuProf.id ||
+             (i.equipePlanejamento || []).includes(meuProf.id);
     });
   }
   const ordenadas = ordenarFila(lista, params);
@@ -68,7 +70,7 @@ export function viewDashboard(rerender) {
 
   // ---- barra de filtros ---------------------------------------------------------
   const inBusca = el('input', {
-    type: 'search', placeholder: 'Buscar por ID, objeto, descrição…', value: filtros.busca,
+    type: 'search', placeholder: 'Buscar por objeto, descrição, campus…', value: filtros.busca,
     'aria-label': 'Buscar demandas',
     oninput: debounce((e) => { filtros.busca = e.target.value; rerender(); }, 220),
   });
@@ -81,7 +83,7 @@ export function viewDashboard(rerender) {
 
   const chips = el('div', { class: 'filtros' },
     inBusca, selCampus, selStatus, selEsp,
-    user?.profissionalId ? el('label', { class: 'chip-check' },
+    meuProf ? el('label', { class: 'chip-check' },
       el('input', { type: 'checkbox', ...(filtros.minhas ? { checked: true } : {}), onchange: (e) => { filtros.minhas = e.target.checked; rerender(); } }),
       ' Minhas atribuições') : null,
     (filtros.busca || filtros.campus || filtros.status || filtros.tipo || filtros.esp || filtros.minhas)
@@ -95,11 +97,10 @@ export function viewDashboard(rerender) {
     const pr = prioridade(d, params);
     const pts = pontosArt11(d.aval, params.valorRef);
     const i = internas[d.id] || {};
-    return el('tr', { tabindex: 0, role: 'link', 'aria-label': `Abrir demanda ${d.id}`,
+    return el('tr', { tabindex: 0, role: 'link', 'aria-label': `Abrir demanda: ${d.objeto || d.id}`,
       onclick: () => { location.hash = `#/demanda/${d.id}`; },
       onkeydown: (e) => { if (e.key === 'Enter') location.hash = `#/demanda/${d.id}`; } },
       el('td', { class: 'num' }, d.status === 'fila' ? `${posFila[d.id]}º` : '—'),
-      el('td', { class: 'mono' }, d.id),
       el('td', {}, campusNome(d.campus)),
       el('td', { class: 'objeto' }, el('strong', {}, d.objeto || '—'),
         d.emergencial || d.aval?.especial ? el('span', { class: 'tag-emergencial', title: 'Serviço emergencial (art. 11, §5º)' }, 'EMERGENCIAL') : null),
@@ -119,14 +120,14 @@ export function viewDashboard(rerender) {
     el('table', { class: 'tabela' },
       el('thead', {}, el('tr', {},
         el('th', { title: 'Posição na fila (status “Na fila”)' }, 'Fila'),
-        el('th', {}, 'ID'), el('th', {}, 'Campus'), el('th', {}, 'Objeto'), el('th', {}, 'Status'),
+        el('th', {}, 'Campus'), el('th', {}, 'Objeto'), el('th', {}, 'Status'),
         el('th', { title: 'Gravidade × Urgência × Tendência' }, 'GUT'),
         el('th', { title: 'Prioridade final (0,75·GUT/125 + 0,25·Prazo×Custo + ajuste CODIR)' }, 'Prioridade'),
         el('th', { title: 'Pontos de complexidade — art. 11 da Portaria 7503/2025' }, 'Pts'),
         user ? el('th', {}, 'Fiscal técnico') : null,
         el('th', {}, 'Atualização'),
       )),
-      el('tbody', {}, linhas.length ? linhas : el('tr', {}, el('td', { colspan: user ? 10 : 9, class: 'vazio' }, 'Nenhuma demanda corresponde aos filtros.'))),
+      el('tbody', {}, linhas.length ? linhas : el('tr', {}, el('td', { colspan: user ? 9 : 8, class: 'vazio' }, 'Nenhuma demanda corresponde aos filtros.'))),
     ));
 
   // ---- painel de carga dos profissionais (somente autenticado) ---------------------

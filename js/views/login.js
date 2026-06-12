@@ -36,6 +36,7 @@ export function viewLogin(rerender) {
       el('li', {}, el('code', {}, 'campus.sc2@cp2.demo'), ' — perfil Campus (DIAD São Cristóvão II)'),
       el('li', {}, el('code', {}, 'engenharia@cp2.demo'), ' — perfil Engenharia'),
       el('li', {}, el('code', {}, 'chefia@cp2.demo'), ' — perfil Chefe de Seção'),
+      el('li', {}, el('code', {}, 'codir@cp2.demo'), ' — perfil CODIR (aprovação e ajuste)'),
       el('li', {}, el('code', {}, 'admin@cp2.demo'), ' — perfil Administrador'),
     )) : null;
 

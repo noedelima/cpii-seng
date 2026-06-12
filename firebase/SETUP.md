@@ -30,7 +30,9 @@ usando o **UID** como ID do documento:
 ```
 
 Papéis válidos: `campus` (exige campo extra `"campus": "CSCII"` etc.),
-`engenharia`, `chefe`, `admin`. Crie pelo menos um `admin` e um `chefe`.
+`engenharia`, `chefe`, `codir` (aprovação e fator de ajuste) e `admin`.
+Crie pelo menos um `admin` e um `chefe`. Usuários da Engenharia devem usar o
+mesmo e-mail cadastrado em **Profissionais** — o vínculo é automático.
 Crie também o documento **`config/params`**:
 
 ```json

@@ -28,13 +28,13 @@ export function viewProfissionais(rerender) {
   const cards = profissionais.map(p => {
     const c = carga[p.id];
     const det = c.demandas.map(x => el('li', {},
-      el('a', { href: `#/demanda/${x.id}` }, x.id), ` — ${x.objeto || ''} `,
+      el('a', { href: `#/demanda/${x.id}` }, x.objeto || x.id), ' ',
       el('span', { class: 'sub' }, `(${{ titular: 'titular', substituto: 'substituto', planejamento: 'planejamento' }[x.papel]}${x.papel === 'planejamento' ? '' : `, ${x.pontos} pt${x.pontos === 1 ? '' : 's'}`}${x.emergencial ? ', emergencial' : ''})`)));
     return el('section', { class: `card prof-detalhe ${p.ativo === false ? 'inativo' : ''}` },
       el('div', { class: 'prof-cab' },
         el('div', {},
           el('h2', {}, p.nome, p.ativo === false ? el('span', { class: 'sub' }, ` — inativo${p.obs ? ` (${p.obs})` : ''}` ) : null),
-          el('p', { class: 'sub' }, `${p.cargo} · ${p.area}`)),
+          el('p', { class: 'sub' }, `${p.cargo} · ${p.area}${p.email ? ` · ${p.email}` : ''}`)),
         podeEditar ? el('button', { class: 'btn ghost sm', onclick: () => abrirForm(p) }, 'Editar') : null),
       el('div', { class: 'prof-resumo' },
         stat('Titular', c.titular), stat('Substituto', c.substituto),
@@ -49,6 +49,7 @@ export function viewProfissionais(rerender) {
   let formWrap = el('div', {});
   function abrirForm(p = {}) {
     const inNome = el('input', { type: 'text', required: true, maxlength: 80, value: p.nome || '' });
+    const inEmail = el('input', { type: 'email', required: true, maxlength: 120, value: p.email || '', placeholder: 'nome@cp2.g12.br' });
     const selCargo = select(CARGOS, { value: p.cargo || '', required: true });
     const selArea = select(AREAS, { value: p.area || '', required: true });
     const ckAtivo = el('input', { type: 'checkbox', ...((p.ativo ?? true) ? { checked: true } : {}) });
@@ -57,12 +58,15 @@ export function viewProfissionais(rerender) {
       el('h2', {}, p.id ? `Editar — ${p.nome}` : 'Novo profissional'),
       el('form', { class: 'form-grid', onsubmit: async (e) => {
         e.preventDefault();
-        await s.salvarProfissional({ ...(p.id ? { id: p.id } : {}), nome: inNome.value.trim(), cargo: selCargo.value, area: selArea.value, ativo: ckAtivo.checked, obs: inObs.value.trim() });
-        toast('Profissional salvo.');
-        formWrap.replaceChildren();
+        try {
+          await s.salvarProfissional({ ...(p.id ? { id: p.id } : {}), nome: inNome.value.trim(), email: inEmail.value.trim(), cargo: selCargo.value, area: selArea.value, ativo: ckAtivo.checked, obs: inObs.value.trim() });
+          toast('Profissional salvo.');
+          formWrap.replaceChildren();
+        } catch (err) { toast(err.message, 'erro'); }
       } },
-        el('div', { class: 'form-linha' }, campo('Nome *', inNome), campo('Cargo *', selCargo)),
-        el('div', { class: 'form-linha' }, campo('Área / especialidade *', selArea), campo('Observação', inObs)),
+        el('div', { class: 'form-linha' }, campo('Nome *', inNome), campo('E-mail *', inEmail, 'Mesmo e-mail do login: vincula o usuário a este profissional.')),
+        el('div', { class: 'form-linha' }, campo('Cargo *', selCargo), campo('Área / especialidade *', selArea)),
+        campo('Observação', inObs),
         el('label', { class: 'chip-check' }, ckAtivo, ' Ativo (disponível para alocação)'),
         el('div', { class: 'form-acoes' },
           el('button', { class: 'btn ghost', type: 'button', onclick: () => formWrap.replaceChildren() }, 'Fechar'),

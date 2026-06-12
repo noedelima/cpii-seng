@@ -12,23 +12,25 @@ const ev = (diasAtras, user, acao) => ({ ts: agora - diasAtras * dia, user, acao
 export function seedDemo() {
   const ano = PARAMS_DEFAULT.anoPlano;
 
+  // E-mail do profissional = e-mail de login do usuário correspondente
   const profissionais = [
-    { id: 'p1', nome: 'Beatriz Antunes',  cargo: 'Engenheiro(a)', area: 'Civil',                 ativo: true },
-    { id: 'p2', nome: 'Caio Mendonça',    cargo: 'Engenheiro(a)', area: 'Elétrica',              ativo: true },
-    { id: 'p3', nome: 'Diana Furtado',    cargo: 'Arquiteto(a)',  area: 'Arquitetura',           ativo: true },
-    { id: 'p4', nome: 'Eduardo Sales',    cargo: 'Engenheiro(a)', area: 'Mecânica',              ativo: true },
-    { id: 'p5', nome: 'Flávia Drummond',  cargo: 'Engenheiro(a)', area: 'Civil',                 ativo: true },
-    { id: 'p6', nome: 'Gustavo Linhares', cargo: 'Engenheiro(a)', area: 'Civil',                 ativo: true },
-    { id: 'p7', nome: 'Helena Vasques',   cargo: 'Arquiteto(a)',  area: 'Arquitetura',           ativo: true },
-    { id: 'p8', nome: 'Otávio Brandão',   cargo: 'Engenheiro(a)', area: 'Segurança do Trabalho', ativo: false, obs: 'Em licença' },
+    { id: 'p1', nome: 'Beatriz Antunes',  email: 'engenharia@cp2.demo',       cargo: 'Engenheiro(a)', area: 'Civil',                 ativo: true },
+    { id: 'p2', nome: 'Caio Mendonça',    email: 'caio.mendonca@cp2.demo',    cargo: 'Engenheiro(a)', area: 'Elétrica',              ativo: true },
+    { id: 'p3', nome: 'Diana Furtado',    email: 'diana.furtado@cp2.demo',    cargo: 'Arquiteto(a)',  area: 'Arquitetura',           ativo: true },
+    { id: 'p4', nome: 'Eduardo Sales',    email: 'eduardo.sales@cp2.demo',    cargo: 'Engenheiro(a)', area: 'Mecânica',              ativo: true },
+    { id: 'p5', nome: 'Flávia Drummond',  email: 'flavia.drummond@cp2.demo',  cargo: 'Engenheiro(a)', area: 'Civil',                 ativo: true },
+    { id: 'p6', nome: 'Gustavo Linhares', email: 'gustavo.linhares@cp2.demo', cargo: 'Engenheiro(a)', area: 'Civil',                 ativo: true },
+    { id: 'p7', nome: 'Helena Vasques',   email: 'helena.vasques@cp2.demo',   cargo: 'Arquiteto(a)',  area: 'Arquitetura',           ativo: true },
+    { id: 'p8', nome: 'Otávio Brandão',   email: 'otavio.brandao@cp2.demo',   cargo: 'Engenheiro(a)', area: 'Segurança do Trabalho', ativo: false, obs: 'Em licença' },
   ];
 
   const usuarios = [
-    { uid: 'u-admin',  email: 'admin@cp2.demo',      senha: 'cp2demo', nome: 'Administração do Sistema', role: 'admin' },
-    { uid: 'u-chefe',  email: 'chefia@cp2.demo',     senha: 'cp2demo', nome: 'Chefia da SENG',           role: 'chefe' },
-    { uid: 'u-eng',    email: 'engenharia@cp2.demo', senha: 'cp2demo', nome: 'Beatriz Antunes',          role: 'engenharia', profissionalId: 'p1' },
-    { uid: 'u-csc2',   email: 'campus.sc2@cp2.demo', senha: 'cp2demo', nome: 'DIAD São Cristóvão II',    role: 'campus', campus: 'CSCII' },
-    { uid: 'u-ct2',    email: 'campus.t2@cp2.demo',  senha: 'cp2demo', nome: 'Prefeitura Tijuca II',     role: 'campus', campus: 'CTII' },
+    { uid: 'u-admin',  email: 'admin@cp2.demo',      senha: 'cp2demo', nome: 'Administração do Sistema', role: 'admin', ativo: true },
+    { uid: 'u-chefe',  email: 'chefia@cp2.demo',     senha: 'cp2demo', nome: 'Chefia da SENG',           role: 'chefe', ativo: true },
+    { uid: 'u-codir',  email: 'codir@cp2.demo',      senha: 'cp2demo', nome: 'Representante do CODIR',   role: 'codir', ativo: true },
+    { uid: 'u-eng',    email: 'engenharia@cp2.demo', senha: 'cp2demo', nome: 'Beatriz Antunes',          role: 'engenharia', ativo: true },
+    { uid: 'u-csc2',   email: 'campus.sc2@cp2.demo', senha: 'cp2demo', nome: 'DIAD São Cristóvão II',    role: 'campus', campus: 'CSCII', ativo: true },
+    { uid: 'u-ct2',    email: 'campus.t2@cp2.demo',  senha: 'cp2demo', nome: 'Prefeitura Tijuca II',     role: 'campus', campus: 'CTII', ativo: true },
   ];
 
   // ---- Demandas de exemplo -------------------------------------------------
@@ -228,8 +230,9 @@ export function seedDemo() {
   };
 
   return {
-    _v: 1,
+    _v: 2,
     params: { ...PARAMS_DEFAULT },
     usuarios, profissionais, demandas, internas,
+    logs: [{ ts: agora, uid: 'sistema', nome: 'Sistema', email: '', acao: 'Dados de demonstração gerados', alvo: 'sistema', detalhes: '' }],
   };
 }

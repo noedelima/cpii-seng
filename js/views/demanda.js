@@ -5,7 +5,7 @@ import { el, frag, campo, select, toast, confirmar, badgeStatus, fmtMoeda, fmtNu
 import { campusNome, statusNome, TIPOS_DEMANDA, PROJETO_EXISTE, PRAZOS, TIPOS_ATIVIDADE, ESCALA_G, ESCALA_U, ESCALA_T } from '../config.js';
 import { prioridade, pontosArt11, faixaValorLabel, cargaProfissionais } from '../calc.js';
 import { store } from '../store.js';
-import { can, podeAvaliar, podeExcluir, podeComplementar, transicoesPermitidas, travada } from '../auth.js';
+import { can, podeAvaliar, podeExcluir, podeComplementar, podeDeliberarCodir, transicoesPermitidas, travada } from '../auth.js';
 
 const nomeDe = (lista, id, campoNome = 'nome') => (lista.find(x => (x.id ?? x.v) === id) || {})[campoNome] ?? (lista.find(x => x.id === id) || {}).t ?? '—';
 
@@ -27,7 +27,7 @@ export function viewDemanda(rerender, id) {
   const dados = el('section', { class: 'card' },
     el('div', { class: 'detalhe-topo' },
       el('div', {},
-        el('h1', { class: 'mono' }, d.id),
+        user ? el('h1', { class: 'mono' }, d.id) : null, // referência interna (BD) — só autenticado
         el('h2', { class: 'detalhe-objeto' }, d.objeto || '—')),
       badgeStatus(d.status)),
     linha('Campus', campusNome(d.campus)),
@@ -128,35 +128,48 @@ export function viewDemanda(rerender, id) {
     }
   }
 
-  // ---------- gestão (chefe): ajuste, CODIR, status, alocação ---------------------
-  let cartaoGestao = null;
-  if (user && (can(user, 'statusBasico') || can(user, 'statusTotal'))) {
-    const filhos = [el('h2', {}, 'Gestão')];
+  // ---------- deliberação do CODIR (perfil codir e administrador) ------------------
+  let cartaoCodir = null;
+  if (user && can(user, 'codir')) {
+    const podeAgora = podeDeliberarCodir(user, d);
+    const filhosCodir = [el('h2', {}, 'Deliberação do CODIR')];
+    if (bloqueada) {
+      filhosCodir.push(el('p', { class: 'nota' }, 'Demanda em atendimento/concluída — aprovação e ajuste travados.'));
+    } else if (!podeAgora) {
+      filhosCodir.push(el('p', { class: 'nota' }, 'Disponível após a análise GUT pela Engenharia (status “Aguardando aprovação do CODIR”).'));
+    } else {
+      const ck = el('input', { type: 'checkbox', ...(d.codirAprovado ? { checked: true } : {}) });
+      ck.addEventListener('change', async () => {
+        const patch = { codirAprovado: ck.checked };
+        let evento = ck.checked ? 'Aprovada pelo CODIR' : 'Aprovação do CODIR desmarcada';
+        if (ck.checked && d.status === 'codir') { patch.status = 'fila'; evento = 'Aprovada pelo CODIR — posicionada na fila'; }
+        await s.atualizarDemanda(d.id, patch, evento);
+        toast('Registro de aprovação atualizado.');
+      });
+      filhosCodir.push(el('label', { class: 'chip-check destaque-codir' }, ck, ' Aprovada pelo CODIR',
+        d.status === 'codir' ? el('span', { class: 'sub' }, ' (ao marcar, entra na fila)') : null));
 
-    // Ajuste artificial + aprovação CODIR (chefe)
-    if (can(user, 'ajuste') && !bloqueada) {
       const inAjuste = el('input', { type: 'number', step: 0.01, min: -1, max: 1, value: d.ajuste?.valor ?? '', placeholder: '0,00' });
-      const inJust = el('input', { type: 'text', maxlength: 300, value: d.ajuste?.justificativa ?? '', placeholder: 'Justificativa (deliberação do CODIR)' });
-      filhos.push(el('div', { class: 'form-grid' },
+      const inJust = el('input', { type: 'text', maxlength: 300, value: d.ajuste?.justificativa ?? '', placeholder: 'Justificativa da deliberação' });
+      filhosCodir.push(el('div', { class: 'form-grid' },
         el('div', { class: 'form-linha' },
-          campo('Fator de ajuste', inAjuste, 'Somado à prioridade calculada (ex.: 0,02). Use por solicitação do CODIR.'),
+          campo('Fator de ajuste', inAjuste, 'Somado à prioridade calculada (ex.: 0,02) — altera a ordem da fila.'),
           campo('Justificativa', inJust)),
         el('button', { class: 'btn ghost', onclick: async () => {
           const v = inAjuste.value === '' ? null : +inAjuste.value;
           if (v && !inJust.value.trim()) { toast('Informe a justificativa do ajuste.', 'erro'); return; }
           await s.atualizarDemanda(d.id, { ajuste: v ? { valor: v, justificativa: inJust.value.trim(), solicitadoPor: 'CODIR' } : null },
-            v ? `Ajuste de prioridade ${v > 0 ? '+' : ''}${v} aplicado` : 'Ajuste de prioridade removido');
+            v ? `Ajuste de prioridade ${v > 0 ? '+' : ''}${v} aplicado pelo CODIR` : 'Ajuste de prioridade removido pelo CODIR');
           toast('Ajuste salvo.');
         } }, 'Salvar ajuste')));
     }
-    if (can(user, 'codir')) {
-      const ck = el('input', { type: 'checkbox', ...(d.codirAprovado ? { checked: true } : {}), ...(bloqueada ? { disabled: true } : {}) });
-      ck.addEventListener('change', async () => {
-        await s.atualizarDemanda(d.id, { codirAprovado: ck.checked }, ck.checked ? 'Aprovada pelo CODIR' : 'Aprovação do CODIR desmarcada');
-        toast('Registro de aprovação atualizado.');
-      });
-      filhos.push(el('label', { class: 'chip-check destaque-codir' }, ck, ' Aprovada pelo CODIR'));
-    }
+    cartaoCodir = el('section', { class: 'card destaque-card-codir' }, filhosCodir);
+  }
+
+  // ---------- gestão (chefe/admin): status e alocação --------------------------------
+  let cartaoGestao = null;
+  if (user && (can(user, 'statusBasico') || can(user, 'statusTotal'))) {
+    const filhos = [el('h2', {}, 'Gestão')];
 
     // Transições de status
     const proximos = transicoesPermitidas(user, d);
@@ -259,7 +272,7 @@ export function viewDemanda(rerender, id) {
     el('a', { class: 'voltar', href: '#/' }, '← Voltar ao painel'),
     el('div', { class: 'detalhe-grid' },
       el('div', { class: 'col' }, dados, hist),
-      el('div', { class: 'col' }, cartaoPontuacao, cartaoAvaliacao, cartaoGestao, cartaoEquipe)));
+      el('div', { class: 'col' }, cartaoPontuacao, cartaoCodir, cartaoAvaliacao, cartaoGestao, cartaoEquipe)));
 }
 
 const linha = (rotulo, valor) => valor == null ? null : el('div', { class: 'linha-info' },

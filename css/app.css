@@ -213,6 +213,10 @@ textarea { resize: vertical; width: 100%; }
 .prioridade-final { display: flex; justify-content: space-between; align-items: center; background: linear-gradient(120deg, color-mix(in srgb, var(--oliva) 14%, transparent), color-mix(in srgb, var(--ouro) 18%, transparent)); border: 1px solid var(--ouro); border-radius: var(--raio-sm); padding: 10px 14px; margin: 12px 0; }
 .prioridade-final strong { font-size: 1.5rem; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
 .aviso-travada { border-left: 4px solid var(--ouro); }
+.destaque-card-codir { border-left: 4px solid #8A6BAA; }
+.log-tabela { font-size: .8rem; min-width: 680px; }
+.log-tabela td { padding: 6px 10px; }
+.card-cab input[type="search"] { max-width: 300px; }
 .zona-perigo { margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--borda-forte); }
 
 /* --- Timeline -------------------------------------------------------------------------------------------- */

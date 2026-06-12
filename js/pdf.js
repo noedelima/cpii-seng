@@ -5,8 +5,7 @@
 // =============================================================================
 import { TIMBRE_H, TIMBRE_RATIO } from './logos.js';
 import { campusNome, statusNome, TIPOS_ATIVIDADE, APP } from './config.js';
-import { prioridade, pontosArt11 } from './calc.js';
-import { fmtNum } from './ui.js';
+import { pontosArt11 } from './calc.js';
 
 let libs = null;
 async function carregarLibs() {
@@ -69,24 +68,21 @@ export async function gerarRelatorio({ demandas, params, filtros, autenticado, i
   doc.text('Fila de Demandas de Obras e Serviços de Engenharia', M, y);
   y += 6;
   doc.setFont('helvetica', 'normal').setFontSize(9).setTextColor(80);
-  doc.text(`Gerado em ${carimbo} · Plano ${params.anoPlano} · ${demandas.length} demanda(s)`, M, y);
+  doc.text(`Gerado em ${carimbo} · ${demandas.length} demanda(s)`, M, y);
   y += 5;
   if (filtros) { doc.text(`Filtros: ${filtros}`, M, y, { maxWidth: W - 2 * M }); y += 5; }
   if (!autenticado) { doc.setTextColor(140); doc.text('Versão pública — não exibe a alocação de profissionais.', M, y); y += 5; }
 
   // --- Tabela ----------------------------------------------------------------
   const nomeProf = (pid) => (profissionais.find(p => p.id === pid) || {}).nome || '—';
-  const head = ['#', 'ID', 'Campus', 'Objeto', 'Tipo de atividade', 'Status', 'GUT', 'Prior.', 'Pts'];
+  const head = ['#', 'Campus', 'Objeto', 'Tipo de atividade', 'Status', 'Pts'];
   if (autenticado) head.push('Fiscal técnico (tit./subst.)');
 
   const body = demandas.map((d, i) => {
-    const pr = prioridade(d, params);
     const pts = pontosArt11(d.aval, params.valorRef);
     const row = [
-      String(i + 1), d.id, campusNome(d.campus), d.objeto || '—',
+      String(i + 1), campusNome(d.campus), d.objeto || '—',
       tipoAtvNome(d.aval?.tipoAtividade), statusNome(d.status),
-      pr.gut == null ? '—' : String(pr.gut),
-      pr.final == null ? '—' : fmtNum(pr.final, 2),
       pts == null ? '—' : String(pts),
     ];
     if (autenticado) {
@@ -105,7 +101,7 @@ export async function gerarRelatorio({ demandas, params, filtros, autenticado, i
     styles: { font: 'helvetica', fontSize: 7.6, cellPadding: 1.6, textColor: [45, 48, 40], lineColor: [210, 205, 190], lineWidth: 0.15 },
     headStyles: { fillColor: [62, 74, 46], textColor: 255, fontStyle: 'bold', fontSize: 7.8 },
     alternateRowStyles: { fillColor: [247, 246, 241] },
-    columnStyles: { 0: { cellWidth: 7, halign: 'center' }, 1: { cellWidth: 19 }, 3: { cellWidth: autenticado ? 44 : 62 }, 6: { halign: 'center', cellWidth: 10 }, 7: { halign: 'center', cellWidth: 12 }, 8: { halign: 'center', cellWidth: 8 } },
+    columnStyles: { 0: { cellWidth: 8, halign: 'center' }, 2: { cellWidth: autenticado ? 62 : 80 }, 5: { halign: 'center', cellWidth: 9 } },
     didDrawPage: () => cabecalho(),
   });
 
