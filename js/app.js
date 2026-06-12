@@ -83,9 +83,10 @@ let renderAgendado = false;
 function render() {
   if (renderAgendado) return;
   renderAgendado = true;
-  // setTimeout (e não requestAnimationFrame): rAF é pausado em abas em segundo
-  // plano, o que congelaria a navegação/atualizações com a aba fora de foco.
-  setTimeout(() => {
+  // queueMicrotask (e não rAF/setTimeout): rAF é pausado e timers são
+  // severamente limitados em abas em segundo plano; microtasks executam
+  // sempre — navegação e atualizações funcionam mesmo com a aba oculta.
+  queueMicrotask(() => {
     renderAgendado = false;
     const hash = location.hash || '#/';
     const rota = rotas.find(r => r.re.test(hash));
