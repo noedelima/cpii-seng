@@ -87,7 +87,7 @@ export class FirebaseProvider {
   async criarDemanda(d) {
     const fs = this._F;
     const ano = this.getParams().anoPlano;
-    const seq = this._demandas.filter(x => x.ano === ano && x.campus === d.campus).length + 1;
+    const seq = Math.max(0, ...this._demandas.filter(x => x.ano === ano && x.campus === d.campus).map(x => x.seq || 0)) + 1;
     const id = `${ano}${d.campus}${String(seq).padStart(2, '0')}`;
     await fs.setDoc(fs.doc(this.db, 'demandas', id),
       { ...d, ano, seq, criadoEm: Date.now(), atualizadoEm: Date.now() });

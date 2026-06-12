@@ -54,7 +54,7 @@ class DemoProvider {
   getDemanda(id) { return this.db.demandas.find(d => d.id === id) || null; }
   async criarDemanda(d) {
     const ano = this.db.params.anoPlano;
-    const seq = this.db.demandas.filter(x => x.ano === ano && x.campus === d.campus).length + 1;
+    const seq = Math.max(0, ...this.db.demandas.filter(x => x.ano === ano && x.campus === d.campus).map(x => x.seq || 0)) + 1;
     const id = `${ano}${d.campus}${String(seq).padStart(2, '0')}`;
     const nova = { ...d, id, ano, seq, criadoEm: Date.now(), atualizadoEm: Date.now() };
     this.db.demandas.push(nova); this._save(); return id;
