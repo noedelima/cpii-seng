@@ -26,16 +26,17 @@ service cloud.firestore {
                    'concluido','suspenso','cancelado','nao-enquadrado'];
     }
     function travada() { return resource.data.status in ['atendimento','concluido']; }
+    // .get(campo, null): campos podem estar ausentes — comparação direta com
+    // chave ausente lança erro na avaliação das rules e negaria a operação.
     function mantemClassificacao() {
       // Em atendimento/concluído: avaliação, ajuste e aprovação CODIR imutáveis
-      return request.resource.data.aval == resource.data.aval
-          && request.resource.data.ajuste == resource.data.ajuste
-          && request.resource.data.codirAprovado == resource.data.codirAprovado;
+      return request.resource.data.get('aval', null) == resource.data.get('aval', null)
+          && mantemDeliberacao();
     }
     function mantemDeliberacao() {
       // Campos privativos do CODIR não mudam
-      return request.resource.data.ajuste == resource.data.ajuste
-          && request.resource.data.codirAprovado == resource.data.codirAprovado;
+      return request.resource.data.get('ajuste', null) == resource.data.get('ajuste', null)
+          && request.resource.data.get('codirAprovado', null) == resource.data.get('codirAprovado', null);
     }
     function demandaValida(d) {
       return d.objeto is string && d.objeto.size() > 0 && d.objeto.size() <= 120
@@ -84,7 +85,7 @@ service cloud.firestore {
         || ( isCampusDe(resource.data.campus)
              && resource.data.status == 'diligencia'
              && request.resource.data.status in ['diligencia','analise']
-             && request.resource.data.aval == resource.data.aval
+             && request.resource.data.get('aval', null) == resource.data.get('aval', null)
              && mantemDeliberacao()
              && request.resource.data.campus == resource.data.campus )
       );
