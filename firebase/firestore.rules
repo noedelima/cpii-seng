@@ -1,0 +1,100 @@
+rules_version = '2';
+// =============================================================================
+// SENG Demandas — Security Rules (Cloud Firestore)
+// Publicar com: npx -y firebase-tools@latest deploy --only firestore:rules
+// Modelo: dashboard público lê apenas /demandas e /config; tudo o mais exige
+// autenticação; papéis vêm de /usuarios/{uid}.role (gravado só por admin).
+// =============================================================================
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- helpers -----------------------------------------------------
+    function signedIn() { return request.auth != null; }
+    function perfil() { return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data; }
+    function role() { return signedIn() ? perfil().role : ''; }
+    function ativo() { return signedIn() && perfil().ativo != false; }
+    function isAdmin() { return ativo() && role() == 'admin'; }
+    function isChefe() { return ativo() && role() == 'chefe'; }
+    function isEng()   { return ativo() && (role() == 'engenharia' || role() == 'chefe'); }
+    function isInterno() { return isEng() || isAdmin(); }
+    function isCampusDe(campusId) { return ativo() && role() == 'campus' && perfil().campus == campusId; }
+
+    function statusValido(s) {
+      return s in ['recebido','analise','diligencia','codir','fila','atendimento',
+                   'concluido','suspenso','cancelado','nao-enquadrado'];
+    }
+    function travada() { return resource.data.status in ['atendimento','concluido']; }
+    function mantemClassificacao() {
+      // Em atendimento/concluído: avaliação, ajuste e aprovação CODIR imutáveis
+      return request.resource.data.aval == resource.data.aval
+          && request.resource.data.ajuste == resource.data.ajuste
+          && request.resource.data.codirAprovado == resource.data.codirAprovado;
+    }
+    function demandaValida(d) {
+      return d.objeto is string && d.objeto.size() > 0 && d.objeto.size() <= 120
+          && d.descricao is string && d.descricao.size() <= 6000
+          && d.campus is string && d.campus.size() <= 8
+          && statusValido(d.status)
+          && d.especialidades is list && d.especialidades.size() <= 8
+          && (!('historico' in d) || (d.historico is list && d.historico.size() <= 400));
+    }
+
+    // ---------- demandas (fila pública) --------------------------------------
+    match /demandas/{id} {
+      allow read: if true; // dashboard e relatório públicos
+
+      allow create: if demandaValida(request.resource.data)
+        && request.resource.data.status == 'recebido'
+        && ( isEng()
+          || isCampusDe(request.resource.data.campus) );
+
+      allow update: if demandaValida(request.resource.data) && (
+        // Chefe: tudo, exceto violar a trava de "em atendimento/concluído"
+        ( isChefe() && (!travada() || mantemClassificacao()) )
+        // Engenharia: tratamento (sem ajuste/aprovação CODIR; respeita a trava)
+        || ( isEng() && !isChefe()
+             && request.resource.data.ajuste == resource.data.ajuste
+             && request.resource.data.codirAprovado == resource.data.codirAprovado
+             && request.resource.data.status in ['recebido','analise','diligencia','codir']
+             && !travada() )
+        // Campus: somente responder diligência da própria unidade
+        || ( isCampusDe(resource.data.campus)
+             && resource.data.status == 'diligencia'
+             && request.resource.data.status in ['diligencia','analise']
+             && request.resource.data.aval == resource.data.aval
+             && request.resource.data.ajuste == resource.data.ajuste
+             && request.resource.data.codirAprovado == resource.data.codirAprovado
+             && request.resource.data.campus == resource.data.campus )
+      );
+
+      // Exclusão: apenas Chefe e nunca em atendimento/concluído
+      allow delete: if isChefe() && !travada();
+    }
+
+    // ---------- dados internos (alocação) — nunca públicos ---------------------
+    match /internas/{id} {
+      allow read: if isInterno();
+      allow write: if isChefe();
+    }
+
+    // ---------- profissionais — leitura interna, escrita chefe/admin ------------
+    match /profissionais/{id} {
+      allow read: if isInterno();
+      allow write: if isChefe() || isAdmin();
+    }
+
+    // ---------- usuários — perfil próprio legível; gestão pelo admin -------------
+    match /usuarios/{uid} {
+      allow read: if isAdmin() || (signedIn() && request.auth.uid == uid);
+      allow write: if isAdmin()
+        && request.resource.data.role in ['campus','engenharia','chefe','admin']
+        && request.resource.data.nome is string && request.resource.data.nome.size() <= 80;
+    }
+
+    // ---------- parâmetros — leitura pública (cálculo no cliente) ----------------
+    match /config/{doc} {
+      allow read: if true;
+      allow write: if isChefe() || isAdmin();
+    }
+  }
+}
