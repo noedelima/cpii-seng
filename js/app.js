@@ -83,7 +83,9 @@ let renderAgendado = false;
 function render() {
   if (renderAgendado) return;
   renderAgendado = true;
-  requestAnimationFrame(() => {
+  // setTimeout (e não requestAnimationFrame): rAF é pausado em abas em segundo
+  // plano, o que congelaria a navegação/atualizações com a aba fora de foco.
+  setTimeout(() => {
     renderAgendado = false;
     const hash = location.hash || '#/';
     const rota = rotas.find(r => r.re.test(hash));
