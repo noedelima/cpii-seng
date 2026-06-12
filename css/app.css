@@ -99,7 +99,8 @@ code { font-family: var(--mono); background: var(--fundo-2); padding: 1px 6px; b
 .nav-link.ativo { background: var(--fundo-2); color: var(--texto); }
 .header-acoes { margin-left: auto; display: flex; align-items: center; gap: 10px; }
 .user-box { display: flex; align-items: center; gap: 8px; }
-.user-nome { font-size: .88rem; color: var(--texto-2); max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.user-nome { font-size: .88rem; color: var(--texto-2); max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-decoration: none; border-bottom: 1px dashed var(--borda-forte); }
+.user-nome:hover { color: var(--texto); border-bottom-color: var(--acento); }
 .faixa-demo { background: var(--aviso-fundo); border-top: 1px solid var(--borda); color: var(--texto-2); text-align: center; font-size: .8rem; padding: 5px 14px; }
 .faixa-demo a { font-weight: 600; }
 

@@ -57,12 +57,11 @@ export function viewAdmin(rerender) {
       const selRole = select(ROLES, { value: u.role || '', required: true, ...(travaAdmin ? { disabled: true } : {}) });
       const selCampus = select(CAMPI, { value: u.campus || '', placeholder: '— (não se aplica) —' });
       const ckAtivo = el('input', { type: 'checkbox', ...((u.ativo ?? true) ? { checked: true } : {}), ...(travaAdmin ? { disabled: true } : {}) });
-      const inSenha = s.mode === 'demo' && !u.uid ? el('input', { type: 'text', value: 'cp2demo', maxlength: 40 }) : null;
-      const inUid = s.mode === 'firebase' && !u.uid ? el('input', { type: 'text', required: true, placeholder: 'UID criado no console do Firebase' }) : null;
+      const inSenha = !u.uid ? el('input', { type: 'text', value: '', minlength: 6, maxlength: 40, required: true, placeholder: 'Mínimo 6 caracteres' }) : null;
 
       formWrap.replaceChildren(el('section', { class: 'card' },
         el('h2', {}, u.uid ? `Editar — ${u.nome}` : 'Novo usuário'),
-        s.mode === 'firebase' && !u.uid ? el('p', { class: 'nota' }, 'Produção: crie antes a credencial em Authentication → Users no console do Firebase e cole o UID aqui (ver firebase/SETUP.md).') : null,
+        !u.uid ? el('p', { class: 'nota' }, 'A credencial é criada aqui mesmo. Informe a senha inicial à pessoa, que poderá trocá-la em "Minha conta" (nome no topo da página).') : null,
         travaAdmin ? el('p', { class: 'nota' }, ehProprioAdmin
           ? 'Você não pode revogar o próprio perfil de administrador — somente outro administrador pode fazê-lo.'
           : 'Único administrador ativo: cadastre outro administrador antes de alterar este perfil.') : null,
@@ -70,7 +69,7 @@ export function viewAdmin(rerender) {
           e.preventDefault();
           try {
             await s.salvarUsuario({
-              ...(u.uid ? { uid: u.uid } : (inUid ? { uid: inUid.value.trim() } : {})),
+              ...(u.uid ? { uid: u.uid } : {}),
               nome: inNome.value.trim(), email: inEmail.value.trim(),
               role: travaAdmin ? 'admin' : selRole.value,
               campus: selRole.value === 'campus' ? selCampus.value : (selCampus.value || null),
@@ -83,7 +82,7 @@ export function viewAdmin(rerender) {
         } },
           el('div', { class: 'form-linha' }, campo('Nome *', inNome), campo('E-mail *', inEmail, 'Se for da Engenharia, use o mesmo e-mail do cadastro de profissionais — o vínculo é automático.')),
           el('div', { class: 'form-linha' }, campo('Perfil *', selRole, 'Campus: solicita. Engenharia: trata. Chefe: gerencia. CODIR: aprova e ajusta prioridade. Administrador: tudo.'), campo('Campus (perfil Campus)', selCampus)),
-          inUid ? campo('UID (Firebase) *', inUid) : (inSenha ? campo('Senha (demo)', inSenha) : null),
+          inSenha ? campo('Senha inicial *', inSenha, 'A pessoa troca depois em "Minha conta".') : null,
           el('label', { class: 'chip-check' }, ckAtivo, ' Ativo'),
           el('div', { class: 'form-acoes' },
             el('button', { class: 'btn ghost', type: 'button', onclick: () => formWrap.replaceChildren() }, 'Fechar'),

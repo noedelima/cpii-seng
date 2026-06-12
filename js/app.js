@@ -12,6 +12,7 @@ import { viewSolicitacao } from './views/solicitacao.js';
 import { viewDemanda } from './views/demanda.js';
 import { viewProfissionais } from './views/profissionais.js';
 import { viewAdmin } from './views/admin.js';
+import { viewConta } from './views/conta.js';
 
 const main = document.getElementById('app');
 const header = document.getElementById('cabecalho');
@@ -45,7 +46,7 @@ function renderHeader() {
       onclick: alternarTema }, temaAtual() === 'escuro' ? '☀' : '☾'),
     user
       ? el('div', { class: 'user-box' },
-          el('span', { class: 'user-nome' }, user.nome),
+          el('a', { class: 'user-nome', href: '#/conta', title: 'Minha conta — dados e troca de senha' }, user.nome),
           el('button', { class: 'btn ghost sm', onclick: async () => { await s.logout(); toast('Sessão encerrada.'); location.hash = '#/'; } }, 'Sair'))
       : el('a', { class: 'btn ghost sm', href: '#/login' }, 'Entrar'),
   );
@@ -75,6 +76,7 @@ const rotas = [
   { re: /^#\/demanda\/([\w-]+)$/, view: viewDemanda },
   { re: /^#\/profissionais$/, view: viewProfissionais },
   { re: /^#\/admin$/, view: viewAdmin },
+  { re: /^#\/conta$/, view: viewConta },
 ];
 
 let renderAgendado = false;

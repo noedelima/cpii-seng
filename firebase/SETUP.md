@@ -61,9 +61,11 @@ export const FIREBASE_CONFIG = {
 > https://console.cloud.google.com/apis/credentials se desejar camada extra.
 
 ## 6. Cadastros iniciais no sistema
-Entre com o usuário `chefe`/`admin` e cadastre os profissionais da SENG
-(menu **Profissionais**) e os demais usuários (menu **Administração**;
-lembre: credencial no console + perfil com o UID).
+Entre com o usuário `admin` e cadastre os profissionais da SENG (menu
+**Profissionais**) e os demais usuários (menu **Administração → Novo
+usuário** — a credencial é criada pela própria interface, com senha inicial;
+cada pessoa troca a senha depois em **Minha conta**, no nome no topo da
+página). O console do Firebase fica como alternativa, não como exigência.
 
 ## Custos e limites
 Plano gratuito: 50 mil leituras/dia, 20 mil gravações/dia, 1 GiB — muito acima

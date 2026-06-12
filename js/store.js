@@ -65,6 +65,16 @@ class DemoProvider {
   }
   async logout() { this.user = null; sessionStorage.removeItem(LS_SESSION); this._emit(); }
 
+  async trocarSenha(senhaAtual, novaSenha) {
+    if (!this.user) throw new Error('Sessão expirada — entre novamente.');
+    if (!novaSenha || novaSenha.length < 6) throw new Error('A nova senha deve ter ao menos 6 caracteres.');
+    const u = this.db.usuarios.find(x => x.uid === this.user.uid);
+    if (!u || u.senha !== senhaAtual) throw new Error('Senha atual incorreta.');
+    u.senha = novaSenha;
+    this._log('Senha alterada', u.email);
+    this._save();
+  }
+
   // Profissional vinculado ao usuário pelo e-mail de login
   profissionalDoUsuario(user = this.user) {
     if (!user?.email) return null;

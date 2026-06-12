@@ -40,13 +40,14 @@ export class FirebaseProvider {
   }
 
   async _init(config) {
-    const [{ initializeApp }, auth, fs] = await Promise.all([
+    const [appMod, auth, fs] = await Promise.all([
       import(`${FB}/firebase-app.js`),
       import(`${FB}/firebase-auth.js`),
       import(`${FB}/firebase-firestore.js`),
     ]);
-    this._A = auth; this._F = fs;
-    const app = initializeApp(config);
+    this._App = appMod; this._A = auth; this._F = fs;
+    this._config = config;
+    const app = appMod.initializeApp(config);
     this.auth = auth.getAuth(app);
     this.db = fs.getFirestore(app);
 
@@ -111,6 +112,19 @@ export class FirebaseProvider {
     await this._A.sendPasswordResetEmail(this.auth, email.trim());
   }
 
+  // Troca de senha do próprio usuário (reautentica e atualiza)
+  async trocarSenha(senhaAtual, novaSenha) {
+    const u = this.auth.currentUser;
+    if (!u) throw new Error('Sessão expirada — entre novamente.');
+    if (!novaSenha || novaSenha.length < 6) throw new Error('A nova senha deve ter ao menos 6 caracteres.');
+    const cred = this._A.EmailAuthProvider.credential(u.email, senhaAtual);
+    try {
+      await this._A.reauthenticateWithCredential(u, cred);
+    } catch { throw new Error('Senha atual incorreta.'); }
+    await this._A.updatePassword(u, novaSenha);
+    await this._log('Senha alterada', u.email);
+  }
+
   listDemandas() { return this._demandas; }
   getDemanda(id) { return this._demandas.find(d => d.id === id) || null; }
 
@@ -162,25 +176,51 @@ export class FirebaseProvider {
   }
 
   listUsuarios() { return this._usuarios; }
-  // Criação de usuários em produção: criar credencial no console do Firebase
-  // (Authentication → Users) e o perfil correspondente em /usuarios/{uid}.
+  // Criação/edição de usuários direto pela interface (sem console do Firebase).
+  // A credencial é criada num app secundário para não derrubar a sessão do admin.
   // Salvaguarda: sempre ao menos um administrador ativo (ver também as rules).
   async salvarUsuario(u) {
     const fs = this._F;
-    if (!u.uid) throw new Error('Em produção, crie a credencial no console do Firebase e informe o UID (firebase/SETUP.md).');
-    const existente = this._usuarios.find(x => x.uid === u.uid);
+    let uid = u.uid;
+    const existente = uid ? this._usuarios.find(x => x.uid === uid) : null;
+    if (!uid) {
+      if (this._usuarios.some(x => (x.email || '').toLowerCase() === u.email.toLowerCase()))
+        throw new Error('Já existe usuário com este e-mail.');
+      uid = await this._criarCredencial(u.email, u.senha);
+    }
     if (existente && existente.role === 'admin') {
       const perdeAdmin = (u.role && u.role !== 'admin') || u.ativo === false;
       if (perdeAdmin) {
         if (existente.uid === this.user?.uid)
           throw new Error('Um administrador não pode revogar o próprio perfil — somente outro administrador pode fazê-lo.');
-        const outros = this._usuarios.filter(x => x.uid !== u.uid && x.role === 'admin' && x.ativo !== false);
+        const outros = this._usuarios.filter(x => x.uid !== uid && x.role === 'admin' && x.ativo !== false);
         if (!outros.length) throw new Error('Deve haver sempre ao menos um administrador ativo.');
       }
     }
-    const { uid, senha, ...rest } = u;
+    const { uid: _u, senha: _s, ...rest } = u;
     await fs.setDoc(fs.doc(this.db, 'usuarios', uid), rest, { merge: true });
     await this._log(existente ? 'Usuário atualizado' : 'Usuário criado', u.email || uid, `perfil: ${u.role}${u.ativo === false ? ' (desativado)' : ''}`);
+  }
+
+  async _criarCredencial(email, senha) {
+    if (!senha || senha.length < 6) throw new Error('Defina uma senha inicial com ao menos 6 caracteres.');
+    const nome = 'sec-' + Date.now();
+    const app2 = this._App.initializeApp(this._config, nome);
+    try {
+      const auth2 = this._A.getAuth(app2);
+      const cred = await this._A.createUserWithEmailAndPassword(auth2, email.trim(), senha);
+      const uid = cred.user.uid;
+      await this._A.signOut(auth2);
+      return uid;
+    } catch (e) {
+      if (e?.code === 'auth/email-already-in-use')
+        throw new Error('Este e-mail já possui credencial. Edite o usuário existente ou use a redefinição de senha.');
+      if (e?.code === 'auth/admin-restricted-operation')
+        throw new Error('Criação de credenciais desativada no projeto (Identity Toolkit). Reative o cadastro de clientes ou crie pelo console.');
+      throw e;
+    } finally {
+      this._App.deleteApp(app2).catch(() => {});
+    }
   }
 
   getParams() {
