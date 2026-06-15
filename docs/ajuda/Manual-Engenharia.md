@@ -121,6 +121,8 @@ O cálculo replica o modelo do Power BI da SENG (art. 5º, II):
 
 > **Exportações:** além do **Baixar PDF da fila**, o painel interno tem **Baixar Excel** (.xlsx com todas as colunas — classificação, escores, alocação e observações), disponível apenas para Engenharia, Chefe e Administrador.
 
+> **Ordenação do Painel.** As demandas **encerradas** (Concluídas, Canceladas e Não enquadradas) são automaticamente **deslocadas para o fim da lista**, preservando a ordem por prioridade dentro de cada grupo — assim a visualização inicial destaca as demandas **ativas**.
+
 ---
 
 ## 6. Fluxo 2 — Abrir e ler uma demanda
@@ -132,6 +134,8 @@ Clique em uma linha do painel para abrir o detalhe. A página é dividida em dua
 
 ![Detalhe de uma demanda, em duas colunas](docs/ajuda/img/eng-demanda.png)
 *Figura 3 — Detalhe da demanda: dados/histórico à esquerda; priorização, avaliação, gestão e alocação à direita.*
+
+> **Editar dados da solicitação (Chefia/Admin).** Enquanto a demanda **não foi aprovada pelo CODIR** (status Recebido, Em análise, Em diligência ou Aguardando aprovação do CODIR), a **Chefia/Administração** vê o cartão **“Editar dados da solicitação”** e pode corrigir localização, tipo, situação do projeto, valor, prazo, processo SUAP, objeto, descrição, especialidades e o sinalizador emergencial. **Após a aprovação** (a partir de “Na fila”) os dados **congelam**; para corrigir, **reverta o status** (Fluxo 5) e a edição reabre. O **campus não é editável** (compõe o identificador). Toda alteração fica no **histórico** e no **log de auditoria**.
 
 ---
 
