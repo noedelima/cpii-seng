@@ -143,6 +143,16 @@ export function viewDashboard(rerender) {
     btnPdf.disabled = false; btnPdf.textContent = 'Baixar PDF da fila';
   } }, 'Baixar PDF da fila');
 
+  const btnXlsx = (user && can(user, 'avaliar')) ? el('button', { class: 'btn ghost', onclick: async () => {
+    btnXlsx.disabled = true; btnXlsx.textContent = 'Gerando…';
+    try {
+      const { exportarExcel } = await import('../xlsx.js');
+      await exportarExcel({ demandas: ordenadas, params, internas, profissionais });
+      toast('Planilha gerada. O arquivo não fica armazenado no sistema.');
+    } catch (e) { console.error(e); toast('Não foi possível gerar o Excel: ' + e.message, 'erro'); }
+    btnXlsx.disabled = false; btnXlsx.textContent = 'Baixar Excel';
+  } }, 'Baixar Excel') : null;
+
   return frag(
     el('section', { class: 'hero' },
       el('div', {},
@@ -151,7 +161,7 @@ export function viewDashboard(rerender) {
           user ? null : 'A alocação de profissionais é exibida apenas para usuários autenticados.')),
       el('div', { class: 'hero-acoes' },
         user && can(user, 'criar') ? el('a', { class: 'btn primario', href: '#/nova' }, '+ Nova solicitação') : null,
-        btnPdf)),
+        btnPdf, btnXlsx)),
     el('section', { class: 'card' },
       el('h2', {}, 'Fila de demandas ', el('span', { class: 'sub' }, `${ordenadas.length} de ${todas.length}`)),
       chips, tabela,

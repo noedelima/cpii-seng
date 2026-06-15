@@ -8,7 +8,7 @@ export const APP = {
   orgao: 'Colégio Pedro II',
   setor: 'Seção de Engenharia — SENG/DECOF',
   portaria: 'Portaria nº 7503/REITORIA/CPII, de 24/11/2025',
-  versao: '1.4.1',
+  versao: '1.5.0',
 };
 
 // --- Parâmetros ajustáveis pelo Administrador (defaults) ---------------------
@@ -108,7 +108,7 @@ export const PRAZOS = [
 // --- Tipo de demanda (visão do campus) ---------------------------------------
 export const TIPOS_DEMANDA = [
   { id: 'obra',          nome: 'Obra / reforma' },
-  { id: 'projeto',       nome: 'Elaboração de projeto' },
+  { id: 'projeto',       nome: 'Projeto (a elaborar ou contratar)' },
   { id: 'projeto-obra',  nome: 'Projeto e obra' },
   { id: 'laudo',         nome: 'Laudo / avaliação técnica' },
   { id: 'assessoria',    nome: 'Assessoria técnica' },
@@ -121,6 +121,12 @@ export const PROJETO_EXISTE = [
   { id: 'parcial',  nome: 'Sim, parcial (precisa complementar)' },
   { id: 'nao',      nome: 'Não — necessita contratar projeto' },
 ];
+
+// --- Fluxo em etapas: Projeto + Obra ----------------------------------------
+// Demandas que exigem projeto E obra (projeto inexistente ou parcial). A etapa
+// de projeto, ao ser concluída, retorna ao CODIR como obra (projeto existente).
+export const precisaEtapaProjeto = (d) =>
+  ['obra', 'projeto-obra'].includes(d?.tipoDemanda) && ['nao', 'parcial'].includes(d?.projetoExiste);
 
 // --- Tipo de atividade da SENG (avaliação técnica) ----------------------------
 export const TIPOS_ATIVIDADE = [

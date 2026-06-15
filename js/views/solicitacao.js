@@ -3,7 +3,7 @@
 // Maximiza campos de seleção; texto livre apenas onde indispensável.
 // =============================================================================
 import { el, frag, campo, select, toast } from '../ui.js';
-import { CAMPI, TIPOS_DEMANDA, PROJETO_EXISTE, ESPECIALIDADES, PRAZOS } from '../config.js';
+import { CAMPI, TIPOS_DEMANDA, PROJETO_EXISTE, ESPECIALIDADES, PRAZOS, precisaEtapaProjeto } from '../config.js';
 import { store } from '../store.js';
 import { can } from '../auth.js';
 
@@ -44,6 +44,7 @@ export function viewSolicitacao() {
         local: inLocal.value.trim(),
         tipoDemanda: selTipo.value,
         projetoExiste: selProjeto.value,
+        etapa: precisaEtapaProjeto({ tipoDemanda: selTipo.value, projetoExiste: selProjeto.value }) ? 'projeto' : null,
         tombado: selTombado.value,
         prazoEstimado: selPrazo.value || null,
         valorEstimado: inValor.value ? Number(inValor.value) : null,

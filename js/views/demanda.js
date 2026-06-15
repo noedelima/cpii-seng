@@ -2,7 +2,7 @@
 // Detalhe da demanda — consulta pública + tratamento (GUT, status, alocação)
 // =============================================================================
 import { el, frag, campo, select, toast, confirmar, badgeStatus, fmtMoeda, fmtNum, fmtDataHora } from '../ui.js';
-import { campusNome, statusNome, TIPOS_DEMANDA, PROJETO_EXISTE, PRAZOS, TIPOS_ATIVIDADE, ESCALA_G, ESCALA_U, ESCALA_T } from '../config.js';
+import { campusNome, statusNome, TIPOS_DEMANDA, PROJETO_EXISTE, PRAZOS, TIPOS_ATIVIDADE, ESCALA_G, ESCALA_U, ESCALA_T, precisaEtapaProjeto } from '../config.js';
 import { prioridade, pontosArt11, faixaValorLabel, cargaProfissionais } from '../calc.js';
 import { store } from '../store.js';
 import { can, podeAvaliar, podeExcluir, podeComplementar, podeDeliberarCodir, transicoesPermitidas, travada } from '../auth.js';
@@ -34,6 +34,7 @@ export function viewDemanda(rerender, id) {
     linha('Localização', d.local || '—'),
     linha('Tipo de demanda', nomeDe(TIPOS_DEMANDA, d.tipoDemanda)),
     linha('Projeto existente', nomeDe(PROJETO_EXISTE, d.projetoExiste)),
+    linha('Atividade da SENG', d.aval?.tipoAtividade ? nomeDe(TIPOS_ATIVIDADE, d.aval.tipoAtividade) : '—'),
     linha('Especialidades', (d.especialidades || []).join(', ') || '—'),
     linha('Bem tombado (informado)', { sim: 'Sim', nao: 'Não', ns: 'Não informado' }[d.tombado] || '—'),
     linha('Valor estimado', fmtMoeda(d.valorEstimado)),
@@ -105,7 +106,7 @@ export function viewDemanda(rerender, id) {
           campo('Urgência da intervenção (U)', selU),
           campo('Tendência de evolução (T)', selT),
           el('div', { class: 'form-linha' },
-            campo('Tipo de atividade da SENG', selAtv),
+            campo('Tipo de atividade da SENG', selAtv, `Define os pontos do art. 11 — confira a coerência com o tipo de demanda do campus (${nomeDe(TIPOS_DEMANDA, d.tipoDemanda)}).`),
             campo('Prazo considerado', selPrazo)),
           el('div', { class: 'form-linha' },
             campo('Valor considerado (R$)', inValor, 'Estimativa orçamentária usada nas faixas.'),
@@ -116,10 +117,10 @@ export function viewDemanda(rerender, id) {
           el('button', { class: 'btn primario', onclick: async () => {
             await s.atualizarDemanda(d.id, { aval: {
               ...aval,
-              g: selG.value ? +selG.value : null, u: selU.value ? +selU.value : null, t: selT.value ? +selT.value : null,
-              tipoAtividade: selAtv.value || null,
-              valorConsiderado: inValor.value ? +inValor.value : null,
-              prazoConsiderado: selPrazo.value || null,
+              g: selG.value ? +selG.value : (aval.g ?? null), u: selU.value ? +selU.value : (aval.u ?? null), t: selT.value ? +selT.value : (aval.t ?? null),
+              tipoAtividade: selAtv.value || aval.tipoAtividade || null,
+              valorConsiderado: inValor.value ? +inValor.value : (aval.valorConsiderado ?? null),
+              prazoConsiderado: selPrazo.value || aval.prazoConsiderado || null,
               tombadoConf: ckTombado.checked, especial: ckEspecial.checked,
               pontosManual: inPontosManual && inPontosManual.value !== '' ? +inPontosManual.value : null,
             } }, 'Avaliação técnica atualizada');
@@ -148,6 +149,12 @@ export function viewDemanda(rerender, id) {
       });
       filhosCodir.push(el('label', { class: 'chip-check destaque-codir' }, ck, ' Aprovada pelo CODIR',
         d.status === 'codir' ? el('span', { class: 'sub' }, ' (ao marcar, entra na fila)') : null));
+      if (d.status === 'codir') {
+        filhosCodir.push(el('button', { class: 'btn ghost sm', onclick: async () => {
+          await s.atualizarDemanda(d.id, { codirAprovado: true, status: 'fila' }, 'Aprovada pelo CODIR — posicionada na fila');
+          toast('Demanda posicionada na fila.');
+        } }, 'Posicionar na fila'));
+      }
 
       const inAjuste = el('input', { type: 'number', step: 0.01, min: -1, max: 1, value: d.ajuste?.valor ?? '', placeholder: '0,00' });
       const inJust = el('input', { type: 'text', maxlength: 300, value: d.ajuste?.justificativa ?? '', placeholder: 'Justificativa da deliberação' });
@@ -231,6 +238,28 @@ export function viewDemanda(rerender, id) {
         } }, 'Salvar alocação')));
     }
 
+    // Conclusão da etapa de projeto (demandas que exigem projeto + obra)
+    if (can(user, 'statusTotal') && d.status === 'atendimento' && precisaEtapaProjeto(d) && d.etapa !== 'obra') {
+      filhos.push(el('h3', {}, 'Etapa de projeto'));
+      filhos.push(el('p', { class: 'sub' }, 'Concluída a elaboração do projeto, a demanda retorna ao CODIR como obra (projeto existente), para repriorização.'));
+      const acoesEtapa = [el('button', { class: 'btn ghost sm', onclick: async () => {
+        const ok = await confirmar('Concluir etapa de projeto?', 'A demanda passará a “Aguardando aprovação do CODIR” como OBRA, com projeto existente. Reavalie o GUT e o valor da obra antes do envio.', { ok: 'Concluir e enviar ao CODIR' });
+        if (!ok) return;
+        await s.atualizarDemanda(d.id, { etapa: 'obra', tipoDemanda: 'obra', projetoExiste: 'completo', status: 'codir' },
+          'Etapa de projeto concluída — retorna ao CODIR como obra (projeto existente)');
+        toast('Etapa de projeto concluída. Demanda enviada ao CODIR como obra.');
+      } }, 'Concluir projeto → obra ao CODIR')];
+      if (d.projetoExiste === 'parcial') {
+        acoesEtapa.push(el('button', { class: 'btn ghost sm', onclick: async () => {
+          const ok = await confirmar('Manter contratação unificada?', 'A demanda seguirá em atendimento como projeto + obra em contratação única, sem retornar ao CODIR.', { ok: 'Manter unificada' });
+          if (!ok) return;
+          await s.atualizarDemanda(d.id, { etapa: 'obra' }, 'Etapa de projeto concluída — contratação unificada (projeto + obra)');
+          toast('Mantida a contratação unificada (projeto + obra).');
+        } }, 'Manter unificada (projeto + obra)'));
+      }
+      filhos.push(el('div', { class: 'chips' }, acoesEtapa));
+    }
+
     // Exclusão (chefe; nunca em atendimento/concluído)
     if (podeExcluir(user, d)) {
       filhos.push(el('div', { class: 'zona-perigo' },
@@ -257,6 +286,44 @@ export function viewDemanda(rerender, id) {
       linha('Equipe de planejamento', (interna.equipePlanejamento || []).map(nomeProf).join(', ') || '—'));
   }
 
+  // ---------- observações (Engenharia interna + Solicitante/CODIR) -------------------
+  let cartaoObs = null;
+  {
+    const ehCampusDono = user && user.role === 'campus' && user.campus === d.campus;
+    const editaEng = user && can(user, 'avaliar');            // engenharia, chefe, admin
+    const editaSol = user && (ehCampusDono || can(user, 'codir')); // campus (dono), codir, admin
+    const veEng = user && can(user, 'verInterno');
+    const filhosObs = [el('h2', {}, 'Observações')];
+    if (veEng) {
+      if (editaEng) {
+        const ta = el('textarea', { rows: 3, maxlength: 4000, placeholder: 'Anotações técnicas internas (Engenharia/Chefia)…' });
+        ta.value = interna.obsEngenharia || '';
+        filhosObs.push(
+          campo('Observação da Engenharia (interna)', ta, 'Visível apenas a usuários internos (não aparece no painel público).'),
+          el('button', { class: 'btn ghost sm', onclick: async () => {
+            await s.setInterna(d.id, { obsEngenharia: ta.value.trim() });
+            await s.atualizarDemanda(d.id, {}, 'Observação da Engenharia atualizada');
+            toast('Observação da Engenharia salva.');
+          } }, 'Salvar observação da Engenharia'));
+      } else if (interna.obsEngenharia) {
+        filhosObs.push(linha('Observação da Engenharia', interna.obsEngenharia));
+      }
+    }
+    if (editaSol) {
+      const ts = el('textarea', { rows: 3, maxlength: 4000, placeholder: 'Observações do solicitante ou do CODIR…' });
+      ts.value = d.obsSolicitante || '';
+      filhosObs.push(
+        campo('Observação do solicitante / CODIR', ts, 'Registrada no histórico e no log de auditoria.'),
+        el('button', { class: 'btn ghost sm', onclick: async () => {
+          await s.atualizarDemanda(d.id, { obsSolicitante: ts.value.trim() }, 'Observação do solicitante/CODIR atualizada');
+          toast('Observação salva.');
+        } }, 'Salvar observação do solicitante/CODIR'));
+    } else if (d.obsSolicitante) {
+      filhosObs.push(linha('Observação do solicitante/CODIR', d.obsSolicitante));
+    }
+    if (filhosObs.length > 1) cartaoObs = el('section', { class: 'card' }, filhosObs);
+  }
+
   // ---------- histórico --------------------------------------------------------------
   const hist = el('section', { class: 'card' },
     el('h2', {}, 'Histórico'),
@@ -271,7 +338,7 @@ export function viewDemanda(rerender, id) {
     el('a', { class: 'voltar', href: '#/' }, '← Voltar ao painel'),
     el('div', { class: 'detalhe-grid' },
       el('div', { class: 'col' }, dados, hist),
-      el('div', { class: 'col' }, cartaoPontuacao, cartaoCodir, cartaoAvaliacao, cartaoGestao, cartaoEquipe)));
+      el('div', { class: 'col' }, cartaoPontuacao, cartaoCodir, cartaoAvaliacao, cartaoGestao, cartaoEquipe, cartaoObs)));
 }
 
 const linha = (rotulo, valor) => valor == null ? null : el('div', { class: 'linha-info' },

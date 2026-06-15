@@ -13,6 +13,7 @@ import { viewDemanda } from './views/demanda.js';
 import { viewProfissionais } from './views/profissionais.js';
 import { viewAdmin } from './views/admin.js';
 import { viewConta } from './views/conta.js';
+import { viewAjuda } from './views/ajuda.js';
 
 const main = document.getElementById('app');
 const header = document.getElementById('cabecalho');
@@ -39,6 +40,7 @@ function renderHeader() {
     user && can(user, 'criar') ? navlink('#/nova', 'Nova solicitação') : null,
     user && can(user, 'verInterno') ? navlink('#/profissionais', 'Profissionais') : null,
     user && (can(user, 'usuarios') || can(user, 'params')) ? navlink('#/admin', 'Administração') : null,
+    navlink('#/ajuda', 'Ajuda'),
   );
 
   const acoes = el('div', { class: 'header-acoes' },
@@ -77,6 +79,7 @@ const rotas = [
   { re: /^#\/profissionais$/, view: viewProfissionais },
   { re: /^#\/admin$/, view: viewAdmin },
   { re: /^#\/conta$/, view: viewConta },
+  { re: /^#\/ajuda$/, view: viewAjuda },
 ];
 
 let renderAgendado = false;

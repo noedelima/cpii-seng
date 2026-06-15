@@ -298,3 +298,27 @@ textarea { resize: vertical; width: 100%; }
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
   html { scroll-behavior: auto; }
 }
+
+/* --- Abas (navegação por seções) ------------------------------------------- */
+.abas { display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 2px solid var(--borda); margin: 0 0 18px; }
+.aba { background: none; border: 0; border-bottom: 3px solid transparent; margin-bottom: -2px; padding: 10px 16px; font: inherit; font-weight: 600; color: var(--texto-2); cursor: pointer; border-radius: 8px 8px 0 0; transition: var(--transicao); }
+.aba:hover { background: var(--kpi-hover); color: var(--texto); }
+.aba.ativo { color: var(--primario); border-bottom-color: var(--ouro); }
+html[data-tema="escuro"] .aba.ativo { color: var(--acento); }
+
+/* --- Ajuda (manuais) ------------------------------------------------------- */
+.ajuda-doc { max-width: 860px; line-height: 1.6; }
+.ajuda-doc h2 { font-size: 1.5rem; margin: 1.4em 0 .5em; padding-top: .3em; border-top: 1px solid var(--borda); }
+.ajuda-doc h2:first-child { border-top: 0; padding-top: 0; margin-top: 0; }
+.ajuda-doc h3 { font-size: 1.15rem; margin: 1.2em 0 .4em; color: var(--primario); }
+html[data-tema="escuro"] .ajuda-doc h3 { color: var(--acento); }
+.ajuda-doc h4 { font-size: 1rem; margin: 1em 0 .3em; }
+.ajuda-doc p { margin: .5em 0; }
+.ajuda-doc ul, .ajuda-doc ol { margin: .5em 0 .8em 1.4em; }
+.ajuda-doc li { margin: .25em 0; }
+.ajuda-fig { margin: 1em 0; text-align: center; }
+.ajuda-img { max-width: 100%; height: auto; border: 1px solid var(--borda); border-radius: var(--raio-sm); box-shadow: var(--sombra); }
+.ajuda-fig figcaption, .ajuda-cap { font-size: .85rem; color: var(--texto-2); font-style: italic; margin-top: .4em; }
+.ajuda-tabela { font-size: .9rem; }
+.ajuda-doc blockquote { margin: .8em 0; padding: .6em 1em; border-left: 3px solid var(--ouro); background: var(--aviso-fundo); border-radius: 0 var(--raio-sm) var(--raio-sm) 0; }
+.ajuda-doc blockquote p { margin: .2em 0; }

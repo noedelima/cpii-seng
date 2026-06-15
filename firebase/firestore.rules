@@ -44,7 +44,9 @@ service cloud.firestore {
           && d.campus is string && d.campus.size() <= 8
           && statusValido(d.status)
           && d.especialidades is list && d.especialidades.size() <= 8
-          && (!('historico' in d) || (d.historico is list && d.historico.size() <= 400));
+          && (!('historico' in d) || (d.historico is list && d.historico.size() <= 400))
+          && (!('obsSolicitante' in d) || (d.obsSolicitante is string && d.obsSolicitante.size() <= 4000))
+          && (!('etapa' in d) || d.etapa == null || d.etapa in ['projeto','obra']);
     }
     // Deliberação do CODIR: muda somente codirAprovado/ajuste/status/historico/atualizadoEm,
     // com transição de status restrita a codir→fila (aprovação posiciona na fila).
@@ -88,6 +90,13 @@ service cloud.firestore {
              && request.resource.data.get('aval', null) == resource.data.get('aval', null)
              && mantemDeliberacao()
              && request.resource.data.campus == resource.data.campus )
+        // Campus (dono): editar somente a observação do solicitante, em qualquer status
+        || ( isCampusDe(resource.data.campus)
+             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['obsSolicitante','historico','atualizadoEm'])
+             && request.resource.data.campus == resource.data.campus )
+        // CODIR: editar somente a observação do solicitante/CODIR
+        || ( isCodir() && !isAdmin()
+             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['obsSolicitante','historico','atualizadoEm']) )
       );
 
       // Exclusão: chefe/admin e nunca em atendimento/concluído
@@ -97,7 +106,12 @@ service cloud.firestore {
     // ---------- dados internos (alocação) — nunca públicos ---------------------
     match /internas/{id} {
       allow read: if isInterno();
-      allow write: if isChefe();
+      // Chefe/Admin: alocação completa. Engenharia: apenas a observação técnica interna.
+      allow write: if isChefe()
+        || ( isEng() && (
+              ( resource == null && request.resource.data.keys().hasOnly(['obsEngenharia']) )
+              || ( resource != null && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['obsEngenharia']) )
+            ) );
     }
 
     // ---------- profissionais — leitura interna, escrita chefe/admin ------------
