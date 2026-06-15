@@ -8,7 +8,7 @@ export const APP = {
   orgao: 'Colégio Pedro II',
   setor: 'Seção de Engenharia — SENG/DECOF',
   portaria: 'Portaria nº 7503/REITORIA/CPII, de 24/11/2025',
-  versao: '1.5.1',
+  versao: '1.5.2',
 };
 
 // --- Parâmetros ajustáveis pelo Administrador (defaults) ---------------------
@@ -83,6 +83,14 @@ export const TRANSICOES_REVERSAO = {
   'atendimento': ['fila', 'codir', 'analise'],
   'concluido':   ['atendimento'],
 };
+
+// Status encerrados — afundam para o fim da lista do Painel (limpam a visualização).
+export const STATUS_ENCERRADOS = ['concluido', 'cancelado', 'nao-enquadrado'];
+
+// Status em que a Chefia/Admin pode editar os DADOS da solicitação (até a
+// aprovação do CODIR). Após entrar na fila/atendimento, congela — reverter o
+// status reabre a edição.
+export const STATUS_EDITAVEL_DADOS = ['recebido', 'analise', 'diligencia', 'codir'];
 
 // --- Escalas GUT (idênticas às utilizadas no PowerBI da SENG) ----------------
 export const ESCALA_G = [

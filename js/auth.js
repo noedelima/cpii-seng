@@ -1,7 +1,7 @@
 // =============================================================================
 // SENG Demandas — Papéis e permissões (espelhadas nas Security Rules)
 // =============================================================================
-import { STATUS_TRAVADOS, TRANSICOES, TRANSICOES_REVERSAO } from './config.js';
+import { STATUS_TRAVADOS, TRANSICOES, TRANSICOES_REVERSAO, STATUS_EDITAVEL_DADOS } from './config.js';
 
 // Capacidades por papel.
 // CODIR: marca "Aprovado pelo CODIR" e define o fator de ajuste (após análise GUT).
@@ -45,6 +45,12 @@ export function ehReversaoStatus(de, para) {
 
 // Trava funcional: em atendimento/concluído não se altera classificação nem se exclui
 export const travada = (demanda) => STATUS_TRAVADOS.includes(demanda?.status);
+
+// Edição dos DADOS da solicitação pela Chefia/Admin — liberada até a aprovação
+// do CODIR (status pré-fila). Reverter o status reabre a edição.
+export function podeEditarDados(user, demanda) {
+  return can(user, 'statusTotal') && STATUS_EDITAVEL_DADOS.includes(demanda?.status);
+}
 
 export function podeAvaliar(user, demanda) {
   return can(user, 'avaliar') && !travada(demanda);

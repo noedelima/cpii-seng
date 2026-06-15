@@ -2,7 +2,7 @@
 // Dashboard público — resumo clicável, filtros, fila e exportação PDF efêmera
 // =============================================================================
 import { el, frag, fmtNum, fmtDataHora, badgeStatus, select, toast, debounce } from '../ui.js';
-import { STATUS, CAMPI, TIPOS_ATIVIDADE, ESPECIALIDADES, campusNome, statusNome } from '../config.js';
+import { STATUS, CAMPI, TIPOS_ATIVIDADE, ESPECIALIDADES, STATUS_ENCERRADOS, campusNome, statusNome } from '../config.js';
 import { prioridade, pontosArt11, ordenarFila, cargaProfissionais, fiscaisDe } from '../calc.js';
 import { store } from '../store.js';
 import { can } from '../auth.js';
@@ -37,7 +37,14 @@ export function viewDashboard(rerender) {
              (i.equipePlanejamento || []).includes(meuProf.id);
     });
   }
-  const ordenadas = ordenarFila(lista, params);
+  // Ordena por prioridade e, em seguida, afunda as demandas ENCERRADAS
+  // (concluída/cancelada/não enquadrada) para o fim da lista — preservando a
+  // ordem dentro de cada grupo — para limpar a visualização inicial do Painel.
+  const ordenadasBase = ordenarFila(lista, params);
+  const ordenadas = [
+    ...ordenadasBase.filter(d => !STATUS_ENCERRADOS.includes(d.status)),
+    ...ordenadasBase.filter(d => STATUS_ENCERRADOS.includes(d.status)),
+  ];
 
   // posição na fila (apenas status "fila", calculada sobre o conjunto completo)
   const filaCompleta = ordenarFila(todas.filter(d => d.status === 'fila'), params);

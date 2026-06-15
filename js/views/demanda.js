@@ -2,10 +2,10 @@
 // Detalhe da demanda — consulta pública + tratamento (GUT, status, alocação)
 // =============================================================================
 import { el, frag, campo, select, toast, confirmar, badgeStatus, fmtMoeda, fmtNum, fmtDataHora, abreviarNome } from '../ui.js';
-import { campusNome, statusNome, TIPOS_DEMANDA, PROJETO_EXISTE, PRAZOS, TIPOS_ATIVIDADE, ESCALA_G, ESCALA_U, ESCALA_T, precisaEtapaProjeto } from '../config.js';
+import { campusNome, statusNome, TIPOS_DEMANDA, PROJETO_EXISTE, PRAZOS, TIPOS_ATIVIDADE, ESPECIALIDADES, ESCALA_G, ESCALA_U, ESCALA_T, precisaEtapaProjeto } from '../config.js';
 import { prioridade, pontosArt11, faixaValorLabel, cargaProfissionais, fiscaisDe } from '../calc.js';
 import { store } from '../store.js';
-import { can, podeAvaliar, podeExcluir, podeComplementar, podeDeliberarCodir, transicoesPermitidas, travada, ehReversaoStatus } from '../auth.js';
+import { can, podeAvaliar, podeExcluir, podeComplementar, podeDeliberarCodir, transicoesPermitidas, travada, ehReversaoStatus, podeEditarDados } from '../auth.js';
 
 const nomeDe = (lista, id, campoNome = 'nome') => (lista.find(x => (x.id ?? x.v) === id) || {})[campoNome] ?? (lista.find(x => x.id === id) || {}).t ?? '—';
 
@@ -59,6 +59,61 @@ export function viewDemanda(rerender, id) {
     } },
       campo('Responder diligência', inComp, 'Ao enviar, a demanda retorna para “Em análise”.'),
       el('button', { class: 'btn primario' }, 'Enviar complemento')));
+  }
+
+  // ---------- editar dados da solicitação (Chefia/Admin, até a aprovação do CODIR) ----
+  let cartaoEditarDados = null;
+  if (podeEditarDados(user, d)) {
+    const inLocal = el('input', { type: 'text', maxlength: 160, value: d.local || '' });
+    const selTipo = select(TIPOS_DEMANDA, { value: d.tipoDemanda || '' });
+    const selProj = select(PROJETO_EXISTE, { value: d.projetoExiste || '' });
+    const selTomb = select([{ id: 'sim', nome: 'Sim' }, { id: 'nao', nome: 'Não' }, { id: 'ns', nome: 'Não sei informar' }], { value: d.tombado || '' });
+    const inValor = el('input', { type: 'number', min: 0, step: 'any', value: d.valorEstimado ?? '' });
+    const selPrazo = select(PRAZOS, { value: d.prazoEstimado || '', placeholder: 'Sem previsão definida' });
+    const inSuap = el('input', { type: 'text', maxlength: 25, value: d.processoSuap || '' });
+    const inObjeto = el('input', { type: 'text', maxlength: 120, value: d.objeto || '' });
+    const inDesc = el('textarea', { rows: 4, maxlength: 4000 }); inDesc.value = d.descricao || '';
+    const ckEmerg = el('input', { type: 'checkbox', ...(d.emergencial ? { checked: true } : {}) });
+    const espChecks = ESPECIALIDADES.map(e2 => {
+      const c = el('input', { type: 'checkbox', value: e2, ...((d.especialidades || []).includes(e2) ? { checked: true } : {}) });
+      return el('label', { class: 'chip-check' }, c, ' ' + e2);
+    });
+    const form = el('div', { class: 'form-grid' },
+      campo('Localização no campus', inLocal),
+      el('div', { class: 'form-linha' }, campo('Tipo de demanda', selTipo), campo('Projeto já existe?', selProj)),
+      el('div', { class: 'form-linha' }, campo('Imóvel tombado?', selTomb), campo('Previsão de prazo', selPrazo)),
+      el('div', { class: 'form-linha' }, campo('Valor estimado (R$)', inValor), campo('Processo SUAP', inSuap)),
+      campo('Objeto resumido', inObjeto),
+      campo('Especialidades envolvidas', el('div', { class: 'chips' }, espChecks)),
+      campo('Descrição completa', inDesc),
+      el('label', { class: 'chip-check destaque-emergencial' }, ckEmerg, ' Serviço emergencial (art. 11, §5º)'),
+      el('button', { class: 'btn primario', onclick: async () => {
+        const objeto = inObjeto.value.trim();
+        const descricao = inDesc.value.trim();
+        const especialidades = espChecks.map(l => l.querySelector('input')).filter(c => c.checked).map(c => c.value);
+        if (!objeto) { toast('Informe o objeto resumido.', 'erro'); return; }
+        if (!descricao) { toast('Informe a descrição.', 'erro'); return; }
+        if (!especialidades.length) { toast('Selecione ao menos uma especialidade.', 'erro'); return; }
+        const tipoDemanda = selTipo.value || d.tipoDemanda;
+        const projetoExiste = selProj.value || d.projetoExiste;
+        const patch = {
+          local: inLocal.value.trim(),
+          tipoDemanda, projetoExiste,
+          tombado: selTomb.value || d.tombado,
+          valorEstimado: inValor.value ? Number(inValor.value) : null,
+          prazoEstimado: selPrazo.value || null,
+          processoSuap: inSuap.value.trim(),
+          objeto, descricao, especialidades,
+          emergencial: ckEmerg.checked,
+          etapa: precisaEtapaProjeto({ tipoDemanda, projetoExiste }) ? (d.etapa || 'projeto') : null,
+        };
+        await s.atualizarDemanda(d.id, patch, 'Dados da solicitação editados (Chefia/Administração)');
+        toast('Dados atualizados.');
+      } }, 'Salvar dados'));
+    cartaoEditarDados = el('section', { class: 'card' },
+      el('h2', {}, 'Editar dados da solicitação'),
+      el('p', { class: 'sub' }, 'Disponível à Chefia/Administração até a aprovação do CODIR. Toda alteração fica no histórico e no log. O campus não é editável (compõe o identificador da demanda).'),
+      el('details', { class: 'editar-dados' }, el('summary', {}, 'Abrir edição dos dados'), form));
   }
 
   // ---------- coluna 2: pontuação ---------------------------------------------
@@ -359,7 +414,7 @@ export function viewDemanda(rerender, id) {
   return frag(
     el('a', { class: 'voltar', href: '#/' }, '← Voltar ao painel'),
     el('div', { class: 'detalhe-grid' },
-      el('div', { class: 'col' }, dados, hist),
+      el('div', { class: 'col' }, dados, cartaoEditarDados, hist),
       el('div', { class: 'col' }, cartaoPontuacao, cartaoCodir, cartaoAvaliacao, cartaoGestao, cartaoEquipe, cartaoObs)));
 }
 
