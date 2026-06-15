@@ -5,7 +5,7 @@
 // =============================================================================
 import { TIMBRE_H, TIMBRE_RATIO } from './logos.js';
 import { campusNome, statusNome, TIPOS_ATIVIDADE, APP } from './config.js';
-import { pontosArt11 } from './calc.js';
+import { pontosArt11, fiscaisDe } from './calc.js';
 
 let libs = null;
 async function carregarLibs() {
@@ -87,7 +87,8 @@ export async function gerarRelatorio({ demandas, params, filtros, autenticado, i
     ];
     if (autenticado) {
       const it = internas[d.id] || {};
-      const fiscais = [it.fiscalTitular && nomeProf(it.fiscalTitular), it.fiscalSubstituto && nomeProf(it.fiscalSubstituto)]
+      const ff = fiscaisDe(it);
+      const fiscais = [...ff.titulares.map(nomeProf), ...ff.substitutos.map(nomeProf)]
         .filter(Boolean).join(' / ');
       const eq = (it.equipePlanejamento || []).map(nomeProf).join(', ');
       row.push(fiscais || (eq ? `Equipe: ${eq}` : '—'));

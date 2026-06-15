@@ -4,7 +4,7 @@
 // SheetJS carregado sob demanda (CDN jsdelivr, conforme CSP) apenas ao clicar.
 // =============================================================================
 import { campusNome, statusNome, TIPOS_DEMANDA, PROJETO_EXISTE, TIPOS_ATIVIDADE, PRAZOS, APP } from './config.js';
-import { prioridade, pontosArt11, faixaValorLabel } from './calc.js';
+import { prioridade, pontosArt11, faixaValorLabel, fiscaisDe } from './calc.js';
 
 const SRC = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
 function carregarLib() {
@@ -54,8 +54,8 @@ export function montarLinhas({ demandas, params, internas = {}, profissionais = 
       tombadoTxt[d.tombado] || '', simNao(!!d.emergencial),
       d.processoSuap || '', d.codirAprovado ? 'Sim' : 'Não',
       d.etapa ? (d.etapa === 'obra' ? 'Obra' : 'Projeto') : '',
-      it.fiscalTitular ? nomeProf(it.fiscalTitular) : '',
-      it.fiscalSubstituto ? nomeProf(it.fiscalSubstituto) : '',
+      fiscaisDe(it).titulares.map(nomeProf).filter(Boolean).join(', '),
+      fiscaisDe(it).substitutos.map(nomeProf).filter(Boolean).join(', '),
       (it.equipePlanejamento || []).map(nomeProf).filter(Boolean).join(', '),
       it.obsEngenharia || '', d.obsSolicitante || '',
       fmt(d.criadoEm), fmt(d.atualizadoEm),

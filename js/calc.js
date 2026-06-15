@@ -98,6 +98,13 @@ export function ordenarFila(demandas, params) {
 // Conta apenas demandas EM ATENDIMENTO. Emergenciais (art. 11 §5º) pontuam,
 // mas podem exceder o limite (art. 12 §2º) — sinalizadas à parte.
 // ---------------------------------------------------------------------------
+// Fiscais alocados (compat: campos únicos antigos -> listas). Retorna arrays de IDs.
+export function fiscaisDe(interna) {
+  const tit = interna?.fiscaisTitulares ?? (interna?.fiscalTitular ? [interna.fiscalTitular] : []);
+  const sub = interna?.fiscaisSubstitutos ?? (interna?.fiscalSubstituto ? [interna.fiscalSubstituto] : []);
+  return { titulares: (tit || []).filter(Boolean), substitutos: (sub || []).filter(Boolean) };
+}
+
 export function cargaProfissionais(demandas, internas, profissionais, params) {
   const mapa = {};
   for (const p of profissionais) {
@@ -118,8 +125,9 @@ export function cargaProfissionais(demandas, internas, profissionais, params) {
     if (d.aval?.tipoAtividade === 'planejamento') {
       (i.equipePlanejamento || []).forEach(pid => add(pid, 'planejamento', 1));
     } else {
-      add(i.fiscalTitular, 'titular', pts);
-      add(i.fiscalSubstituto, 'substituto', pts);
+      const { titulares, substitutos } = fiscaisDe(i);
+      titulares.forEach(pid => add(pid, 'titular', pts));
+      substitutos.forEach(pid => add(pid, 'substituto', pts));
       (i.equipePlanejamento || []).forEach(pid => add(pid, 'planejamento', 1));
     }
   }

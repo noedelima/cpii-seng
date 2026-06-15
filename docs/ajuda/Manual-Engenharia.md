@@ -80,6 +80,8 @@ Regras de transição (resumo):
 
 A tabela completa de transições por perfil está no **Apêndice B**.
 
+> **Projeto + Obra em etapas.** Demandas de **obra** cujo projeto **não existe ou é parcial** tramitam como **uma única demanda**, em duas etapas. Concluída a etapa de **projeto** (no cartão **Gestão**, botão *“Concluir etapa de projeto”*): se o projeto era **inexistente**, a demanda **retorna ao CODIR como obra** (com projeto existente) para repriorização; se era **parcial**, há a opção de **contratação unificada** (projeto + obra) ou separada. Reavalie o GUT e o valor da obra antes de reenviar ao CODIR.
+
 ---
 
 ## 4. Como a prioridade é calculada
@@ -205,16 +207,17 @@ Quando a demanda entra em **Em atendimento** (ou é **Concluída**), o sistema *
 **Passo a passo**
 
 1. Abra uma demanda (preferencialmente **Na fila** ou **Em atendimento**).
-2. No cartão **Gestão**, seção **Alocação**, defina:
-   - **Fiscal técnico titular**
-   - **Fiscal técnico substituto** (deve ser diferente do titular)
+2. No cartão **Gestão**, seção **Alocação**, marque (em listas de **seleção múltipla**):
+   - **Fiscais técnicos titulares** — **um ou mais**. Use mais de um quando a fiscalização for **compartilhada** (p. ex., o titular pediu exoneração e a fiscalização ficou a cargo de dois servidores) ou em obras **multidisciplinares**, com fiscais de especialidades diferentes.
+   - **Fiscais técnicos substitutos** — zero, um ou mais.
    - **Equipe de planejamento** (art. 13), marcando os integrantes.
-3. Cada opção mostra a **carga atual** do profissional (ex.: `3/6 pts`).
-4. Se a alocação **exceder o limite de 6 pontos** (art. 12), o sistema **avisa** e pede confirmação (serviço emergencial pode exceder, §2º).
-5. Clique em **Salvar alocação**.
+3. Cada nome mostra a **especialidade** e a **carga atual** (ex.: `Civil (3/6)`). **Cada fiscal alocado (titular ou substituto) pontua** pelo art. 11.
+4. Um mesmo profissional **não pode** ser titular e substituto na mesma demanda.
+5. Se a alocação **exceder o limite de 6 pontos** (art. 12), o sistema **avisa** e pede confirmação (serviço emergencial pode exceder, §2º).
+6. Clique em **Salvar alocação**.
 
-![Cartão de gestão com a alocação de fiscais](docs/ajuda/img/chefe-gestao-card.png)
-*Figura 8 — Alocação: fiscal titular, substituto e equipe de planejamento, com a carga de cada profissional.*
+![Cartão de gestão com a alocação de fiscais (seleção múltipla)](docs/ajuda/img/chefe-gestao-card.png)
+*Figura 8 — Alocação: fiscais titulares e substitutos (um ou mais) e equipe de planejamento, cada um com a sua carga.*
 
 ---
 
@@ -282,7 +285,7 @@ Em **Administração**, o cartão **Parâmetros do sistema** controla o cálculo
 
 ## 14. Fluxo 10 — Administração: usuários e log (Administrador)
 
-**Perfil necessário: Administrador.**
+**Perfil necessário: Administrador.** A página de **Administração** é organizada em **abas**: **Usuários**, **Parâmetros do sistema** e **Log de auditoria** — clique na aba desejada para alternar.
 
 **Cadastrar um novo usuário**
 

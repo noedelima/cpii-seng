@@ -59,6 +59,8 @@ Caminho principal da demanda:
 
 O CODIR atua a partir do status **“Aguardando aprovação do CODIR”** (após a análise GUT). Também é possível rever o ajuste enquanto a demanda está **Na fila** ou **Suspensa**. Demandas **Em atendimento** ou **Concluídas** ficam **travadas** (não aceitam aprovação nem ajuste).
 
+> **Projeto + Obra.** Uma demanda que exigia projeto e obra **volta ao CODIR como obra** (com projeto existente) quando a etapa de projeto é concluída — reaprove e reposicione na fila normalmente, conferindo o GUT e o valor reavaliados para a obra.
+
 ---
 
 ## 4. Como ler a prioridade

@@ -3,7 +3,7 @@
 // =============================================================================
 import { el, frag, campo, select, toast, confirmar, badgeStatus, fmtMoeda, fmtNum, fmtDataHora, abreviarNome } from '../ui.js';
 import { campusNome, statusNome, TIPOS_DEMANDA, PROJETO_EXISTE, PRAZOS, TIPOS_ATIVIDADE, ESCALA_G, ESCALA_U, ESCALA_T, precisaEtapaProjeto } from '../config.js';
-import { prioridade, pontosArt11, faixaValorLabel, cargaProfissionais } from '../calc.js';
+import { prioridade, pontosArt11, faixaValorLabel, cargaProfissionais, fiscaisDe } from '../calc.js';
 import { store } from '../store.js';
 import { can, podeAvaliar, podeExcluir, podeComplementar, podeDeliberarCodir, transicoesPermitidas, travada } from '../auth.js';
 
@@ -201,28 +201,36 @@ export function viewDemanda(rerender, id) {
     // Alocação de profissionais (chefe)
     if (can(user, 'alocar')) {
       const carga = cargaProfissionais(s.listDemandas(), internas, profissionais, params);
-      const opcoes = profissionais.filter(p => p.ativo !== false).map(p =>
-        ({ id: p.id, nome: `${p.nome} — ${p.area} (${carga[p.id].regular}/${params.limitePontos} pts)` }));
-      const selTit = select(opcoes, { value: interna.fiscalTitular ?? '', placeholder: '— sem titular —' });
-      const selSub = select(opcoes, { value: interna.fiscalSubstituto ?? '', placeholder: '— sem substituto —' });
-      const eqChecks = profissionais.filter(p => p.ativo !== false).map(p => {
+      const ativos = profissionais.filter(p => p.ativo !== false);
+      const { titulares: titAtuais, substitutos: subAtuais } = fiscaisDe(interna);
+      const rotuloFiscal = (p) => abreviarNome(p.nome) + ` — ${p.area} (${carga[p.id].regular}/${params.limitePontos})`;
+      const mkFiscalChecks = (atuais) => ativos.map(p => {
+        const c = el('input', { type: 'checkbox', value: p.id, ...(atuais.includes(p.id) ? { checked: true } : {}) });
+        return el('label', { class: 'chip-check' }, c, ' ' + rotuloFiscal(p));
+      });
+      const titChecks = mkFiscalChecks(titAtuais);
+      const subChecks = mkFiscalChecks(subAtuais);
+      const eqChecks = ativos.map(p => {
         const c = el('input', { type: 'checkbox', value: p.id, ...((interna.equipePlanejamento || []).includes(p.id) ? { checked: true } : {}) });
         return el('label', { class: 'chip-check' }, c, ' ' + abreviarNome(p.nome));
       });
       filhos.push(el('h3', {}, 'Alocação ', el('span', { class: 'sub' }, '(visível somente autenticado)')));
       filhos.push(el('div', { class: 'form-grid' },
-        campo('Fiscal técnico titular', selTit),
-        campo('Fiscal técnico substituto', selSub),
+        campo('Fiscais técnicos titulares', el('div', { class: 'chips chips-pessoas' }, titChecks), 'Um ou mais. Cada fiscal pontua pelo art. 11.'),
+        campo('Fiscais técnicos substitutos', el('div', { class: 'chips chips-pessoas' }, subChecks)),
         campo('Integrantes técnicos — equipe de planejamento (art. 13)', el('div', { class: 'chips chips-pessoas' }, eqChecks)),
         el('button', { class: 'btn primario', onclick: async () => {
-          if (selTit.value && selTit.value === selSub.value) { toast('Titular e substituto devem ser diferentes.', 'erro'); return; }
+          const tit = titChecks.map(l => l.querySelector('input')).filter(c => c.checked).map(c => c.value);
+          const sub = subChecks.map(l => l.querySelector('input')).filter(c => c.checked).map(c => c.value);
           const equipe = eqChecks.map(l => l.querySelector('input')).filter(c => c.checked).map(c => c.value);
+          const ambos = tit.filter(pid => sub.includes(pid));
+          if (ambos.length) { toast('Um profissional não pode ser titular e substituto na mesma demanda.', 'erro'); return; }
           // Aviso de limite do art. 12 (não bloqueia emergencial — art. 12 §2º)
-          const novos = [selTit.value, selSub.value].filter(Boolean);
+          const jaAloc = new Set([...titAtuais, ...subAtuais]);
+          const novos = [...tit, ...sub].filter(pid => !jaAloc.has(pid));
           const estouro = novos.find(pid => {
             const c = carga[pid]; if (!c) return false;
-            const jaAlocado = interna.fiscalTitular === pid || interna.fiscalSubstituto === pid;
-            const addPts = (d.status === 'atendimento' && !jaAlocado) ? (pontosArt11(d.aval, params.valorRef) ?? 0) : 0;
+            const addPts = (d.status === 'atendimento') ? (pontosArt11(d.aval, params.valorRef) ?? 0) : 0;
             return !d.aval?.especial && c.regular + addPts > params.limitePontos;
           });
           if (estouro) {
@@ -230,9 +238,11 @@ export function viewDemanda(rerender, id) {
             if (!okEst) return;
           }
           await s.setInterna(d.id, {
-            fiscalTitular: selTit.value || null,
-            fiscalSubstituto: selSub.value || null,
+            fiscaisTitulares: tit,
+            fiscaisSubstitutos: sub,
             equipePlanejamento: equipe,
+            fiscalTitular: null,
+            fiscalSubstituto: null,
           });
           await s.atualizarDemanda(d.id, {}, 'Alocação de profissionais atualizada');
           toast('Alocação salva.');
@@ -280,10 +290,11 @@ export function viewDemanda(rerender, id) {
   let cartaoEquipe = null;
   if (user && can(user, 'verInterno') && !can(user, 'alocar')) {
     const nomeProf = (pid) => (profissionais.find(p => p.id === pid) || {}).nome || '—';
+    const { titulares: tEq, substitutos: sEq } = fiscaisDe(interna);
     cartaoEquipe = el('section', { class: 'card' },
       el('h2', {}, 'Alocação'),
-      linha('Fiscal técnico titular', interna.fiscalTitular ? nomeProf(interna.fiscalTitular) : '—'),
-      linha('Fiscal técnico substituto', interna.fiscalSubstituto ? nomeProf(interna.fiscalSubstituto) : '—'),
+      linha('Fiscais titulares', tEq.map(nomeProf).join(', ') || '—'),
+      linha('Fiscais substitutos', sEq.map(nomeProf).join(', ') || '—'),
       linha('Equipe de planejamento', (interna.equipePlanejamento || []).map(nomeProf).join(', ') || '—'));
   }
 

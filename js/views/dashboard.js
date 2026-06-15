@@ -3,7 +3,7 @@
 // =============================================================================
 import { el, frag, fmtNum, fmtDataHora, badgeStatus, select, toast, debounce } from '../ui.js';
 import { STATUS, CAMPI, TIPOS_ATIVIDADE, ESPECIALIDADES, campusNome, statusNome } from '../config.js';
-import { prioridade, pontosArt11, ordenarFila, cargaProfissionais } from '../calc.js';
+import { prioridade, pontosArt11, ordenarFila, cargaProfissionais, fiscaisDe } from '../calc.js';
 import { store } from '../store.js';
 import { can } from '../auth.js';
 
@@ -32,7 +32,8 @@ export function viewDashboard(rerender) {
   if (filtros.minhas && meuProf) {
     lista = lista.filter(d => {
       const i = internas[d.id] || {};
-      return i.fiscalTitular === meuProf.id || i.fiscalSubstituto === meuProf.id ||
+      const { titulares: tt, substitutos: ss } = fiscaisDe(i);
+      return tt.includes(meuProf.id) || ss.includes(meuProf.id) ||
              (i.equipePlanejamento || []).includes(meuProf.id);
     });
   }
@@ -73,6 +74,7 @@ export function viewDashboard(rerender) {
     const pr = prioridade(d, params);
     const pts = pontosArt11(d.aval, params.valorRef);
     const i = internas[d.id] || {};
+    const { titulares: fTit, substitutos: fSub } = fiscaisDe(i);
     return el('tr', { tabindex: 0, role: 'link', 'aria-label': `Abrir demanda: ${d.objeto || d.id}`,
       onclick: () => { location.hash = `#/demanda/${d.id}`; },
       onkeydown: (e) => { if (e.key === 'Enter') location.hash = `#/demanda/${d.id}`; } },
@@ -86,8 +88,8 @@ export function viewDashboard(rerender) {
         pr.final == null ? '—' : fmtNum(pr.final), d.ajuste?.valor ? el('span', { class: 'mark-ajuste' }, '*') : null),
       el('td', { class: 'num' }, pts == null || d.aval?.tipoAtividade === 'planejamento' ? '—' : String(pts)),
       user ? el('td', { class: 'prof-cell' },
-        i.fiscalTitular ? el('span', {}, nomeProf(i.fiscalTitular)) : (i.equipePlanejamento?.length ? el('span', { class: 'sub' }, `Equipe: ${i.equipePlanejamento.map(nomeProf).join(', ')}`) : el('span', { class: 'sub' }, '—')),
-        i.fiscalSubstituto ? el('span', { class: 'sub' }, `Subst.: ${nomeProf(i.fiscalSubstituto)}`) : null) : null,
+        fTit.length ? el('span', {}, fTit.map(nomeProf).join(', ')) : (i.equipePlanejamento?.length ? el('span', { class: 'sub' }, `Equipe: ${i.equipePlanejamento.map(nomeProf).join(', ')}`) : el('span', { class: 'sub' }, '—')),
+        fSub.length ? el('span', { class: 'sub' }, `Subst.: ${fSub.map(nomeProf).join(', ')}`) : null) : null,
       el('td', { class: 'sub' }, fmtDataHora(d.atualizadoEm)),
     );
   });
