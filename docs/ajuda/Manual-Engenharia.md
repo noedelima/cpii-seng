@@ -116,6 +116,8 @@ O cálculo replica o modelo do Power BI da SENG (art. 5º, II):
 
 > **Triagem recomendada:** comece pelas demandas **Recebidas** mais antigas; mova rapidamente para **Em análise**; abra **diligência** quando faltar informação.
 
+> **Exportações:** além do **Baixar PDF da fila**, o painel interno tem **Baixar Excel** (.xlsx com todas as colunas — classificação, escores, alocação e observações), disponível apenas para Engenharia, Chefe e Administrador.
+
 ---
 
 ## 6. Fluxo 2 — Abrir e ler uma demanda
@@ -123,7 +125,7 @@ O cálculo replica o modelo do Power BI da SENG (art. 5º, II):
 Clique em uma linha do painel para abrir o detalhe. A página é dividida em duas colunas:
 
 - **Esquerda:** dados da solicitação e **histórico** completo.
-- **Direita:** **Priorização**, **Avaliação técnica**, **Gestão** e **Alocação**.
+- **Direita:** **Priorização**, **Avaliação técnica**, **Gestão**, **Alocação** e **Observações** (uma interna da Engenharia/Chefia e a do solicitante/CODIR — registradas no histórico e no log).
 
 ![Detalhe de uma demanda, em duas colunas](docs/ajuda/img/eng-demanda.png)
 *Figura 3 — Detalhe da demanda: dados/histórico à esquerda; priorização, avaliação, gestão e alocação à direita.*
@@ -152,7 +154,7 @@ Este é o núcleo do trabalho da Engenharia.
 | ⑥ | **Valor considerado (R$)** | Estimativa orçamentária usada nas faixas de valor. |
 
 3. Marque, quando couber: **“Bem tombado confirmado”** (+1 ponto, §4º) e/ou **“Serviço emergencial”** (art. 11, §5º).
-4. *(Apenas Chefia/Admin)* É possível definir **Pontos (manual)** — deixe vazio para o cálculo automático do art. 11.
+4. *(Apenas Chefia/Admin)* É possível definir **Pontos (manual)**. O cálculo automático do art. 11 depende do **valor considerado**: **sem valor, a Fiscalização de Obra/Projeto não recebe pontos automaticamente** (a ficha sinaliza “informe o valor para calcular”) — informe o valor ou defina os pontos aqui. *(Elaboração de Projeto = 3, independe de valor.)*
 5. Clique em **Salvar avaliação**. A **prioridade é recalculada automaticamente** e aparece no cartão **Priorização**.
 
 ![Cartão de priorização com GUT, scores e prioridade final](docs/ajuda/img/eng-priorizacao-card.png)

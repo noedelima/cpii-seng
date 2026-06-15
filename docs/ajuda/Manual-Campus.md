@@ -149,7 +149,7 @@ Este é o fluxo mais importante para o campus.
 |----|-------|----------------|
 | ① | **Campus / unidade** | Já vem definido pelo seu perfil — não é necessário alterar. |
 | ② | **Localização no campus** | Onde fica a intervenção: bloco, pavimento, salas. Ex.: *Bloco B, 2º pavimento, salas 201–204*. |
-| ③ | **Tipo de demanda** | Obra/reforma, elaboração de projeto, projeto e obra, laudo/avaliação técnica, assessoria técnica ou outro. |
+| ③ | **Tipo de demanda** | Obra/reforma, projeto (a elaborar ou contratar), projeto e obra, laudo/avaliação técnica, assessoria técnica ou outro. |
 | ④ | **Projeto já existe?** | *Sim, completo* / *Sim, parcial (precisa complementar)* / *Não — necessita contratar projeto*. |
 | ⑤ | **Imóvel tombado / patrimônio histórico?** | *Sim* / *Não* / *Não sei informar*. Influencia a complexidade e a pontuação. |
 | ⑥ | **Previsão de prazo desejada** | *Menos de 6 meses* / *6 a 12 meses* / *Mais de 12 meses* (ou sem previsão). |
@@ -188,7 +188,7 @@ Depois de cadastrada, acompanhe a evolução a qualquer momento.
 ![Página de detalhes de uma demanda, com status e histórico](docs/ajuda/img/campus-demanda-acompanhar.png)
 *Figura 8 — Detalhe da demanda (visão do campus): dados, descrição e histórico.*
 
-> A página mostra também a **priorização** calculada (GUT, prioridade e pontos). A **alocação de profissionais** só é exibida para usuários internos da SENG — no painel público, os nomes ficam ocultos, preservando o anonimato.
+> A página mostra também a **priorização** calculada (GUT, prioridade e pontos). A **alocação de profissionais** só é exibida para usuários internos da SENG — no painel público, os nomes ficam ocultos, preservando o anonimato. Você também pode registrar uma **Observação do solicitante** na demanda (campo de texto no fim da página) — fica no histórico.
 
 ---
 

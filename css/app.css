@@ -176,7 +176,8 @@ textarea { resize: vertical; width: 100%; }
 .chip-check:hover { background: var(--kpi-hover); }
 .chip-check input { accent-color: var(--primario); }
 .chips-pessoas { flex-direction: column; flex-wrap: nowrap; }
-.chips-pessoas .chip-check { border-radius: var(--raio-sm); white-space: nowrap; }
+.chips-pessoas .chip-check { border-radius: var(--raio-sm); white-space: nowrap; justify-content: flex-start; }
+.chips-pessoas .chip-check input { width: auto; flex: 0 0 auto; }
 .destaque-emergencial { border-color: var(--perigo); color: var(--perigo); font-weight: 600; }
 .destaque-codir { border-color: #8A6BAA; font-weight: 600; }
 
