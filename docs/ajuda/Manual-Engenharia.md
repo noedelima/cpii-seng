@@ -130,12 +130,14 @@ O cálculo replica o modelo do Power BI da SENG (art. 5º, II):
 Clique em uma linha do painel para abrir o detalhe. A página é dividida em duas colunas:
 
 - **Esquerda:** dados da solicitação e **histórico** completo.
-- **Direita:** **Priorização**, **Avaliação técnica**, **Gestão**, **Alocação** e **Observações** (uma interna da Engenharia/Chefia e a do solicitante/CODIR — registradas no histórico e no log).
+- **Direita:** **Priorização**, **Avaliação técnica**, **Gestão**, **Alocação** e **Observações** — esta última um **histórico de comentários públicos** (fio interno da Engenharia e fio externo do solicitante/CODIR).
 
 ![Detalhe de uma demanda, em duas colunas](docs/ajuda/img/eng-demanda.png)
 *Figura 3 — Detalhe da demanda: dados/histórico à esquerda; priorização, avaliação, gestão e alocação à direita.*
 
 > **Editar dados da solicitação.** Enquanto a demanda **não foi submetida ao CODIR** (status Recebido, Em análise ou Em diligência), o cartão **“Editar dados da solicitação”** permite corrigir localização, tipo, situação do projeto, valor, prazo, processo SUAP, objeto, descrição, especialidades e o sinalizador emergencial. A edição é aberta a **Engenharia, Chefia, Administração e CODIR** (qualquer demanda) e ao **Campus** (apenas as da própria unidade). Ao entrar em **“Aguardando aprovação do CODIR”**, os dados **congelam para todos**; para corrigir, **reverta o status** (Fluxo 5) e a edição reabre. A **unidade (campus) não é editável** (compõe o identificador). Cada alteração registra no **histórico** e no **log de auditoria** **exatamente quais campos** mudaram — ex.: *“Dados da solicitação editados — campos: Processo SUAP, Valor estimado, Prazo estimado”*.
+
+> **Observações (comentários públicos).** Cada demanda tem dois fios de comentários — o **da Engenharia (interna)** e o **do solicitante / CODIR (externa)** — **visíveis a todos**, inclusive no painel público, em modo leitura. Cada comentário registra **autor e data/hora**. Quem pode **escrever**: no fio interno, Engenharia/Chefia/Administração; no externo, o Campus (da própria unidade), o CODIR e a Administração. O **autor pode editar** o próprio comentário (fica marcado *(editado)*) e **excluí-lo**; além do autor, podem excluir — no interno, a Chefia/Administração; no externo, o CODIR/Solicitante/Administração. Toda ação fica no log de auditoria.
 
 ---
 
