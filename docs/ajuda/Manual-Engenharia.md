@@ -76,6 +76,7 @@ Regras de transição (resumo):
 - **Engenharia** move entre: Em análise, Em diligência e Aguardando aprovação do CODIR.
 - **Chefia** tem o status total: pode levar à fila, iniciar atendimento, concluir, suspender e cancelar.
 - **Trava funcional**: demandas **Em atendimento** ou **Concluídas** **não** podem ter a classificação alterada nem ser excluídas (vale na interface e nas regras de segurança).
+- **Reversão (Chefe/Admin)**: para corrigir um lançamento indevido, a **Chefia/Administração** pode **reverter** uma demanda **Em atendimento** de volta para **Na fila**, **Aguardando aprovação do CODIR** ou **Em análise**, e **reabrir** uma demanda **Concluída** para **Em atendimento**. A ação pede **confirmação** e fica registrada no histórico; a reversão muda **apenas o status** (avaliação, ajuste e aprovação do CODIR são preservados). Engenharia, CODIR e Campus **não** dispõem dessas reversões.
 - **Conclusão** libera os pontos de complexidade dos profissionais (art. 12, §1º).
 
 A tabela completa de transições por perfil está no **Apêndice B**.
@@ -196,7 +197,9 @@ Quando a demanda entra em **Em atendimento** (ou é **Concluída**), o sistema *
 ![Aviso de demanda travada (em atendimento)](docs/ajuda/img/eng-demanda-travada.png)
 *Figura 7 — Demanda “Em atendimento”: avaliação e exclusão bloqueadas.*
 
-> Para corrigir uma demanda travada, a Chefia pode antes mudar o status (ex.: **Suspenso**), conforme as transições permitidas.
+> **Desfazer um status indevido (Chefe/Admin).** Se uma demanda for marcada **Em atendimento** por engano, a **Chefia/Administração** pode **revertê-la diretamente**: no cartão **Gestão** aparecem os botões **Na fila**, **Aguardando aprovação do CODIR** e **Em análise**. Uma demanda **Concluída** por engano pode ser **reaberta** para **Em atendimento**. A ação pede confirmação e é registrada no histórico (muda **apenas o status** — a classificação é preservada; reverter o atendimento libera os pontos do art. 12, reabrir a conclusão volta a contá-los).
+>
+> Para **editar os dados** de uma demanda em atendimento, o caminho continua sendo **Suspender → editar → retomar o atendimento**.
 
 ---
 
