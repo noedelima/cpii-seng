@@ -8,7 +8,7 @@ export const APP = {
   orgao: 'Colégio Pedro II',
   setor: 'Seção de Engenharia — SENG/DECOF',
   portaria: 'Portaria nº 7503/REITORIA/CPII, de 24/11/2025',
-  versao: '1.5.2',
+  versao: '1.5.3',
 };
 
 // --- Parâmetros ajustáveis pelo Administrador (defaults) ---------------------
@@ -85,12 +85,13 @@ export const TRANSICOES_REVERSAO = {
 };
 
 // Status encerrados — afundam para o fim da lista do Painel (limpam a visualização).
-export const STATUS_ENCERRADOS = ['concluido', 'cancelado', 'nao-enquadrado'];
+// A ordem do array é a ordem de exibição no rodapé: Concluído → Não enquadrado → Cancelado (por último).
+export const STATUS_ENCERRADOS = ['concluido', 'nao-enquadrado', 'cancelado'];
 
-// Status em que a Chefia/Admin pode editar os DADOS da solicitação (até a
-// aprovação do CODIR). Após entrar na fila/atendimento, congela — reverter o
-// status reabre a edição.
-export const STATUS_EDITAVEL_DADOS = ['recebido', 'analise', 'diligencia', 'codir'];
+// Status em que se pode editar os DADOS da solicitação. A edição vai até a
+// SUBMISSÃO ao CODIR: ao entrar em “Aguardando aprovação do CODIR” (codir),
+// congela para todos. Reverter o status para uma etapa anterior reabre a edição.
+export const STATUS_EDITAVEL_DADOS = ['recebido', 'analise', 'diligencia'];
 
 // --- Escalas GUT (idênticas às utilizadas no PowerBI da SENG) ----------------
 export const ESCALA_G = [

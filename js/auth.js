@@ -46,10 +46,15 @@ export function ehReversaoStatus(de, para) {
 // Trava funcional: em atendimento/concluído não se altera classificação nem se exclui
 export const travada = (demanda) => STATUS_TRAVADOS.includes(demanda?.status);
 
-// Edição dos DADOS da solicitação pela Chefia/Admin — liberada até a aprovação
-// do CODIR (status pré-fila). Reverter o status reabre a edição.
+// Edição dos DADOS da solicitação — liberada até a SUBMISSÃO ao CODIR (status
+// recebido/análise/diligência). Aberta a todos os perfis: Engenharia, Chefe,
+// Administrador e CODIR editam qualquer demanda; o Campus edita apenas as da
+// própria unidade. Ao entrar em “Aguardando aprovação do CODIR”, congela para todos.
 export function podeEditarDados(user, demanda) {
-  return can(user, 'statusTotal') && STATUS_EDITAVEL_DADOS.includes(demanda?.status);
+  if (!user || !demanda) return false;
+  if (!STATUS_EDITAVEL_DADOS.includes(demanda.status)) return false;
+  if (user.role === 'campus') return demanda.campus === user.campus;
+  return ['engenharia', 'chefe', 'admin', 'codir'].includes(user.role);
 }
 
 export function podeAvaliar(user, demanda) {

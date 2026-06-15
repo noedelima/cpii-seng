@@ -96,23 +96,35 @@ export function viewDemanda(rerender, id) {
         if (!especialidades.length) { toast('Selecione ao menos uma especialidade.', 'erro'); return; }
         const tipoDemanda = selTipo.value || d.tipoDemanda;
         const projetoExiste = selProj.value || d.projetoExiste;
-        const patch = {
-          local: inLocal.value.trim(),
-          tipoDemanda, projetoExiste,
-          tombado: selTomb.value || d.tombado,
-          valorEstimado: inValor.value ? Number(inValor.value) : null,
-          prazoEstimado: selPrazo.value || null,
-          processoSuap: inSuap.value.trim(),
-          objeto, descricao, especialidades,
-          emergencial: ckEmerg.checked,
-          etapa: precisaEtapaProjeto({ tipoDemanda, projetoExiste }) ? (d.etapa || 'projeto') : null,
-        };
-        await s.atualizarDemanda(d.id, patch, 'Dados da solicitação editados (Chefia/Administração)');
-        toast('Dados atualizados.');
+        // Campos editáveis (chave, rótulo, valor novo). Registramos no log apenas os que mudaram.
+        const novos = [
+          ['local', 'Localização', inLocal.value.trim()],
+          ['tipoDemanda', 'Tipo de demanda', tipoDemanda],
+          ['projetoExiste', 'Situação do projeto', projetoExiste],
+          ['tombado', 'Bem tombado', selTomb.value || d.tombado],
+          ['valorEstimado', 'Valor estimado', inValor.value ? Number(inValor.value) : null],
+          ['prazoEstimado', 'Prazo estimado', selPrazo.value || null],
+          ['processoSuap', 'Processo SUAP', inSuap.value.trim()],
+          ['objeto', 'Objeto', objeto],
+          ['descricao', 'Descrição', descricao],
+          ['especialidades', 'Especialidades', especialidades],
+          ['emergencial', 'Emergencial', ckEmerg.checked],
+        ];
+        const norm = (v) => Array.isArray(v) ? [...v].sort().join('|') : (v == null || v === '' ? '' : String(v));
+        const alterados = novos.filter(([k, , nv]) => norm(d[k]) !== norm(nv));
+        if (!alterados.length) { toast('Nenhuma alteração a salvar.'); return; }
+        const patch = {};
+        alterados.forEach(([k, , nv]) => { patch[k] = nv; });
+        if (alterados.some(([k]) => k === 'tipoDemanda' || k === 'projetoExiste')) {
+          patch.etapa = precisaEtapaProjeto({ tipoDemanda, projetoExiste }) ? (d.etapa || 'projeto') : null;
+        }
+        const rotulos = alterados.map(([, label]) => label).join(', ');
+        await s.atualizarDemanda(d.id, patch, `Dados da solicitação editados — campos: ${rotulos}`);
+        toast(`Dados atualizados (${alterados.length} campo${alterados.length > 1 ? 's' : ''}).`);
       } }, 'Salvar dados'));
     cartaoEditarDados = el('section', { class: 'card' },
       el('h2', {}, 'Editar dados da solicitação'),
-      el('p', { class: 'sub' }, 'Disponível à Chefia/Administração até a aprovação do CODIR. Toda alteração fica no histórico e no log. O campus não é editável (compõe o identificador da demanda).'),
+      el('p', { class: 'sub' }, 'Edição liberada até a submissão ao CODIR — depois congela (reverter o status reabre). Cada alteração registra no histórico e no log de auditoria exatamente quais campos mudaram. O campus da demanda não é editável (compõe o identificador).'),
       el('details', { class: 'editar-dados' }, el('summary', {}, 'Abrir edição dos dados'), form));
   }
 

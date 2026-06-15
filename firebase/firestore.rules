@@ -56,6 +56,16 @@ service cloud.firestore {
           && ( request.resource.data.status == resource.data.status
             || (resource.data.status == 'codir' && request.resource.data.status == 'fila') );
     }
+    // Edição dos DADOS da solicitação: não altera status, campus, avaliação nem a
+    // deliberação do CODIR; permitida apenas até a submissão ao CODIR
+    // (status recebido/análise/diligência). Ao entrar em 'codir', congela.
+    function editaDados() {
+      return resource.data.status in ['recebido','analise','diligencia']
+          && request.resource.data.status == resource.data.status
+          && request.resource.data.campus == resource.data.campus
+          && request.resource.data.get('aval', null) == resource.data.get('aval', null)
+          && mantemDeliberacao();
+    }
 
     // ---------- demandas (fila pública) --------------------------------------
     match /demandas/{id} {
@@ -97,6 +107,9 @@ service cloud.firestore {
         // CODIR: editar somente a observação do solicitante/CODIR
         || ( isCodir() && !isAdmin()
              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['obsSolicitante','historico','atualizadoEm']) )
+        // Edição dos DADOS até a submissão ao CODIR — perfis internos (Eng/Chefe/CODIR/Admin)
+        // e o campus dono. Não toca status, campus, avaliação nem deliberação.
+        || ( editaDados() && ( isInterno() || isCampusDe(resource.data.campus) ) )
       );
 
       // Exclusão: chefe/admin e nunca em atendimento/concluído

@@ -37,14 +37,16 @@ export function viewDashboard(rerender) {
              (i.equipePlanejamento || []).includes(meuProf.id);
     });
   }
-  // Ordena por prioridade e, em seguida, afunda as demandas ENCERRADAS
-  // (concluída/cancelada/não enquadrada) para o fim da lista — preservando a
-  // ordem dentro de cada grupo — para limpar a visualização inicial do Painel.
+  // Ordena por prioridade e, em seguida, afunda as demandas ENCERRADAS para o
+  // fim da lista — limpando a visualização inicial. Entre as encerradas, segue a
+  // ordem de STATUS_ENCERRADOS (Concluído → Não enquadrado → Cancelado por último),
+  // preservando a prioridade dentro de cada status.
   const ordenadasBase = ordenarFila(lista, params);
-  const ordenadas = [
-    ...ordenadasBase.filter(d => !STATUS_ENCERRADOS.includes(d.status)),
-    ...ordenadasBase.filter(d => STATUS_ENCERRADOS.includes(d.status)),
-  ];
+  const ativas = ordenadasBase.filter(d => !STATUS_ENCERRADOS.includes(d.status));
+  const encerradas = ordenadasBase
+    .filter(d => STATUS_ENCERRADOS.includes(d.status))
+    .sort((a, b) => STATUS_ENCERRADOS.indexOf(a.status) - STATUS_ENCERRADOS.indexOf(b.status));
+  const ordenadas = [...ativas, ...encerradas];
 
   // posição na fila (apenas status "fila", calculada sobre o conjunto completo)
   const filaCompleta = ordenarFila(todas.filter(d => d.status === 'fila'), params);
