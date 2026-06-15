@@ -175,6 +175,8 @@ textarea { resize: vertical; width: 100%; }
 .chip-check { display: inline-flex; align-items: center; gap: 7px; background: var(--fundo); border: 1px solid var(--borda-forte); padding: 7px 12px; border-radius: 999px; cursor: pointer; font-size: .88rem; transition: var(--transicao); }
 .chip-check:hover { background: var(--kpi-hover); }
 .chip-check input { accent-color: var(--primario); }
+.chips-pessoas { flex-direction: column; flex-wrap: nowrap; }
+.chips-pessoas .chip-check { border-radius: var(--raio-sm); white-space: nowrap; }
 .destaque-emergencial { border-color: var(--perigo); color: var(--perigo); font-weight: 600; }
 .destaque-codir { border-color: #8A6BAA; font-weight: 600; }
 

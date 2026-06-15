@@ -89,3 +89,13 @@ export function barraPontos(usados, limite, emergencial = 0) {
 }
 
 export const debounce = (fn, ms = 250) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
+
+// Abrevia nomes do meio p/ caber em uma linha: "Ana Maria de Souza Lima" -> "Ana M. de Souza Lima"
+export function abreviarNome(nome) {
+  if (!nome) return '';
+  const conect = new Set(['de', 'da', 'do', 'das', 'dos', 'e']);
+  const t = String(nome).trim().split(' ').filter(Boolean);
+  if (t.length <= 2) return t.join(' ');
+  return t.map((p, i) => (i === 0 || i === t.length - 1) ? p
+    : (conect.has(p.toLowerCase()) ? p.toLowerCase() : p[0].toUpperCase() + '.')).join(' ');
+}

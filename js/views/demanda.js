@@ -1,7 +1,7 @@
 // =============================================================================
 // Detalhe da demanda — consulta pública + tratamento (GUT, status, alocação)
 // =============================================================================
-import { el, frag, campo, select, toast, confirmar, badgeStatus, fmtMoeda, fmtNum, fmtDataHora } from '../ui.js';
+import { el, frag, campo, select, toast, confirmar, badgeStatus, fmtMoeda, fmtNum, fmtDataHora, abreviarNome } from '../ui.js';
 import { campusNome, statusNome, TIPOS_DEMANDA, PROJETO_EXISTE, PRAZOS, TIPOS_ATIVIDADE, ESCALA_G, ESCALA_U, ESCALA_T, precisaEtapaProjeto } from '../config.js';
 import { prioridade, pontosArt11, faixaValorLabel, cargaProfissionais } from '../calc.js';
 import { store } from '../store.js';
@@ -63,6 +63,7 @@ export function viewDemanda(rerender, id) {
 
   // ---------- coluna 2: pontuação ---------------------------------------------
   const aval = d.aval || {};
+  const semValorPts = ['fisc-obra', 'fisc-projeto'].includes(aval.tipoAtividade) && !(Number(aval.valorConsiderado) > 0) && (aval.pontosManual == null || aval.pontosManual === '');
   const cartaoPontuacao = el('section', { class: 'card' },
     el('h2', {}, 'Priorização'),
     el('div', { class: 'score-grid' },
@@ -76,7 +77,7 @@ export function viewDemanda(rerender, id) {
     el('div', { class: 'prioridade-final' },
       el('span', {}, 'Prioridade final'),
       el('strong', {}, fmtNum(pr.final))),
-    linha('Pontos de complexidade (art. 11)', aval.tipoAtividade === 'planejamento' ? 'Equipe de planejamento (limite do art. 13)' : (pts == null ? '—' : `${pts} ponto(s)${aval.pontosManual != null && aval.pontosManual !== '' ? ' (definido manualmente)' : ''}`)),
+    linha('Pontos de complexidade (art. 11)', aval.tipoAtividade === 'planejamento' ? 'Equipe de planejamento (limite do art. 13)' : (pts == null ? (semValorPts ? '— · informe o valor para calcular (art. 11)' : '—') : `${pts} ponto(s)${aval.pontosManual != null && aval.pontosManual !== '' ? ' (definido manualmente)' : ''}`)),
     linha('Aprovação do CODIR', d.codirAprovado ? '✓ Aprovada' : 'Pendente'),
   );
 
@@ -109,8 +110,8 @@ export function viewDemanda(rerender, id) {
             campo('Tipo de atividade da SENG', selAtv, `Define os pontos do art. 11 — confira a coerência com o tipo de demanda do campus (${nomeDe(TIPOS_DEMANDA, d.tipoDemanda)}).`),
             campo('Prazo considerado', selPrazo)),
           el('div', { class: 'form-linha' },
-            campo('Valor considerado (R$)', inValor, 'Estimativa orçamentária usada nas faixas.'),
-            inPontosManual ? campo('Pontos (manual)', inPontosManual, 'Deixe vazio para cálculo automático do art. 11.') : null),
+            campo('Valor considerado (R$)', inValor, 'Usado nas faixas e nos pontos do art. 11. Sem valor, a pontuação não é calculada automaticamente.'),
+            inPontosManual ? campo('Pontos (manual)', inPontosManual, 'Sem valor informado, o art. 11 não calcula sozinho — informe o valor ou os pontos aqui.') : null),
           el('div', { class: 'chips' },
             el('label', { class: 'chip-check' }, ckTombado, ' Bem tombado confirmado (+1 ponto, §4º)'),
             el('label', { class: 'chip-check destaque-emergencial' }, ckEspecial, ' Serviço emergencial (art. 11, §5º)')),
@@ -206,13 +207,13 @@ export function viewDemanda(rerender, id) {
       const selSub = select(opcoes, { value: interna.fiscalSubstituto ?? '', placeholder: '— sem substituto —' });
       const eqChecks = profissionais.filter(p => p.ativo !== false).map(p => {
         const c = el('input', { type: 'checkbox', value: p.id, ...((interna.equipePlanejamento || []).includes(p.id) ? { checked: true } : {}) });
-        return el('label', { class: 'chip-check' }, c, ` ${p.nome}`);
+        return el('label', { class: 'chip-check' }, c, ' ' + abreviarNome(p.nome));
       });
       filhos.push(el('h3', {}, 'Alocação ', el('span', { class: 'sub' }, '(visível somente autenticado)')));
       filhos.push(el('div', { class: 'form-grid' },
         campo('Fiscal técnico titular', selTit),
         campo('Fiscal técnico substituto', selSub),
-        campo('Integrantes técnicos — equipe de planejamento (art. 13)', el('div', { class: 'chips' }, eqChecks)),
+        campo('Integrantes técnicos — equipe de planejamento (art. 13)', el('div', { class: 'chips chips-pessoas' }, eqChecks)),
         el('button', { class: 'btn primario', onclick: async () => {
           if (selTit.value && selTit.value === selSub.value) { toast('Titular e substituto devem ser diferentes.', 'erro'); return; }
           const equipe = eqChecks.map(l => l.querySelector('input')).filter(c => c.checked).map(c => c.value);

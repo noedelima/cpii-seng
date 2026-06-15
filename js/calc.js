@@ -64,10 +64,12 @@ export function pontosArt11(aval, valorRef) {
   let base = null;
   switch (aval.tipoAtividade) {
     case 'fisc-obra':
-      base = !temValor ? 2 : (v < valorRef ? 1 : (v <= valorRef * 5 ? 2 : 3));
+      if (!temValor) return null; // sem valor estimado: não calcula (sinalizado na avaliação)
+      base = v < valorRef ? 1 : (v <= valorRef * 5 ? 2 : 3);
       break;
     case 'fisc-projeto':
-      base = (!temValor || v <= valorRef * 5) ? 2 : 3;
+      if (!temValor) return null; // sem valor estimado: não calcula
+      base = v <= valorRef * 5 ? 2 : 3;
       break;
     case 'elab-projeto':
       base = 3;
