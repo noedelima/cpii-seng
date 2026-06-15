@@ -121,7 +121,7 @@ O cálculo replica o modelo do Power BI da SENG (art. 5º, II):
 
 > **Exportações:** além do **Baixar PDF da fila**, o painel interno tem **Baixar Excel** (.xlsx com todas as colunas — classificação, escores, alocação e observações), disponível apenas para Engenharia, Chefe e Administrador.
 
-> **Ordenação do Painel.** As demandas **encerradas** (Concluídas, Canceladas e Não enquadradas) são automaticamente **deslocadas para o fim da lista**, preservando a ordem por prioridade dentro de cada grupo — assim a visualização inicial destaca as demandas **ativas**.
+> **Ordenação do Painel.** As demandas **encerradas** são automaticamente **deslocadas para o fim da lista**, na ordem **Concluídas → Não enquadradas → Canceladas** (Canceladas por último), preservando a prioridade dentro de cada grupo — assim a visualização inicial destaca as demandas **ativas**.
 
 ---
 
@@ -135,7 +135,7 @@ Clique em uma linha do painel para abrir o detalhe. A página é dividida em dua
 ![Detalhe de uma demanda, em duas colunas](docs/ajuda/img/eng-demanda.png)
 *Figura 3 — Detalhe da demanda: dados/histórico à esquerda; priorização, avaliação, gestão e alocação à direita.*
 
-> **Editar dados da solicitação (Chefia/Admin).** Enquanto a demanda **não foi aprovada pelo CODIR** (status Recebido, Em análise, Em diligência ou Aguardando aprovação do CODIR), a **Chefia/Administração** vê o cartão **“Editar dados da solicitação”** e pode corrigir localização, tipo, situação do projeto, valor, prazo, processo SUAP, objeto, descrição, especialidades e o sinalizador emergencial. **Após a aprovação** (a partir de “Na fila”) os dados **congelam**; para corrigir, **reverta o status** (Fluxo 5) e a edição reabre. O **campus não é editável** (compõe o identificador). Toda alteração fica no **histórico** e no **log de auditoria**.
+> **Editar dados da solicitação.** Enquanto a demanda **não foi submetida ao CODIR** (status Recebido, Em análise ou Em diligência), o cartão **“Editar dados da solicitação”** permite corrigir localização, tipo, situação do projeto, valor, prazo, processo SUAP, objeto, descrição, especialidades e o sinalizador emergencial. A edição é aberta a **Engenharia, Chefia, Administração e CODIR** (qualquer demanda) e ao **Campus** (apenas as da própria unidade). Ao entrar em **“Aguardando aprovação do CODIR”**, os dados **congelam para todos**; para corrigir, **reverta o status** (Fluxo 5) e a edição reabre. A **unidade (campus) não é editável** (compõe o identificador). Cada alteração registra no **histórico** e no **log de auditoria** **exatamente quais campos** mudaram — ex.: *“Dados da solicitação editados — campos: Processo SUAP, Valor estimado, Prazo estimado”*.
 
 ---
 
