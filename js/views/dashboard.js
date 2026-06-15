@@ -129,7 +129,7 @@ export function viewDashboard(rerender) {
         el('div', { class: 'prof-pontos' },
           el('span', { class: c.excedido ? 'excedido' : '' }, `${c.regular} / ${params.limitePontos} pts`),
           c.emergencial ? el('span', { class: 'tag-emergencial' }, `+${c.emergencial} emerg.`) : null,
-          c.planejamento ? el('span', { class: 'sub' }, ` · ${c.planejamento} planej.`) : null),
+          el('span', { class: 'sub', title: 'Participações em equipes de planejamento (art. 13)' }, ` · ${c.planejamento} planej.`)),
         barra(c.regular, params.limitePontos));
     });
     painelProfs = el('section', { class: 'card' },
