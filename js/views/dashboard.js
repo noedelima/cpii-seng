@@ -173,11 +173,13 @@ export function viewDashboard(rerender) {
       el('div', { class: 'hero-acoes' },
         user && can(user, 'criar') ? el('a', { class: 'btn primario', href: '#/nova' }, '+ Nova solicitação') : null,
         btnPdf, btnXlsx)),
+    // Carga da equipe vem ANTES da fila: card de tamanho fixo não deve ficar
+    // soterrado pela fila, que cresce com o histórico.
+    painelProfs,
     el('section', { class: 'card' },
       el('h2', {}, 'Fila de demandas ', el('span', { class: 'sub' }, `${ordenadas.length} de ${todas.length}`)),
       chips, tabela,
       el('p', { class: 'nota' }, '* prioridade com fator de ajuste deliberado pelo CODIR. Clique em uma linha para ver os detalhes.')),
-    painelProfs,
   );
 }
 
