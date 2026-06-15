@@ -111,7 +111,7 @@ O cálculo replica o modelo do Power BI da SENG (art. 5º, II):
 ![Tela de acesso](docs/ajuda/img/login.png)
 *Figura 1 — Acesso ao sistema.*
 
-2. No **Painel**, autenticado, a tabela ganha a coluna **Fiscal técnico** e o filtro **“Minhas atribuições”**; abaixo aparece o cartão **Carga da equipe**.
+2. No **Painel**, autenticado, a tabela ganha a coluna **Fiscal técnico** e o filtro **“Minhas atribuições”**; o cartão **Carga da equipe** aparece **logo acima da fila**, para ficar sempre visível independentemente do tamanho da lista.
 3. Para triar, filtre por **status “Recebido”** (ou por especialidade) e abra as demandas pendentes.
 
 ![Painel interno da SENG, com colunas e carga da equipe](docs/ajuda/img/eng-painel.png)
