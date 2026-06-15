@@ -8,7 +8,7 @@ export const APP = {
   orgao: 'Colégio Pedro II',
   setor: 'Seção de Engenharia — SENG/DECOF',
   portaria: 'Portaria nº 7503/REITORIA/CPII, de 24/11/2025',
-  versao: '1.5.0',
+  versao: '1.5.1',
 };
 
 // --- Parâmetros ajustáveis pelo Administrador (defaults) ---------------------
@@ -74,6 +74,15 @@ export const TRANSICOES = {
 
 // Status que travam exclusão e alteração de classificação (exigência funcional)
 export const STATUS_TRAVADOS = ['atendimento', 'concluido'];
+
+// Reversões de status — disponíveis SOMENTE para Chefe/Admin (statusTotal), para
+// desfazer um “Em atendimento” indevido ou reabrir uma conclusão acidental.
+// Mudam APENAS o status: a trava de classificação do art. 12 continua valendo
+// (avaliação, ajuste e aprovação do CODIR permanecem imutáveis enquanto travada).
+export const TRANSICOES_REVERSAO = {
+  'atendimento': ['fila', 'codir', 'analise'],
+  'concluido':   ['atendimento'],
+};
 
 // --- Escalas GUT (idênticas às utilizadas no PowerBI da SENG) ----------------
 export const ESCALA_G = [

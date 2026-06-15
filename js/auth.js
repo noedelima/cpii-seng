@@ -1,7 +1,7 @@
 // =============================================================================
 // SENG Demandas — Papéis e permissões (espelhadas nas Security Rules)
 // =============================================================================
-import { STATUS_TRAVADOS, TRANSICOES } from './config.js';
+import { STATUS_TRAVADOS, TRANSICOES, TRANSICOES_REVERSAO } from './config.js';
 
 // Capacidades por papel.
 // CODIR: marca "Aprovado pelo CODIR" e define o fator de ajuste (após análise GUT).
@@ -28,9 +28,19 @@ const STATUS_ENG = ['analise', 'diligencia', 'codir'];
 export function transicoesPermitidas(user, demanda) {
   if (!user || !demanda) return [];
   const proximos = TRANSICOES[demanda.status] || [];
-  if (can(user, 'statusTotal')) return proximos;
+  if (can(user, 'statusTotal')) {
+    // Chefe/Admin também podem reverter um status travado (atendimento/concluído)
+    // para corrigir lançamentos indevidos — ver TRANSICOES_REVERSAO.
+    return [...proximos, ...(TRANSICOES_REVERSAO[demanda.status] || [])];
+  }
   if (can(user, 'statusBasico')) return proximos.filter(s => STATUS_ENG.includes(s));
   return [];
+}
+
+// Indica se a transição de `de` para `para` é uma reversão (correção de status
+// travado por Chefe/Admin) — usado para exigir confirmação explícita na interface.
+export function ehReversaoStatus(de, para) {
+  return (TRANSICOES_REVERSAO[de] || []).includes(para);
 }
 
 // Trava funcional: em atendimento/concluído não se altera classificação nem se exclui

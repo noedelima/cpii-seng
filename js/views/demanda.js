@@ -5,7 +5,7 @@ import { el, frag, campo, select, toast, confirmar, badgeStatus, fmtMoeda, fmtNu
 import { campusNome, statusNome, TIPOS_DEMANDA, PROJETO_EXISTE, PRAZOS, TIPOS_ATIVIDADE, ESCALA_G, ESCALA_U, ESCALA_T, precisaEtapaProjeto } from '../config.js';
 import { prioridade, pontosArt11, faixaValorLabel, cargaProfissionais, fiscaisDe } from '../calc.js';
 import { store } from '../store.js';
-import { can, podeAvaliar, podeExcluir, podeComplementar, podeDeliberarCodir, transicoesPermitidas, travada } from '../auth.js';
+import { can, podeAvaliar, podeExcluir, podeComplementar, podeDeliberarCodir, transicoesPermitidas, travada, ehReversaoStatus } from '../auth.js';
 
 const nomeDe = (lista, id, campoNome = 'nome') => (lista.find(x => (x.id ?? x.v) === id) || {})[campoNome] ?? (lista.find(x => x.id === id) || {}).t ?? '—';
 
@@ -185,6 +185,16 @@ export function viewDemanda(rerender, id) {
       filhos.push(el('h3', {}, 'Alterar status'));
       filhos.push(el('div', { class: 'chips' }, proximos.map(st => el('button', {
         class: 'btn ghost sm', onclick: async () => {
+          if (ehReversaoStatus(d.status, st)) {
+            const msg = d.status === 'concluido'
+              ? 'A demanda volta para “Em atendimento” e os pontos do art. 12 voltam a contar. A ação fica registrada no histórico.'
+              : `A demanda volta para “${statusNome(st)}”; os pontos do art. 12 deixam de ser contabilizados. A ação fica registrada no histórico.`;
+            const okRev = await confirmar(`Reverter “${statusNome(d.status)}”?`, msg, { ok: 'Reverter', perigo: true });
+            if (!okRev) return;
+            await s.atualizarDemanda(d.id, { status: st }, `Reversão de status: “${statusNome(d.status)}” → “${statusNome(st)}”`);
+            toast(`Status: ${statusNome(st)}.`);
+            return;
+          }
           if (st === 'atendimento' && !d.codirAprovado) {
             const okMesmo = await confirmar('Iniciar sem aprovação do CODIR?', 'Esta demanda ainda não está marcada como aprovada pelo CODIR. Iniciar o atendimento mesmo assim (ex.: emergência — art. 9º)?', { ok: 'Iniciar mesmo assim', perigo: true });
             if (!okMesmo) return;
