@@ -224,6 +224,20 @@ textarea { resize: vertical; width: 100%; }
 .card-cab input[type="search"] { max-width: 300px; }
 .zona-perigo { margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--borda-forte); }
 
+/* --- Observações (histórico de comentários) ---------------------------------- */
+.obs-bloco { margin-top: 12px; }
+.obs-bloco + .obs-bloco { margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--borda); }
+.obs-titulo { font-size: .82rem; font-weight: 600; color: var(--texto-2); margin: 0 0 8px; }
+.obs-lista { list-style: none; margin: 0 0 10px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.obs-item { background: var(--fundo-2); border: 1px solid var(--borda); border-radius: var(--raio-sm); padding: 8px 11px; }
+.obs-meta { font-size: .76rem; color: var(--texto-2); margin-bottom: 3px; }
+.obs-meta strong { color: var(--texto); font-weight: 600; }
+.obs-texto { font-size: .9rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+.obs-acoes { display: flex; gap: 8px; margin-top: 7px; flex-wrap: wrap; }
+.obs-add { display: flex; flex-direction: column; gap: 7px; align-items: flex-start; }
+.obs-add textarea, .obs-item textarea { width: 100%; }
+.obs-vazio { font-size: .85rem; color: var(--texto-2); margin: 0 0 8px; }
+
 /* --- Timeline -------------------------------------------------------------------------------------------- */
 .timeline { list-style: none; margin: 0; padding: 0; }
 .timeline li { position: relative; padding: 0 0 14px 22px; }

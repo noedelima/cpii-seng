@@ -34,6 +34,10 @@ export function montarLinhas({ demandas, params, internas = {}, profissionais = 
     'Equipe de planejamento', 'Obs. Engenharia', 'Obs. Solicitante/CODIR', 'Registrada em', 'Atualizada em',
   ];
   const fmt = (ts) => ts ? new Date(ts).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '';
+  // Observações: histórico de comentários -> texto (compat com formato antigo em string)
+  const obsTxt = (arr, legado) => Array.isArray(arr)
+    ? arr.map(c => `[${c.autor || '—'}${c.ts ? ' ' + fmt(c.ts) : ''}${c.editadoEm ? ' (editado)' : ''}] ${c.texto}`).join('\n')
+    : (legado || '');
   const linhas = demandas.map(d => {
     const a = d.aval || {};
     const pr = prioridade(d, params);
@@ -57,7 +61,7 @@ export function montarLinhas({ demandas, params, internas = {}, profissionais = 
       fiscaisDe(it).titulares.map(nomeProf).filter(Boolean).join(', '),
       fiscaisDe(it).substitutos.map(nomeProf).filter(Boolean).join(', '),
       (it.equipePlanejamento || []).map(nomeProf).filter(Boolean).join(', '),
-      it.obsEngenharia || '', d.obsSolicitante || '',
+      obsTxt(d.obsInterna, it.obsEngenharia), obsTxt(d.obsExterna, d.obsSolicitante),
       fmt(d.criadoEm), fmt(d.atualizadoEm),
     ];
   });

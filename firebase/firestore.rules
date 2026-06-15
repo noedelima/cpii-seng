@@ -46,6 +46,8 @@ service cloud.firestore {
           && d.especialidades is list && d.especialidades.size() <= 8
           && (!('historico' in d) || (d.historico is list && d.historico.size() <= 400))
           && (!('obsSolicitante' in d) || (d.obsSolicitante is string && d.obsSolicitante.size() <= 4000))
+          && (!('obsInterna' in d) || (d.obsInterna is list && d.obsInterna.size() <= 300))
+          && (!('obsExterna' in d) || (d.obsExterna is list && d.obsExterna.size() <= 300))
           && (!('etapa' in d) || d.etapa == null || d.etapa in ['projeto','obra']);
     }
     // Deliberação do CODIR: muda somente codirAprovado/ajuste/status/historico/atualizadoEm,
@@ -110,6 +112,10 @@ service cloud.firestore {
         // Edição dos DADOS até a submissão ao CODIR — perfis internos (Eng/Chefe/CODIR/Admin)
         // e o campus dono. Não toca status, campus, avaliação nem deliberação.
         || ( editaDados() && ( isInterno() || isCampusDe(resource.data.campus) ) )
+        // Observações (histórico de comentários, públicas). Só alteram o próprio campo.
+        // Interna (Engenharia): Eng/Chefe/Admin. Externa (Solicitante/CODIR): campus dono / CODIR / Admin.
+        || ( isEng() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['obsInterna','historico','atualizadoEm']) )
+        || ( (isCampusDe(resource.data.campus) || isCodir()) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['obsExterna','historico','atualizadoEm']) )
       );
 
       // Exclusão: chefe/admin e nunca em atendimento/concluído

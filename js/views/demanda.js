@@ -9,6 +9,8 @@ import { can, podeAvaliar, podeExcluir, podeComplementar, podeDeliberarCodir, tr
 
 const nomeDe = (lista, id, campoNome = 'nome') => (lista.find(x => (x.id ?? x.v) === id) || {})[campoNome] ?? (lista.find(x => x.id === id) || {}).t ?? '—';
 
+let obsEdit = null; // comentário (campo:id) em edição inline nas Observações
+
 export function viewDemanda(rerender, id) {
   const s = store();
   const user = s.user;
@@ -375,42 +377,76 @@ export function viewDemanda(rerender, id) {
       linha('Equipe de planejamento', (interna.equipePlanejamento || []).map(nomeProf).join(', ') || '—'));
   }
 
-  // ---------- observações (Engenharia interna + Solicitante/CODIR) -------------------
+  // ---------- observações: dois históricos de comentários (públicos) -----------------
   let cartaoObs = null;
   {
     const ehCampusDono = user && user.role === 'campus' && user.campus === d.campus;
-    const editaEng = user && can(user, 'avaliar');            // engenharia, chefe, admin
-    const editaSol = user && (ehCampusDono || can(user, 'codir')); // campus (dono), codir, admin
-    const veEng = user && can(user, 'verInterno');
-    const filhosObs = [el('h2', {}, 'Observações')];
-    if (veEng) {
-      if (editaEng) {
-        const ta = el('textarea', { rows: 3, maxlength: 4000, placeholder: 'Anotações técnicas internas (Engenharia/Chefia)…' });
-        ta.value = interna.obsEngenharia || '';
-        filhosObs.push(
-          campo('Observação da Engenharia (interna)', ta, 'Visível apenas a usuários internos (não aparece no painel público).'),
-          el('button', { class: 'btn ghost sm', onclick: async () => {
-            await s.setInterna(d.id, { obsEngenharia: ta.value.trim() });
-            await s.atualizarDemanda(d.id, {}, 'Observação da Engenharia atualizada');
-            toast('Observação da Engenharia salva.');
-          } }, 'Salvar observação da Engenharia'));
-      } else if (interna.obsEngenharia) {
-        filhosObs.push(linha('Observação da Engenharia', interna.obsEngenharia));
+    const podeAddInt = !!(user && can(user, 'avaliar'));                  // eng/chefe/admin
+    const podeAddExt = !!(user && (ehCampusDono || can(user, 'codir')));  // campus-dono/codir/admin
+
+    // compat: formato antigo (string única) vira uma entrada legada (sem autor/exclusão)
+    const exibirDe = (arr, legado) => Array.isArray(arr) ? arr
+      : (legado ? [{ id: 'legado', autor: '(registro anterior)', autorUid: null, ts: d.atualizadoEm || d.criadoEm, texto: legado, legado: true }] : []);
+    const baseDe = (arr, legado) => Array.isArray(arr) ? arr.slice()
+      : (legado ? [{ id: 'leg' + (d.criadoEm || Date.now()), autor: '(registro anterior)', autorUid: null, ts: d.atualizadoEm || d.criadoEm, texto: legado }] : []);
+
+    const podeEditar = (c) => !!(user && !c.legado && user.uid && user.uid === c.autorUid);
+    const podeExcluirInt = (c) => !!(user && !c.legado && (user.uid === c.autorUid || can(user, 'excluir')));
+    const podeExcluirExt = (c) => !!(user && !c.legado && (user.uid === c.autorUid || can(user, 'codir') || ehCampusDono));
+    const novoId = () => 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    const salvar = (campo2, arr, evento) => s.atualizarDemanda(d.id, { [campo2]: arr }, evento);
+
+    const bloco = (titulo, campo2, legado, podeAdd, podeExcluir) => {
+      const lista = exibirDe(d[campo2], legado);
+      const filhos = [el('p', { class: 'obs-titulo' }, titulo)];
+      if (lista.length) {
+        filhos.push(el('ul', { class: 'obs-lista' }, lista.map(c => {
+          if (obsEdit === campo2 + ':' + c.id) {
+            const tae = el('textarea', { rows: 3, maxlength: 4000 }); tae.value = c.texto;
+            return el('li', { class: 'obs-item' }, tae, el('div', { class: 'obs-acoes' },
+              el('button', { class: 'btn primario sm', onclick: async () => {
+                const t = tae.value.trim(); if (!t) { toast('Comentário vazio.', 'erro'); return; }
+                const arr = baseDe(d[campo2], legado).map(x => x.id === c.id ? { ...x, texto: t, editadoEm: Date.now() } : x);
+                obsEdit = null; await salvar(campo2, arr, `Comentário editado — ${titulo}`); toast('Comentário atualizado.');
+              } }, 'Salvar'),
+              el('button', { class: 'btn ghost sm', onclick: () => { obsEdit = null; rerender(); } }, 'Cancelar')));
+          }
+          return el('li', { class: 'obs-item' },
+            el('div', { class: 'obs-meta' }, el('strong', {}, c.autor || '—'),
+              ` · ${fmtDataHora(c.ts)}`, c.editadoEm ? ' · (editado)' : ''),
+            el('div', { class: 'obs-texto' }, c.texto),
+            (podeEditar(c) || podeExcluir(c)) ? el('div', { class: 'obs-acoes' },
+              podeEditar(c) ? el('button', { class: 'btn ghost sm', onclick: () => { obsEdit = campo2 + ':' + c.id; rerender(); } }, 'Editar') : null,
+              podeExcluir(c) ? el('button', { class: 'btn ghost sm perigo', onclick: async () => {
+                const ok = await confirmar('Excluir comentário?', 'A ação fica registrada no histórico.', { ok: 'Excluir', perigo: true });
+                if (!ok) return;
+                const arr = baseDe(d[campo2], legado).filter(x => x.id !== c.id);
+                await salvar(campo2, arr, `Comentário excluído — ${titulo}`); toast('Comentário excluído.');
+              } }, 'Excluir') : null) : null);
+        })));
+      } else {
+        filhos.push(el('p', { class: 'obs-vazio' }, 'Sem observações.'));
       }
+      if (podeAdd) {
+        const tan = el('textarea', { rows: 3, maxlength: 4000, placeholder: 'Escreva um comentário…' });
+        filhos.push(el('div', { class: 'obs-add' }, tan, el('button', { class: 'btn ghost sm', onclick: async () => {
+          const t = tan.value.trim(); if (!t) { toast('Comentário vazio.', 'erro'); return; }
+          const arr = [...baseDe(d[campo2], legado), { id: novoId(), autor: user.nome, autorUid: user.uid, ts: Date.now(), texto: t }];
+          await salvar(campo2, arr, `Comentário adicionado — ${titulo}`); toast('Comentário adicionado.');
+        } }, 'Adicionar comentário')));
+      }
+      return el('div', { class: 'obs-bloco' }, filhos);
+    };
+
+    const temInt = exibirDe(d.obsInterna, interna.obsEngenharia).length || podeAddInt;
+    const temExt = exibirDe(d.obsExterna, d.obsSolicitante).length || podeAddExt;
+    if (temInt || temExt) {
+      const filhosObs = [el('h2', {}, 'Observações'),
+        el('p', { class: 'sub' }, 'Comentários públicos, com autor e data/hora. Edição e exclusão conforme o perfil.')];
+      if (temInt) filhosObs.push(bloco('Observação da Engenharia (interna)', 'obsInterna', interna.obsEngenharia, podeAddInt, podeExcluirInt));
+      if (temExt) filhosObs.push(bloco('Observação do solicitante / CODIR', 'obsExterna', d.obsSolicitante, podeAddExt, podeExcluirExt));
+      cartaoObs = el('section', { class: 'card' }, filhosObs);
     }
-    if (editaSol) {
-      const ts = el('textarea', { rows: 3, maxlength: 4000, placeholder: 'Observações do solicitante ou do CODIR…' });
-      ts.value = d.obsSolicitante || '';
-      filhosObs.push(
-        campo('Observação do solicitante / CODIR', ts, 'Registrada no histórico e no log de auditoria.'),
-        el('button', { class: 'btn ghost sm', onclick: async () => {
-          await s.atualizarDemanda(d.id, { obsSolicitante: ts.value.trim() }, 'Observação do solicitante/CODIR atualizada');
-          toast('Observação salva.');
-        } }, 'Salvar observação do solicitante/CODIR'));
-    } else if (d.obsSolicitante) {
-      filhosObs.push(linha('Observação do solicitante/CODIR', d.obsSolicitante));
-    }
-    if (filhosObs.length > 1) cartaoObs = el('section', { class: 'card' }, filhosObs);
   }
 
   // ---------- histórico --------------------------------------------------------------
