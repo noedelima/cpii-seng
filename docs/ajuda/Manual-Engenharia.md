@@ -121,7 +121,7 @@ O cálculo replica o modelo do Power BI da SENG (art. 5º, II):
 
 > **Exportações:** além do **Baixar PDF da fila**, o painel interno tem **Baixar Excel** (.xlsx com todas as colunas — classificação, escores, alocação e observações), disponível apenas para Engenharia, Chefe e Administrador.
 
-> **Ordenação do Painel.** As demandas **encerradas** são automaticamente **deslocadas para o fim da lista**, na ordem **Concluídas → Não enquadradas → Canceladas** (Canceladas por último), preservando a prioridade dentro de cada grupo — assim a visualização inicial destaca as demandas **ativas**.
+> **Ordenação do Painel.** A lista é organizada por **status**, na sequência operacional — **Em atendimento → Recebido → Em análise → Em diligência → Aguardando CODIR → Na fila → Suspenso → Concluído → Não enquadrado → Cancelado → Excluído** —, com a **prioridade** ordenando dentro de cada status. Assim o que está em andamento aparece primeiro; encerradas e excluídas ficam no fim. *(O status **Excluído** — arquivo morto — só aparece para Chefe/Admin.)*
 
 ---
 
@@ -206,6 +206,8 @@ Quando a demanda entra em **Em atendimento** (ou é **Concluída**), o sistema *
 > **Desfazer um status indevido (Chefe/Admin).** Se uma demanda for marcada **Em atendimento** por engano, a **Chefia/Administração** pode **revertê-la diretamente**: no cartão **Gestão** aparecem os botões **Na fila**, **Aguardando aprovação do CODIR** e **Em análise**. Uma demanda **Concluída** por engano pode ser **reaberta** para **Em atendimento**. A ação pede confirmação e é registrada no histórico (muda **apenas o status** — a classificação é preservada; reverter o atendimento libera os pontos do art. 12, reabrir a conclusão volta a contá-los).
 >
 > Para **editar os dados** de uma demanda em atendimento, o caminho continua sendo **Suspender → editar → retomar o atendimento**.
+>
+> **Excluir = arquivo morto (recuperável por 30 dias).** O botão **Excluir demanda** (Chefe/Admin, fora de atendimento/concluída) **não apaga na hora**: a demanda vai para o **arquivo morto** (status **Excluído**), some do Painel para os demais perfis e aparece no fim da lista **só para Chefe/Admin**. Ao abrir a demanda, há a opção **Resgatar** (volta ao status anterior). Passados **30 dias**, é removida **definitivamente** (limpeza automática quando um Chefe/Admin abre o sistema). É a rede de proteção contra exclusões acidentais.
 
 ---
 
