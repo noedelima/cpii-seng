@@ -54,7 +54,7 @@ As capacidades de cada perfil espelham a Portaria e são validadas **também nas
 | Perfil | Pode |
 |--------|------|
 | **Campus** | Cadastrar solicitações do seu campus; acompanhar; complementar em diligência. |
-| **Engenharia** | Tudo do Campus (qualquer campus) + ver dados internos, **avaliar (GUT)** e aplicar status de triagem (Em análise, Em diligência, Aguardando CODIR). |
+| **Engenharia** | **Cadastrar** e acompanhar demandas de **qualquer campus** + ver dados internos, **avaliar (GUT)** e aplicar status de triagem (Em análise, Em diligência, Aguardando CODIR). |
 | **Chefe de Seção** | Tudo da Engenharia + **status total**, **alocação de fiscais**, exclusão, **profissionais** e **parâmetros**. |
 | **CODIR** | Ver dados internos + **aprovar** e definir **fator de ajuste** (após a análise GUT). |
 | **Administrador** | Executa **todas** as ações + gestão de **usuários** e **log de auditoria** (tudo registrado). |
@@ -315,7 +315,7 @@ Em **Administração**, o cartão **Parâmetros do sistema** controla o cálculo
 | ① | **Nome** | Nome completo da pessoa. |
 | ② | **E-mail** | Para a SENG, use o **mesmo e-mail** que será o do profissional — o vínculo é automático. |
 | ③ | **Perfil** | Campus, Engenharia, Chefe de Seção, CODIR ou Administrador. |
-| ④ | **Campus** | Apenas para o perfil **Campus** — define a unidade vinculada. |
+| ④ | **Campi** | Apenas para o perfil **Campus** — marque **uma ou mais** unidades. O cadastrador atua em todos os campi marcados (ex.: **CREIR + Realengo I**, quando há gestão compartilhada). |
 | ⑤ | **Senha inicial** | Mínimo de 6 caracteres; a pessoa troca depois em “Minha conta”. |
 
 3. Clique em **Salvar**. A credencial e o perfil são criados de uma só vez (sem console externo).

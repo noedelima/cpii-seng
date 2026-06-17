@@ -90,7 +90,7 @@ A **consulta à fila** e o **relatório em PDF** são **públicos** — não exi
 *Figura 1 — Tela de acesso. A consulta e o PDF são públicos; o login habilita cadastro e acompanhamento.*
 
 > **Segurança**
-> - O perfil **Campus** já vem amarrado à sua unidade — você só cadastra e enxerga as ações do seu próprio campus.
+> - O perfil **Campus** já vem amarrado à sua unidade (ou unidades) — você cadastra e acompanha as ações do(s) seu(s) campus.
 > - A senha pode ser trocada por você a qualquer momento (Fluxo 6).
 > - Nunca compartilhe sua senha. Em caso de dúvida sobre o acesso, fale com a SENG.
 
@@ -149,7 +149,7 @@ Este é o fluxo mais importante para o campus.
 |----|-------|----------------|
 | ① | **Campus / unidade** | Já vem definido pelo seu perfil — não é necessário alterar. |
 | ② | **Localização no campus** | Onde fica a intervenção: bloco, pavimento, salas. Ex.: *Bloco B, 2º pavimento, salas 201–204*. |
-| ③ | **Tipo de demanda** | Obra/reforma, projeto (a elaborar ou contratar), projeto e obra, laudo/avaliação técnica, assessoria técnica ou outro. |
+| ③ | **Tipo de demanda** | Obra/reforma, projeto (a elaborar ou contratar), projeto e obra, ou outro. *(Laudo e assessoria técnica seguem por chamado no SUAP, fora do sistema por enquanto.)* |
 | ④ | **Projeto já existe?** | *Sim, completo* / *Sim, parcial (precisa complementar)* / *Não — necessita contratar projeto*. |
 | ⑤ | **Imóvel tombado / patrimônio histórico?** | *Sim* / *Não* / *Não sei informar*. Influencia a complexidade e a pontuação. |
 | ⑥ | **Previsão de prazo desejada** | *Menos de 6 meses* / *6 a 12 meses* / *Mais de 12 meses* (ou sem previsão). |
