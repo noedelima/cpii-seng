@@ -8,7 +8,7 @@ export const APP = {
   orgao: 'Colégio Pedro II',
   setor: 'Seção de Engenharia — SENG/DECOF',
   portaria: 'Portaria nº 7503/REITORIA/CPII, de 24/11/2025',
-  versao: '1.5.5',
+  versao: '1.5.6',
 };
 
 // --- Parâmetros ajustáveis pelo Administrador (defaults) ---------------------
@@ -54,6 +54,7 @@ export const STATUS = [
   { id: 'suspenso',    nome: 'Suspenso',                        cor: 'st-suspenso' },
   { id: 'cancelado',   nome: 'Cancelado',                       cor: 'st-cancelado' },
   { id: 'nao-enquadrado', nome: 'Não enquadrado (Art. 18)',     cor: 'st-nao-enquadrado' },
+  { id: 'excluido',    nome: 'Excluído',                         cor: 'st-excluido' },
 ];
 export const statusNome = (id) => (STATUS.find(s => s.id === id) || {}).nome || id;
 export const statusCor  = (id) => (STATUS.find(s => s.id === id) || {}).cor || '';
@@ -84,9 +85,15 @@ export const TRANSICOES_REVERSAO = {
   'concluido':   ['atendimento'],
 };
 
-// Status encerrados — afundam para o fim da lista do Painel (limpam a visualização).
-// A ordem do array é a ordem de exibição no rodapé: Concluído → Não enquadrado → Cancelado (por último).
-export const STATUS_ENCERRADOS = ['concluido', 'nao-enquadrado', 'cancelado'];
+// Ordem de exibição no Painel — sequência operacional (workflow). Ativos primeiro;
+// encerrados e o arquivo morto (Excluído) por último. A prioridade ordena dentro de cada status.
+export const STATUS_ORDEM = [
+  'atendimento', 'recebido', 'analise', 'diligencia', 'codir', 'fila',
+  'suspenso', 'concluido', 'nao-enquadrado', 'cancelado', 'excluido',
+];
+
+// Arquivo morto: dias até a exclusão definitiva de uma demanda excluída.
+export const DIAS_ARQUIVO_MORTO = 30;
 
 // Status em que se pode editar os DADOS da solicitação. A edição vai até a
 // SUBMISSÃO ao CODIR: ao entrar em “Aguardando aprovação do CODIR” (codir),

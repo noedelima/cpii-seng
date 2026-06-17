@@ -153,6 +153,41 @@ export class FirebaseProvider {
     await fs.deleteDoc(fs.doc(this.db, 'internas', id)).catch(() => {});
     await this._log('Demanda excluída', id);
   }
+  // Arquivo morto: soft-delete recuperável; expurgarEm (Timestamp) alimenta o TTL do Firestore.
+  async arquivarDemanda(id) {
+    const fs = this._F;
+    const d = this.getDemanda(id); if (!d) throw new Error('Demanda não encontrada.');
+    if (['atendimento', 'concluido'].includes(d.status))
+      throw new Error('Demandas em atendimento ou concluídas não podem ser excluídas.');
+    const expurgar = fs.Timestamp.fromMillis(Date.now() + 30 * 86400000);
+    await fs.updateDoc(fs.doc(this.db, 'demandas', id), {
+      statusAnterior: d.status, status: 'excluido', excluidoEm: Date.now(), expurgarEm: expurgar, atualizadoEm: Date.now(),
+      historico: fs.arrayUnion({ ts: Date.now(), user: this.user?.nome || 'Sistema', acao: 'Demanda enviada ao arquivo morto (excluída)' }),
+    });
+    if (this._internas[id]) await fs.setDoc(fs.doc(this.db, 'internas', id), { expurgarEm: expurgar }, { merge: true }).catch(() => {});
+    await this._log('Demanda arquivada (excluída)', id, d.objeto || '');
+  }
+  async resgatarDemanda(id) {
+    const fs = this._F;
+    const d = this.getDemanda(id); if (!d) throw new Error('Demanda não encontrada.');
+    await fs.updateDoc(fs.doc(this.db, 'demandas', id), {
+      status: d.statusAnterior || 'recebido', statusAnterior: fs.deleteField(), excluidoEm: fs.deleteField(), expurgarEm: fs.deleteField(), atualizadoEm: Date.now(),
+      historico: fs.arrayUnion({ ts: Date.now(), user: this.user?.nome || 'Sistema', acao: 'Demanda resgatada do arquivo morto' }),
+    });
+    if (this._internas[id]) await fs.setDoc(fs.doc(this.db, 'internas', id), { expurgarEm: fs.deleteField() }, { merge: true }).catch(() => {});
+    await this._log('Demanda resgatada', id, d.objeto || '');
+  }
+  async purgarExcluidos(dias = 30) {
+    const fs = this._F;
+    const limite = Date.now() - dias * 86400000;
+    const expirados = this._demandas.filter(d => d.status === 'excluido' && (d.excluidoEm || 0) < limite);
+    for (const d of expirados) {
+      await fs.deleteDoc(fs.doc(this.db, 'demandas', d.id)).catch(() => {});
+      await fs.deleteDoc(fs.doc(this.db, 'internas', d.id)).catch(() => {});
+      await this._log('Demanda removida definitivamente (arquivo morto expirado)', d.id, d.objeto || '');
+    }
+    return expirados.length;
+  }
 
   getInternas() { return this._internas; }
   async setInterna(id, patch) {

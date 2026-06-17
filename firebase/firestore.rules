@@ -23,7 +23,7 @@ service cloud.firestore {
 
     function statusValido(s) {
       return s in ['recebido','analise','diligencia','codir','fila','atendimento',
-                   'concluido','suspenso','cancelado','nao-enquadrado'];
+                   'concluido','suspenso','cancelado','nao-enquadrado','excluido'];
     }
     function travada() { return resource.data.status in ['atendimento','concluido']; }
     // .get(campo, null): campos podem estar ausentes — comparação direta com

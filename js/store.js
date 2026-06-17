@@ -110,6 +110,34 @@ class DemoProvider {
     this._log('Demanda excluída', id, d?.objeto || '');
     this._save();
   }
+  // Arquivo morto: exclusão recuperável (soft-delete) por 30 dias.
+  async arquivarDemanda(id) {
+    const d = this.getDemanda(id); if (!d) throw new Error('Demanda não encontrada.');
+    if (['atendimento', 'concluido'].includes(d.status))
+      throw new Error('Demandas em atendimento ou concluídas não podem ser excluídas.');
+    Object.assign(d, { statusAnterior: d.status, status: 'excluido', excluidoEm: Date.now(), atualizadoEm: Date.now() });
+    (d.historico = d.historico || []).push(this._ev('Demanda enviada ao arquivo morto (excluída)'));
+    this._log('Demanda arquivada (excluída)', id, d.objeto || '');
+    this._save();
+  }
+  async resgatarDemanda(id) {
+    const d = this.getDemanda(id); if (!d) throw new Error('Demanda não encontrada.');
+    Object.assign(d, { status: d.statusAnterior || 'recebido', atualizadoEm: Date.now() });
+    delete d.statusAnterior; delete d.excluidoEm; delete d.expurgarEm;
+    (d.historico = d.historico || []).push(this._ev('Demanda resgatada do arquivo morto'));
+    this._log('Demanda resgatada', id, d.objeto || '');
+    this._save();
+  }
+  async purgarExcluidos(dias = 30) {
+    const limite = Date.now() - dias * 86400000;
+    const expirados = this.db.demandas.filter(d => d.status === 'excluido' && (d.excluidoEm || 0) < limite);
+    if (!expirados.length) return 0;
+    const ids = new Set(expirados.map(d => d.id));
+    expirados.forEach(d => { delete this.db.internas[d.id]; this._log('Demanda removida definitivamente (arquivo morto expirado)', d.id, d.objeto || ''); });
+    this.db.demandas = this.db.demandas.filter(d => !ids.has(d.id));
+    this._save();
+    return expirados.length;
+  }
   _ev(texto) { return { ts: Date.now(), user: this.user ? this.user.nome : 'Sistema', acao: texto }; }
 
   // --- Dados internos (alocação) ---

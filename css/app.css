@@ -149,6 +149,7 @@ code { font-family: var(--mono); background: var(--fundo-2); padding: 1px 6px; b
 .st-suspenso       { --st: #8C8C84; }
 .st-cancelado      { --st: #A85B5B; }
 .st-nao-enquadrado { --st: #9C8A70; }
+.st-excluido       { --st: #6B6B6B; }
 
 .badge { display: inline-flex; align-items: center; gap: 6px; font-size: .76rem; font-weight: 600; padding: 3px 10px; border-radius: 999px; background: color-mix(in srgb, var(--st) 14%, transparent); color: var(--st); border: 1px solid color-mix(in srgb, var(--st) 38%, transparent); white-space: nowrap; }
 html[data-tema="escuro"] .badge { background: color-mix(in srgb, var(--st) 22%, transparent); color: color-mix(in srgb, var(--st) 70%, #fff); }

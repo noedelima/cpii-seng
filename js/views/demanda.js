@@ -2,7 +2,7 @@
 // Detalhe da demanda — consulta pública + tratamento (GUT, status, alocação)
 // =============================================================================
 import { el, frag, campo, select, toast, confirmar, badgeStatus, fmtMoeda, fmtNum, fmtDataHora, abreviarNome } from '../ui.js';
-import { campusNome, statusNome, TIPOS_DEMANDA, PROJETO_EXISTE, PRAZOS, TIPOS_ATIVIDADE, ESPECIALIDADES, ESCALA_G, ESCALA_U, ESCALA_T, precisaEtapaProjeto } from '../config.js';
+import { campusNome, statusNome, TIPOS_DEMANDA, PROJETO_EXISTE, PRAZOS, TIPOS_ATIVIDADE, ESPECIALIDADES, ESCALA_G, ESCALA_U, ESCALA_T, precisaEtapaProjeto, DIAS_ARQUIVO_MORTO } from '../config.js';
 import { prioridade, pontosArt11, faixaValorLabel, cargaProfissionais, fiscaisDe } from '../calc.js';
 import { store } from '../store.js';
 import { can, podeAvaliar, podeExcluir, podeComplementar, podeDeliberarCodir, transicoesPermitidas, travada, ehReversaoStatus, podeEditarDados } from '../auth.js';
@@ -16,6 +16,9 @@ export function viewDemanda(rerender, id) {
   const user = s.user;
   const d = s.getDemanda(id);
   if (!d) return frag(el('section', { class: 'card' }, el('h1', {}, 'Demanda não encontrada'), el('a', { class: 'btn ghost', href: '#/' }, 'Voltar')));
+  // Arquivo morto: demanda excluída só é visível a quem pode gerenciá-la (Chefe/Admin).
+  if (d.status === 'excluido' && !(user && can(user, 'excluir')))
+    return frag(el('section', { class: 'card' }, el('h1', {}, 'Demanda não encontrada'), el('a', { class: 'btn ghost', href: '#/' }, 'Voltar')));
 
   const params = s.getParams();
   const internas = user ? s.getInternas() : {};
@@ -24,6 +27,7 @@ export function viewDemanda(rerender, id) {
   const pr = prioridade(d, params);
   const pts = pontosArt11(d.aval, params.valorRef);
   const bloqueada = travada(d);
+  const excluida = d.status === 'excluido';
 
   // ---------- coluna 1: dados da solicitação --------------------------------
   const dados = el('section', { class: 'card' },
@@ -152,7 +156,7 @@ export function viewDemanda(rerender, id) {
 
   // ---------- avaliação técnica (engenharia/chefe) ------------------------------
   let cartaoAvaliacao = null;
-  if (user && can(user, 'avaliar')) {
+  if (user && can(user, 'avaliar') && !excluida) {
     if (bloqueada) {
       cartaoAvaliacao = el('section', { class: 'card aviso-travada' },
         el('h2', {}, 'Avaliação técnica'),
@@ -201,7 +205,7 @@ export function viewDemanda(rerender, id) {
 
   // ---------- deliberação do CODIR (perfil codir e administrador) ------------------
   let cartaoCodir = null;
-  if (user && can(user, 'codir')) {
+  if (user && can(user, 'codir') && !excluida) {
     const podeAgora = podeDeliberarCodir(user, d);
     const filhosCodir = [el('h2', {}, 'Deliberação do CODIR')];
     if (bloqueada) {
@@ -245,7 +249,7 @@ export function viewDemanda(rerender, id) {
 
   // ---------- gestão (chefe/admin): status e alocação --------------------------------
   let cartaoGestao = null;
-  if (user && (can(user, 'statusBasico') || can(user, 'statusTotal'))) {
+  if (user && (can(user, 'statusBasico') || can(user, 'statusTotal')) && !excluida) {
     const filhos = [el('h2', {}, 'Gestão')];
 
     // Transições de status
@@ -354,9 +358,9 @@ export function viewDemanda(rerender, id) {
     if (podeExcluir(user, d)) {
       filhos.push(el('div', { class: 'zona-perigo' },
         el('button', { class: 'btn perigo', onclick: async () => {
-          const okDel = await confirmar('Excluir demanda?', `A demanda ${d.id} será removida definitivamente. Prefira “Cancelado” para preservar o histórico.`, { ok: 'Excluir', perigo: true });
+          const okDel = await confirmar('Excluir demanda?', `A demanda ${d.id} vai para o arquivo morto e pode ser resgatada por ${DIAS_ARQUIVO_MORTO} dias; depois é removida definitivamente. Prefira “Cancelado” se quiser preservá-la na fila.`, { ok: 'Excluir (arquivo morto)', perigo: true });
           if (!okDel) return;
-          try { await s.excluirDemanda(d.id); toast('Demanda excluída.'); location.hash = '#/'; }
+          try { await s.arquivarDemanda(d.id); toast('Demanda enviada ao arquivo morto.'); location.hash = '#/'; }
           catch (e2) { toast(e2.message, 'erro'); }
         } }, 'Excluir demanda')));
     } else if (user && can(user, 'excluir') && bloqueada) {
@@ -381,8 +385,8 @@ export function viewDemanda(rerender, id) {
   let cartaoObs = null;
   {
     const ehCampusDono = user && user.role === 'campus' && user.campus === d.campus;
-    const podeAddInt = !!(user && can(user, 'avaliar'));                  // eng/chefe/admin
-    const podeAddExt = !!(user && (ehCampusDono || can(user, 'codir')));  // campus-dono/codir/admin
+    const podeAddInt = !!(user && can(user, 'avaliar') && !excluida);                  // eng/chefe/admin
+    const podeAddExt = !!(user && (ehCampusDono || can(user, 'codir')) && !excluida);  // campus-dono/codir/admin
 
     // compat: formato antigo (string única) vira uma entrada legada (sem autor/exclusão)
     const exibirDe = (arr, legado) => Array.isArray(arr) ? arr
@@ -449,6 +453,21 @@ export function viewDemanda(rerender, id) {
     }
   }
 
+  // ---------- arquivo morto (demanda excluída): resgate ------------------------------
+  let cartaoArquivo = null;
+  if (excluida && user && can(user, 'excluir')) {
+    const expurgo = (d.excluidoEm || Date.now()) + DIAS_ARQUIVO_MORTO * 86400000;
+    cartaoArquivo = el('section', { class: 'card aviso-travada' },
+      el('h2', {}, 'Arquivo morto'),
+      el('p', {}, `Esta demanda foi excluída em ${fmtDataHora(d.excluidoEm)}. Será removida definitivamente em ${fmtDataHora(expurgo)} (após ${DIAS_ARQUIVO_MORTO} dias).`),
+      el('button', { class: 'btn primario', onclick: async () => {
+        const ok = await confirmar('Resgatar demanda?', `A demanda ${d.id} volta para “${statusNome(d.statusAnterior || 'recebido')}” e sai do arquivo morto.`, { ok: 'Resgatar' });
+        if (!ok) return;
+        try { await s.resgatarDemanda(d.id); toast('Demanda resgatada.'); }
+        catch (e2) { toast(e2.message, 'erro'); }
+      } }, 'Resgatar demanda'));
+  }
+
   // ---------- histórico --------------------------------------------------------------
   const hist = el('section', { class: 'card' },
     el('h2', {}, 'Histórico'),
@@ -463,7 +482,7 @@ export function viewDemanda(rerender, id) {
     el('a', { class: 'voltar', href: '#/' }, '← Voltar ao painel'),
     el('div', { class: 'detalhe-grid' },
       el('div', { class: 'col' }, dados, cartaoEditarDados, hist),
-      el('div', { class: 'col' }, cartaoPontuacao, cartaoCodir, cartaoAvaliacao, cartaoGestao, cartaoEquipe, cartaoObs)));
+      el('div', { class: 'col' }, cartaoArquivo, cartaoPontuacao, cartaoCodir, cartaoAvaliacao, cartaoGestao, cartaoEquipe, cartaoObs)));
 }
 
 const linha = (rotulo, valor) => valor == null ? null : el('div', { class: 'linha-info' },

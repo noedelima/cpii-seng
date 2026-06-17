@@ -2,13 +2,14 @@
 // Dashboard público — resumo clicável, filtros, fila e exportação PDF efêmera
 // =============================================================================
 import { el, frag, fmtNum, fmtDataHora, badgeStatus, select, toast, debounce } from '../ui.js';
-import { STATUS, CAMPI, TIPOS_ATIVIDADE, ESPECIALIDADES, STATUS_ENCERRADOS, campusNome, statusNome } from '../config.js';
+import { STATUS, CAMPI, TIPOS_ATIVIDADE, ESPECIALIDADES, STATUS_ORDEM, DIAS_ARQUIVO_MORTO, campusNome, statusNome } from '../config.js';
 import { prioridade, pontosArt11, ordenarFila, cargaProfissionais, fiscaisDe } from '../calc.js';
 import { store } from '../store.js';
 import { can } from '../auth.js';
 
 // Estado dos filtros (persiste durante a sessão de navegação)
 const filtros = { busca: '', campus: '', status: '', tipo: '', esp: '', minhas: false };
+let purgaFeita = false; // limpeza do arquivo morto roda uma vez por sessão (Chefe/Admin)
 
 export function viewDashboard(rerender) {
   const s = store();
@@ -37,16 +38,17 @@ export function viewDashboard(rerender) {
              (i.equipePlanejamento || []).includes(meuProf.id);
     });
   }
-  // Ordena por prioridade e, em seguida, afunda as demandas ENCERRADAS para o
-  // fim da lista — limpando a visualização inicial. Entre as encerradas, segue a
-  // ordem de STATUS_ENCERRADOS (Concluído → Não enquadrado → Cancelado por último),
-  // preservando a prioridade dentro de cada status.
-  const ordenadasBase = ordenarFila(lista, params);
-  const ativas = ordenadasBase.filter(d => !STATUS_ENCERRADOS.includes(d.status));
-  const encerradas = ordenadasBase
-    .filter(d => STATUS_ENCERRADOS.includes(d.status))
-    .sort((a, b) => STATUS_ENCERRADOS.indexOf(a.status) - STATUS_ENCERRADOS.indexOf(b.status));
-  const ordenadas = [...ativas, ...encerradas];
+  // Arquivo morto: a demanda excluída só aparece para quem pode gerenciá-la (Chefe/Admin).
+  const gerencia = user && can(user, 'excluir');
+  if (!gerencia) lista = lista.filter(d => d.status !== 'excluido');
+  // Limpeza automática do arquivo morto (>30 dias) ao abrir, uma vez por sessão.
+  if (gerencia && !purgaFeita) { purgaFeita = true; Promise.resolve(s.purgarExcluidos?.(DIAS_ARQUIVO_MORTO)).catch(() => {}); }
+
+  // Ordena por prioridade e reorganiza por STATUS na sequência operacional
+  // (ativos primeiro; encerrados e o arquivo morto por último), preservando a
+  // prioridade dentro de cada status.
+  const ordStatus = (st) => { const i = STATUS_ORDEM.indexOf(st); return i < 0 ? 99 : i; };
+  const ordenadas = ordenarFila(lista, params).sort((a, b) => ordStatus(a.status) - ordStatus(b.status));
 
   // posição na fila (apenas status "fila", calculada sobre o conjunto completo)
   const filaCompleta = ordenarFila(todas.filter(d => d.status === 'fila'), params);
