@@ -356,4 +356,96 @@ Em **Administração**, o cartão **Parâmetros do sistema** controla o cálculo
 
 | Valor | Descrição |
 |-------|-----------|
-| 
+| 1 | Desaparece ou não piora |
+| 2 | Piora em longo prazo |
+| 3 | Piora em médio prazo |
+| 4 | Piora em pouco tempo |
+| 5 | Piora rapidamente |
+
+> O **índice GUT** é o produto **G × U × T** (de 1 a 125). Ele entra na prioridade com o peso definido nos Parâmetros (padrão: 0,75 do GUT + 0,25 dos pontos de complexidade do art. 11).
+
+---
+
+## 16. Apêndice B — Status e transições por perfil
+
+**Transições gerenciais** (para onde cada status pode ir):
+
+| De | Para |
+|----|------|
+| Recebido | Em análise · Cancelado · Não enquadrado |
+| Em análise | Em diligência · Aguardando CODIR · Na fila · Suspenso · Cancelado · Não enquadrado |
+| Em diligência | Em análise · Cancelado |
+| Aguardando CODIR | Na fila · Em análise · Suspenso · Cancelado |
+| Na fila | Em atendimento · Aguardando CODIR · Suspenso · Cancelado |
+| Em atendimento | Concluído · Suspenso |
+| Suspenso | Em análise · Na fila · Em atendimento · Cancelado |
+| Concluído · Cancelado · Não enquadrado | *(estados finais)* |
+
+**Quem aplica cada transição**
+
+- **Engenharia** — triagem: Em análise, Em diligência e o encaminhamento ao CODIR (“Aguardando aprovação do CODIR”).
+- **CODIR** — aprova a demanda (de “Aguardando CODIR” para “Na fila”).
+- **Chefe de Seção / Administrador** — **status total**, incluindo iniciar e encerrar o atendimento e as reversões abaixo.
+
+**Reversões — somente Chefe de Seção / Administrador** (para desfazer erros):
+
+| De | Pode voltar para |
+|----|------------------|
+| Em atendimento | Na fila · Aguardando CODIR · Em análise |
+| Concluído | Em atendimento |
+
+**Travas importantes**
+
+- **Em atendimento** e **Concluído** bloqueiam a **exclusão** e a **alteração de classificação** (os pontos do art. 12 ficam “congelados” no atendimento).
+- A **edição dos dados** da solicitação vai só até a submissão ao CODIR: é permitida em **Recebido**, **Em análise** e **Em diligência**; ao entrar em “Aguardando aprovação do CODIR”, congela para todos os perfis. Reverter para uma etapa anterior reabre a edição.
+- Toda alteração de dados registra, no histórico, **quais campos** foram efetivamente alterados.
+
+---
+
+## 17. Apêndice C — Boas práticas
+
+- **Classifique antes de avaliar.** Defina o tipo de atividade (fiscalização ou elaboração) — ele orienta a carga e a equipe.
+- **GUT com critério.** Avalie G, U e T de forma defensável; o índice é público e sustenta a posição na fila.
+- **Use a diligência a favor do campus.** Em vez de cancelar por falta de dados, devolva em diligência com um pedido objetivo.
+- **Respeite o limite do art. 12.** Antes de alocar, confira a carga do profissional (teto de pontos nos Parâmetros).
+- **Documente no histórico e nas observações.** A Observação da Engenharia (interna) registra o racional técnico; ela é pública para leitura, então escreva com clareza institucional.
+- **Reversão é exceção.** Desfazer “Em atendimento” ou reabrir “Concluído” serve para corrigir erros — e sempre fica registrado.
+- **Não exclua por impulso.** A exclusão move a demanda ao arquivo morto (30 dias); prefira Cancelado ou Suspenso quando o encerramento for legítimo.
+
+---
+
+## 18. Apêndice D — Solução de problemas (FAQ)
+
+**Não consigo avaliar o GUT.**
+Confira o status: a avaliação ocorre na triagem (Recebido/Em análise). Em atendimento ou concluída, a classificação está travada.
+
+**O CODIR não consegue aprovar.**
+A demanda precisa estar em “Aguardando aprovação do CODIR”. Encaminhe-a (após a análise GUT) para liberar a deliberação.
+
+**Preciso alterar dados de uma demanda já enviada ao CODIR.**
+A edição congela na submissão ao CODIR. Se for indispensável, a Chefia pode reverter o status para “Em análise”, reabrindo a edição.
+
+**Aloquei um fiscal e a carga não bateu.**
+A carga só conta a partir de “Em atendimento” (art. 12). Reversões devolvem os pontos ao contador.
+
+**Excluí uma demanda por engano.**
+Ela está no **arquivo morto** por 30 dias (visível ao Chefe/Admin no fim do Painel, com status “Excluído”). Abra-a e use **Resgatar**.
+
+**Um cadastrador de campus aparece com mais de uma unidade.**
+É esperado: cadastradores podem ser associados a vários campi (ex.: CREIR + Realengo I), em casos de gestão compartilhada.
+
+---
+
+## 19. Apêndice E — Glossário
+
+- **SENG / DECOF** — Seção de Engenharia e a Diretoria de Engenharia, Contratos e Fiscalização à qual ela se vincula.
+- **SUAP** — Sistema Unificado de Administração Pública; sistema eletrônico de processos do CPII.
+- **GUT** — Gravidade × Urgência × Tendência (escala 1–5 por eixo; produto de 1 a 125).
+- **Pontos de complexidade (art. 11)** — pontuação que reflete a complexidade da demanda (tombamento, projeto a contratar, especialidades, etc.).
+- **Prioridade calculada** — índice que ordena a fila (GUT + valor + prazo, ponderados pelos pesos dos Parâmetros).
+- **Fator de ajuste (CODIR)** — valor somado à prioridade; sinalizado com `*` na fila.
+- **Limite do art. 12** — teto de pontos de carga por profissional (padrão: 6).
+- **Equipe (art. 13)** — composição titular/substituto(s) por demanda.
+- **Arquivo morto** — demandas excluídas, retidas 30 dias antes da exclusão definitiva.
+- **Serviço emergencial (art. 11, §5º)** — risco iminente a pessoas ou patrimônio; **não** é fura-fila: a demanda ainda passa pelo CODIR.
+- **Não enquadrado (Art. 18)** — demanda que não é obra ou serviço de engenharia da SENG.

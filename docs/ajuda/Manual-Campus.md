@@ -230,4 +230,85 @@ Quando faltam informações para a SENG avaliar a demanda, ela coloca a solicita
 
 A Seção de Engenharia trata de **obras e serviços de engenharia**. **Não** são atendidas pela SENG (art. 18 da Portaria 7503/2025) e serão marcadas como **“Não enquadrado (Art. 18)”**:
 
-- **Manutençã
+- **Manutenção predial rotineira e pequenos reparos** — troca de lâmpadas, reatores, torneiras, fechaduras, vidros, retoques de pintura e consertos do dia a dia, a cargo da **Prefeitura do campus**.
+- **Limpeza, jardinagem, capina, dedetização e controle de pragas** — contratos de apoio da Administração.
+- **Mobiliário, eletrodomésticos e equipamentos** — aquisição e reposição (mesas, cadeiras, geladeiras, bebedouros), pela Administração.
+- **Tecnologia da informação** — rede lógica, telefonia, CFTV, computadores e equipamentos de TIC, a cargo do setor de TI — salvo quando exigirem **obra civil** associada.
+- **Climatização avulsa** — instalação ou manutenção de aparelhos de ar-condicionado isolados, tratada como manutenção predial (salvo projeto/obra de climatização de maior porte).
+- **Serviços administrativos** — mudanças, transporte, comunicação visual e eventos.
+
+> **Na dúvida, cadastre.** Se não tiver certeza do enquadramento, registre a demanda mesmo assim: a SENG faz a triagem e, se não for caso de engenharia, marca como **“Não enquadrado (Art. 18)”** com a orientação do setor competente — tudo fica no histórico.
+
+---
+
+## 11. Apêndice B — Tabela de status
+
+A fila usa os mesmos status em todo o sistema. Do ponto de vista do campus:
+
+| Status | O que significa | O que o campus faz |
+|--------|-----------------|--------------------|
+| **Recebido** | A solicitação chegou e aguarda a triagem da SENG. | Acompanhar. |
+| **Em análise** | A SENG está avaliando (classificação e GUT). | Acompanhar. |
+| **Em diligência** | A SENG precisa de informações complementares. | **Responder** (Fluxo 5). |
+| **Aguardando aprovação do CODIR** | Avaliada; aguarda a deliberação do Conselho. | Acompanhar. |
+| **Na fila** | Aprovada; aguarda atendimento, na posição dada pela prioridade. | Acompanhar a posição. |
+| **Em atendimento** | A SENG está executando ou fiscalizando. | Acompanhar; atender a contatos. |
+| **Concluído** | Demanda encerrada com atendimento. | — |
+| **Suspenso** | Temporariamente parada. | Ver o motivo no histórico. |
+| **Cancelado** | Encerrada sem atendimento. | Ver o motivo no histórico. |
+| **Não enquadrado (Art. 18)** | Não é demanda de engenharia da SENG. | Encaminhar ao setor competente. |
+| **Excluído** | Removida; fica no arquivo morto por 30 dias. | Falar com a SENG se foi engano. |
+
+---
+
+## 12. Apêndice C — Boas práticas
+
+- **Objeto curto e claro.** Um título direto agiliza a triagem (ex.: *Reforma do telhado da quadra coberta*).
+- **Descrição completa.** Explique o problema, o objetivo e o resultado esperado; quanto melhor, mais rápida a análise.
+- **Evite duplicidade.** Antes de cadastrar, consulte o Painel para ver se a demanda já não foi registrada pelo campus.
+- **Anexe o Processo SUAP.** Se já houver processo, informe o número — ele liga a demanda à tramitação oficial.
+- **Emergencial é exceção.** Marque “Serviço emergencial” **apenas** com risco iminente (art. 11, §5º). Mesmo assim, a demanda passa pelo CODIR — não é “fura-fila”.
+- **Responda diligências rápido.** Enquanto a diligência não é respondida, a demanda fica parada.
+- **Mantenha o contato atualizado.** A SENG pode precisar falar com o campus durante o atendimento.
+
+---
+
+## 13. Apêndice D — Solução de problemas (FAQ)
+
+**Não consigo entrar.**
+Confira o e-mail institucional e a senha. Persistindo, peça a redefinição à SENG/Administração.
+
+**Não vejo o botão “+ Nova solicitação”.**
+Ele aparece apenas após o login, no perfil **Campus**. Sem login, você só consulta a fila.
+
+**Posso editar a demanda depois de enviar?**
+Os dados podem ser ajustados até a submissão ao CODIR. Depois disso, congelam — fale com a SENG. Você sempre pode registrar uma **Observação do solicitante** na demanda.
+
+**Marquei “emergencial” sem querer.**
+Sem problema: não há atalho automático na fila. Avise a SENG para corrigir, se for o caso.
+
+**Minha demanda sumiu da lista.**
+Pode ter sido excluída. Demandas excluídas ficam recuperáveis por 30 dias — fale com a SENG.
+
+**Posso cadastrar para outro campus?**
+Não. Cada perfil Campus cadastra para a(s) sua(s) unidade(s). Casos de gestão compartilhada (ex.: CREIR + Realengo I) são configurados pela Administração.
+
+**Quando minha demanda entra na fila?**
+Depois de avaliada pela SENG (GUT) e **aprovada pelo CODIR**.
+
+---
+
+## 14. Apêndice E — Glossário
+
+- **SENG** — Seção de Engenharia do Colégio Pedro II (vinculada à **DECOF**).
+- **DECOF** — Diretoria de Engenharia, Contratos e Fiscalização.
+- **CODIR** — instância colegiada que aprova as demandas e pode ajustar a prioridade.
+- **SUAP** — Sistema Unificado de Administração Pública; sistema eletrônico de processos do CPII.
+- **GUT** — método de priorização: Gravidade × Urgência × Tendência.
+- **Prioridade** — índice que ordena a fila; um `*` indica ajuste do CODIR.
+- **Fila** — demandas aprovadas, aguardando atendimento, por ordem de prioridade.
+- **Diligência** — devolução da demanda ao campus para complementar informações.
+- **Serviço emergencial** — risco iminente a pessoas ou patrimônio (art. 11, §5º); não é “fura-fila”.
+- **Não enquadrado (Art. 18)** — demanda que não é obra ou serviço de engenharia da SENG.
+- **Arquivo morto** — demandas excluídas, mantidas 30 dias antes da remoção definitiva.
+- **Processo SUAP** — número do processo eletrônico ligado à demanda.

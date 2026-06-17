@@ -179,4 +179,45 @@ Após salvar, confira o resultado no cartão **Priorização**:
 
 ---
 
-## 12. Apêndice C — Boas práticas de del
+## 12. Apêndice C — Boas práticas de deliberação
+
+- **Decida sobre a base objetiva.** O GUT e a prioridade calculada já refletem os critérios da Portaria; use-os como ponto de partida.
+- **Ajuste com parcimônia.** O fator de ajuste é exceção, não regra. Prefira valores pequenos e reserve-os para casos de relevância institucional, risco ou acessibilidade que o cálculo não capture.
+- **Justifique sempre.** A justificativa é obrigatória e fica registrada. Escreva de modo que qualquer pessoa, lendo depois, entenda o motivo.
+- **Cada ajuste é público.** A marca `*` na fila sinaliza a intervenção do CODIR e afeta a posição relativa de outras demandas — reordene com cuidado.
+- **Delibere no momento certo.** A ação só abre quando a demanda está em “Aguardando aprovação do CODIR”. Não há o que decidir antes da análise GUT da Engenharia.
+- **Leia o histórico.** Antes de deliberar, abra a demanda e percorra o histórico e as observações — eles trazem o contexto da triagem.
+
+---
+
+## 13. Apêndice D — Solução de problemas (FAQ)
+
+**Não encontro o cartão “Deliberação do CODIR”.**
+A demanda provavelmente ainda não passou pela análise GUT, ou já está em atendimento/concluída (deliberação travada). O cartão só fica ativo em “Aguardando aprovação do CODIR” (e, para rever o ajuste, em “Na fila” ou “Suspenso”).
+
+**Aprovei uma demanda por engano.**
+Procure a Chefia da SENG: os perfis Chefe de Seção/Administrador podem reverter o status (desfazer a entrada na fila), mantendo tudo registrado no histórico.
+
+**Quero mudar só a prioridade, sem aprovar.**
+São ações independentes. Você pode salvar o fator de ajuste sem marcar “Aprovada”, e vice-versa — mas a demanda só entra na fila quando aprovada.
+
+**Defini um ajuste e a posição não mudou como eu esperava.**
+A prioridade final é a calculada **mais** o ajuste; demandas vizinhas podem ter índices próximos. Confira o cartão Priorização, que mostra o valor calculado, o ajuste e a prioridade final.
+
+**Não consigo aprovar — o sistema diz que está travado.**
+Demandas “Em atendimento” ou “Concluído” não aceitam deliberação. Se for necessário rever, a Chefia pode reverter o status antes.
+
+---
+
+## 14. Apêndice E — Glossário
+
+- **SENG** — Seção de Engenharia do Colégio Pedro II, vinculada à **DECOF** (Diretoria de Engenharia, Contratos e Fiscalização).
+- **CODIR** — instância colegiada que **aprova** as demandas avaliadas pela SENG e define o **fator de ajuste**.
+- **SUAP** — Sistema Unificado de Administração Pública; o sistema eletrônico de processos do CPII.
+- **GUT** — método de priorização: **G**ravidade × **U**rgência × **T**endência (escala de 1 a 5 em cada eixo).
+- **Prioridade calculada** — índice que ordena a fila, combinando o GUT com valor, prazo e os pontos de complexidade (art. 11).
+- **Fator de ajuste** — valor somado pelo CODIR à prioridade calculada; sinalizado com `*` na fila.
+- **Prioridade final** — prioridade calculada + fator de ajuste.
+- **Na fila** — demanda aprovada, aguardando atendimento, na posição dada pela prioridade.
+- **Aguardando aprovação do CODIR** — status em que a deliberação do Conselho fica disponível.
+- **Histórico / log de auditoria** — registros imutáveis de cada ação (na demanda e no sistema).
