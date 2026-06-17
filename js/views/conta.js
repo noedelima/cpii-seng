@@ -4,6 +4,7 @@
 import { el, frag, campo, toast } from '../ui.js';
 import { roleNome, campusNome } from '../config.js';
 import { store } from '../store.js';
+import { campiDoUsuario } from '../auth.js';
 
 export function viewConta() {
   const s = store();
@@ -11,6 +12,7 @@ export function viewConta() {
   if (!user) { location.hash = '#/login'; return frag(); }
 
   const prof = s.profissionalDoUsuario ? s.profissionalDoUsuario(user) : null;
+  const campiU = campiDoUsuario(user);
 
   const inAtual = el('input', { type: 'password', autocomplete: 'current-password', required: true });
   const inNova = el('input', { type: 'password', autocomplete: 'new-password', required: true, minlength: 6 });
@@ -48,7 +50,7 @@ export function viewConta() {
         linha('Nome', user.nome),
         linha('E-mail', user.email),
         linha('Perfil', roleNome(user.role)),
-        user.campus ? linha('Campus', campusNome(user.campus)) : null,
+        campiU.length ? linha(campiU.length > 1 ? 'Campi' : 'Campus', campiU.map(campusNome).join(', ')) : null,
         prof ? linha('Profissional vinculado', `${prof.nome} — ${prof.cargo} · ${prof.area}`) : null,
       ),
       el('section', { class: 'card' },

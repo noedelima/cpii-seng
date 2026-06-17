@@ -8,7 +8,7 @@ export const APP = {
   orgao: 'Colégio Pedro II',
   setor: 'Seção de Engenharia — SENG/DECOF',
   portaria: 'Portaria nº 7503/REITORIA/CPII, de 24/11/2025',
-  versao: '1.5.6',
+  versao: '1.5.7',
 };
 
 // --- Parâmetros ajustáveis pelo Administrador (defaults) ---------------------
@@ -135,8 +135,8 @@ export const TIPOS_DEMANDA = [
   { id: 'obra',          nome: 'Obra / reforma' },
   { id: 'projeto',       nome: 'Projeto (a elaborar ou contratar)' },
   { id: 'projeto-obra',  nome: 'Projeto e obra' },
-  { id: 'laudo',         nome: 'Laudo / avaliação técnica' },
-  { id: 'assessoria',    nome: 'Assessoria técnica' },
+  { id: 'laudo',         nome: 'Laudo / avaliação técnica', oculto: true },
+  { id: 'assessoria',    nome: 'Assessoria técnica', oculto: true },
   { id: 'outro',         nome: 'Outro' },
 ];
 

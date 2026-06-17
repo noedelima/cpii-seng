@@ -19,7 +19,11 @@ service cloud.firestore {
     function isEng()   { return ativo() && (role() == 'engenharia' || role() == 'chefe' || role() == 'admin'); }
     function isCodir() { return ativo() && (role() == 'codir' || role() == 'admin'); }
     function isInterno() { return isEng() || isCodir(); }
-    function isCampusDe(campusId) { return ativo() && role() == 'campus' && perfil().campus == campusId; }
+    // Campus pode estar vinculado a vários campi (lista `campi`); compat com o campo único `campus`.
+    function isCampusDe(campusId) {
+      return ativo() && role() == 'campus'
+        && (campusId in perfil().get('campi', []) || perfil().get('campus', '') == campusId);
+    }
 
     function statusValido(s) {
       return s in ['recebido','analise','diligencia','codir','fila','atendimento',

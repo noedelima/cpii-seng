@@ -5,18 +5,21 @@
 import { el, frag, campo, select, toast } from '../ui.js';
 import { CAMPI, TIPOS_DEMANDA, PROJETO_EXISTE, ESPECIALIDADES, PRAZOS, precisaEtapaProjeto } from '../config.js';
 import { store } from '../store.js';
-import { can } from '../auth.js';
+import { can, campiDoUsuario } from '../auth.js';
 
 export function viewSolicitacao() {
   const s = store();
   const user = s.user;
   if (!user || !can(user, 'criar')) { location.hash = '#/login'; return frag(); }
 
-  const fixoCampus = user.role === 'campus' ? user.campus : null;
+  const ehCampus = user.role === 'campus';
+  const meusCampi = campiDoUsuario(user);
+  const opcoesCampus = ehCampus ? CAMPI.filter(c => meusCampi.includes(c.id)) : CAMPI;
+  const fixoCampus = ehCampus && meusCampi.length === 1 ? meusCampi[0] : null;
 
-  const selCampus = select(CAMPI, { value: fixoCampus || '', required: true, ...(fixoCampus ? { disabled: true } : {}) });
+  const selCampus = select(opcoesCampus, { value: fixoCampus || '', required: true, ...(fixoCampus ? { disabled: true } : {}) });
   const inLocal = el('input', { type: 'text', maxlength: 160, placeholder: 'Ex.: Bloco B, 2º pavimento, salas 201–204' });
-  const selTipo = select(TIPOS_DEMANDA, { required: true });
+  const selTipo = select(TIPOS_DEMANDA.filter(t => !t.oculto), { required: true });
   const selProjeto = select(PROJETO_EXISTE, { required: true });
   const selTombado = select([{ id: 'sim', nome: 'Sim' }, { id: 'nao', nome: 'Não' }, { id: 'ns', nome: 'Não sei informar' }], { required: true });
   const selPrazo = select(PRAZOS, { placeholder: 'Sem previsão definida' });
@@ -65,7 +68,7 @@ export function viewSolicitacao() {
     }
   } },
     el('div', { class: 'form-linha' },
-      campo('Campus / unidade *', selCampus, fixoCampus ? 'Definido pelo seu perfil.' : null),
+      campo('Campus / unidade *', selCampus, fixoCampus ? 'Definido pelo seu perfil.' : (ehCampus ? 'Selecione entre os campi vinculados ao seu perfil.' : null)),
       campo('Localização no campus', inLocal)),
     el('div', { class: 'form-linha' },
       campo('Tipo de demanda *', selTipo),

@@ -5,7 +5,7 @@ import { el, frag, campo, select, toast, confirmar, badgeStatus, fmtMoeda, fmtNu
 import { campusNome, statusNome, TIPOS_DEMANDA, PROJETO_EXISTE, PRAZOS, TIPOS_ATIVIDADE, ESPECIALIDADES, ESCALA_G, ESCALA_U, ESCALA_T, precisaEtapaProjeto, DIAS_ARQUIVO_MORTO } from '../config.js';
 import { prioridade, pontosArt11, faixaValorLabel, cargaProfissionais, fiscaisDe } from '../calc.js';
 import { store } from '../store.js';
-import { can, podeAvaliar, podeExcluir, podeComplementar, podeDeliberarCodir, transicoesPermitidas, travada, ehReversaoStatus, podeEditarDados } from '../auth.js';
+import { can, podeAvaliar, podeExcluir, podeComplementar, podeDeliberarCodir, transicoesPermitidas, travada, ehReversaoStatus, podeEditarDados, ehCampusDe } from '../auth.js';
 
 const nomeDe = (lista, id, campoNome = 'nome') => (lista.find(x => (x.id ?? x.v) === id) || {})[campoNome] ?? (lista.find(x => x.id === id) || {}).t ?? '—';
 
@@ -71,7 +71,7 @@ export function viewDemanda(rerender, id) {
   let cartaoEditarDados = null;
   if (podeEditarDados(user, d)) {
     const inLocal = el('input', { type: 'text', maxlength: 160, value: d.local || '' });
-    const selTipo = select(TIPOS_DEMANDA, { value: d.tipoDemanda || '' });
+    const selTipo = select(TIPOS_DEMANDA.filter(t => !t.oculto || t.id === d.tipoDemanda), { value: d.tipoDemanda || '' });
     const selProj = select(PROJETO_EXISTE, { value: d.projetoExiste || '' });
     const selTomb = select([{ id: 'sim', nome: 'Sim' }, { id: 'nao', nome: 'Não' }, { id: 'ns', nome: 'Não sei informar' }], { value: d.tombado || '' });
     const inValor = el('input', { type: 'number', min: 0, step: 'any', value: d.valorEstimado ?? '' });
@@ -384,7 +384,7 @@ export function viewDemanda(rerender, id) {
   // ---------- observações: dois históricos de comentários (públicos) -----------------
   let cartaoObs = null;
   {
-    const ehCampusDono = user && user.role === 'campus' && user.campus === d.campus;
+    const ehCampusDono = ehCampusDe(user, d.campus);
     const podeAddInt = !!(user && can(user, 'avaliar') && !excluida);                  // eng/chefe/admin
     const podeAddExt = !!(user && (ehCampusDono || can(user, 'codir')) && !excluida);  // campus-dono/codir/admin
 

@@ -92,7 +92,11 @@ function secaoUsuarios(s, user, rerender) {
     const inNome = el('input', { type: 'text', required: true, maxlength: 80, value: u.nome || '' });
     const inEmail = el('input', { type: 'email', required: true, maxlength: 120, value: u.email || '', ...(u.uid ? { disabled: true } : {}) });
     const selRole = select(ROLES, { value: u.role || '', required: true, ...(travaAdmin ? { disabled: true } : {}) });
-    const selCampus = select(CAMPI, { value: u.campus || '', placeholder: '— (não se aplica) —' });
+    const campiAtuais = u.campi && u.campi.length ? u.campi : (u.campus ? [u.campus] : []);
+    const campiChecks = CAMPI.map(c => {
+      const ck = el('input', { type: 'checkbox', value: c.id, ...(campiAtuais.includes(c.id) ? { checked: true } : {}) });
+      return el('label', { class: 'chip-check' }, ck, ' ' + c.nome);
+    });
     const ckAtivo = el('input', { type: 'checkbox', ...((u.ativo ?? true) ? { checked: true } : {}), ...(travaAdmin ? { disabled: true } : {}) });
     const inSenha = !u.uid ? el('input', { type: 'text', value: '', minlength: 6, maxlength: 40, required: true, placeholder: 'Mínimo 6 caracteres' }) : null;
 
@@ -104,12 +108,15 @@ function secaoUsuarios(s, user, rerender) {
         : 'Único administrador ativo: cadastre outro administrador antes de alterar este perfil.') : null,
       el('form', { class: 'form-grid', onsubmit: async (e) => {
         e.preventDefault();
+        const papel = travaAdmin ? 'admin' : selRole.value;
+        const campiSel = campiChecks.map(l => l.querySelector('input')).filter(c => c.checked).map(c => c.value);
         try {
           await s.salvarUsuario({
             ...(u.uid ? { uid: u.uid } : {}),
             nome: inNome.value.trim(), email: inEmail.value.trim(),
-            role: travaAdmin ? 'admin' : selRole.value,
-            campus: selRole.value === 'campus' ? selCampus.value : (selCampus.value || null),
+            role: papel,
+            campi: papel === 'campus' ? campiSel : [],
+            campus: papel === 'campus' ? (campiSel[0] || null) : null,
             ativo: travaAdmin ? true : ckAtivo.checked,
             ...(inSenha ? { senha: inSenha.value } : {}),
           });
@@ -118,7 +125,7 @@ function secaoUsuarios(s, user, rerender) {
         } catch (err) { toast(err.message, 'erro'); }
       } },
         el('div', { class: 'form-linha' }, campo('Nome *', inNome), campo('E-mail *', inEmail, 'Se for da Engenharia, use o mesmo e-mail do cadastro de profissionais — o vínculo é automático.')),
-        el('div', { class: 'form-linha' }, campo('Perfil *', selRole, 'Campus: solicita. Engenharia: trata. Chefe: gerencia. CODIR: aprova e ajusta prioridade. Administrador: tudo.'), campo('Campus (perfil Campus)', selCampus)),
+        el('div', { class: 'form-linha' }, campo('Perfil *', selRole, 'Campus: solicita. Engenharia: trata. Chefe: gerencia. CODIR: aprova e ajusta prioridade. Administrador: tudo.'), campo('Campi (perfil Campus)', el('div', { class: 'chips' }, campiChecks), 'Marque um ou mais — vale só para o perfil Campus; o cadastrador atua nos campi marcados.')),
         inSenha ? campo('Senha inicial *', inSenha, 'A pessoa troca depois em "Minha conta".') : null,
         el('label', { class: 'chip-check' }, ckAtivo, ' Ativo'),
         el('div', { class: 'form-acoes' },
@@ -137,7 +144,7 @@ function secaoUsuarios(s, user, rerender) {
         el('td', {}, u.nome),
         el('td', { class: 'mono' }, u.email),
         el('td', {}, roleNome(u.role)),
-        el('td', {}, u.campus ? campusNome(u.campus) : '—'),
+        el('td', {}, (u.campi && u.campi.length) ? u.campi.map(campusNome).join(', ') : (u.campus ? campusNome(u.campus) : '—')),
         el('td', {}, u.ativo === false ? 'Inativo' : 'Ativo'),
         el('td', {}, el('button', { class: 'btn ghost sm', onclick: () => abrirForm(u) }, 'Editar')))))))),
     formWrap);

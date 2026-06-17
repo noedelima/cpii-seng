@@ -22,6 +22,17 @@ export function can(user, cap) {
   return (CAPS[user.role] || []).includes(cap);
 }
 
+// Campi do cadastrador de campus (compat: campo único `campus` → lista `campi`).
+export function campiDoUsuario(user) {
+  if (!user) return [];
+  if (Array.isArray(user.campi) && user.campi.length) return user.campi;
+  return user.campus ? [user.campus] : [];
+}
+// Verdadeiro se o usuário é perfil Campus e o campus informado está entre os seus.
+export function ehCampusDe(user, campusId) {
+  return !!user && user.role === 'campus' && campiDoUsuario(user).includes(campusId);
+}
+
 // Status que o papel "engenharia" pode aplicar (tratamento básico da triagem)
 const STATUS_ENG = ['analise', 'diligencia', 'codir'];
 
@@ -53,7 +64,7 @@ export const travada = (demanda) => STATUS_TRAVADOS.includes(demanda?.status);
 export function podeEditarDados(user, demanda) {
   if (!user || !demanda) return false;
   if (!STATUS_EDITAVEL_DADOS.includes(demanda.status)) return false;
-  if (user.role === 'campus') return demanda.campus === user.campus;
+  if (user.role === 'campus') return ehCampusDe(user, demanda.campus);
   return ['engenharia', 'chefe', 'admin', 'codir'].includes(user.role);
 }
 
@@ -66,7 +77,7 @@ export function podeExcluir(user, demanda) {
 export function podeComplementar(user, demanda) {
   if (!user || !demanda) return false;
   if (demanda.status !== 'diligencia') return false;
-  if (user.role === 'campus') return user.campus === demanda.campus;
+  if (user.role === 'campus') return ehCampusDe(user, demanda.campus);
   return can(user, 'complementar');
 }
 // CODIR atua a partir da análise concluída (status "Aguardando aprovação do CODIR" em diante)
