@@ -121,7 +121,8 @@ export class FirebaseProvider {
     return this._usuarios.map(u => {
       const p = porEmail[(u.email || '').toLowerCase()];
       const profAtivo = p && p.ativo !== false;
-      return { uid: u.uid, role: u.role, ativo: u.ativo !== false, pid: profAtivo ? (p.id || null) : null, disc: profAtivo ? (p.area || null) : null };
+      const campi = Array.isArray(u.campi) && u.campi.length ? u.campi : (u.campus ? [u.campus] : []);
+      return { uid: u.uid, role: u.role, ativo: u.ativo !== false, pid: profAtivo ? (p.id || null) : null, disc: profAtivo ? (p.area || null) : null, campi };
     });
   }
   getDiretorio() {
@@ -167,6 +168,24 @@ export class FirebaseProvider {
     const batch = fs.writeBatch(this.db);
     naoLidas.forEach(n => batch.update(fs.doc(this.db, 'notificacoes', n.id), { lida: true }));
     try { await batch.commit(); } catch (e) { console.warn(e); }
+  }
+  // Limpeza automática do próprio inbox (regras permitem o dono apagar as suas):
+  // remove avisos JÁ LIDOS com mais de `dias` e o excedente acima de 300 (mais
+  // recentes preservados; não lidos têm prioridade de retenção).
+  async purgarNotificacoes(dias = 30) {
+    const fs = this._F;
+    const limite = Date.now() - dias * 86400000;
+    const remover = this._notificacoes.filter(n => n.lida && (n.criadoEm || 0) < limite);
+    if (this._notificacoes.length > 300) {
+      const ids = new Set(remover.map(n => n.id));
+      [...this._notificacoes].sort((a, b) => (b.criadoEm || 0) - (a.criadoEm || 0)).slice(300)
+        .forEach(n => { if (!ids.has(n.id)) { remover.push(n); ids.add(n.id); } });
+    }
+    if (!remover.length) return 0;
+    const batch = fs.writeBatch(this.db);
+    remover.slice(0, 400).forEach(n => batch.delete(fs.doc(this.db, 'notificacoes', n.id)));
+    try { await batch.commit(); } catch (e) { console.warn('purgarNotificacoes', e); }
+    return remover.length;
   }
 
   async login(email, senha) {

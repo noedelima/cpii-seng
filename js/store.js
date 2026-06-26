@@ -158,7 +158,8 @@ class DemoProvider {
     return (this.db.usuarios || []).map(u => {
       const p = porEmail[(u.email || '').toLowerCase()];
       const profAtivo = p && p.ativo !== false;
-      return { uid: u.uid, role: u.role, ativo: u.ativo !== false, pid: profAtivo ? p.id : null, disc: profAtivo ? p.area : null };
+      const campi = Array.isArray(u.campi) && u.campi.length ? u.campi : (u.campus ? [u.campus] : []);
+      return { uid: u.uid, role: u.role, ativo: u.ativo !== false, pid: profAtivo ? p.id : null, disc: profAtivo ? p.area : null, campi };
     });
   }
   listNotificacoes() {
@@ -185,6 +186,23 @@ class DemoProvider {
     let mud = false;
     (this.db.notificacoes || []).forEach(n => { if (n.para === this.user?.uid && !n.lida) { n.lida = true; mud = true; } });
     if (mud) this._save();
+  }
+  // Limpeza automática do próprio inbox: remove avisos JÁ LIDOS com mais de `dias`
+  // (não lidos são preservados) e mantém no máximo 300 mais recentes.
+  async purgarNotificacoes(dias = 30) {
+    if (!this.user) return 0;
+    const meu = this.user.uid;
+    const limite = Date.now() - dias * 86400000;
+    const antes = this.db.notificacoes.length;
+    const outras = this.db.notificacoes.filter(n => n.para !== meu);
+    let minhas = this.db.notificacoes.filter(n => n.para === meu)
+      .filter(n => !(n.lida && (n.criadoEm || 0) < limite))
+      .sort((a, b) => (b.criadoEm || 0) - (a.criadoEm || 0));
+    if (minhas.length > 300) minhas = minhas.slice(0, 300);
+    this.db.notificacoes = [...outras, ...minhas];
+    const rem = antes - this.db.notificacoes.length;
+    if (rem) this._save();
+    return rem;
   }
 
   // --- Profissionais ---

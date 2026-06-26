@@ -5,6 +5,7 @@
 import { el, frag, fmtDataHora, toast } from '../ui.js';
 import { store } from '../store.js';
 import { ROTULO_TIPO } from '../notificacoes.js';
+import { DIAS_NOTIFICACAO } from '../config.js';
 
 export function viewNotificacoes(rerender) {
   const s = store();
@@ -44,5 +45,6 @@ export function viewNotificacoes(rerender) {
     el('section', { class: 'hero' }, el('div', {},
       el('h1', {}, 'Notificações'),
       el('p', { class: 'sub' }, 'Avisos pessoais conforme o seu perfil e as demandas em que você atua.'))),
-    el('section', { class: 'card' }, topo, corpo));
+    el('section', { class: 'card' }, topo, corpo,
+      lista.length ? el('p', { class: 'nota' }, `Os avisos já lidos são removidos automaticamente após ${DIAS_NOTIFICACAO} dias.`) : null));
 }

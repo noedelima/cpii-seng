@@ -8,7 +8,7 @@ export const APP = {
   orgao: 'Colégio Pedro II',
   setor: 'Seção de Engenharia — SENG/DECOF',
   portaria: 'Portaria nº 7503/REITORIA/CPII, de 24/11/2025',
-  versao: '1.6.0',
+  versao: '1.6.1',
 };
 
 // --- Parâmetros ajustáveis pelo Administrador (defaults) ---------------------
@@ -94,6 +94,10 @@ export const STATUS_ORDEM = [
 
 // Arquivo morto: dias até a exclusão definitiva de uma demanda excluída.
 export const DIAS_ARQUIVO_MORTO = 30;
+
+// Notificações: dias para a limpeza automática dos avisos JÁ LIDOS (não lidos são
+// preservados). Cada cliente limpa apenas o próprio inbox, 1x por sessão.
+export const DIAS_NOTIFICACAO = 30;
 
 // Status em que se pode editar os DADOS da solicitação. A edição vai até a
 // SUBMISSÃO ao CODIR: ao entrar em “Aguardando aprovação do CODIR” (codir),

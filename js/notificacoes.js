@@ -66,7 +66,8 @@ export function destinatarios(tipo, { diretorio = [], demanda = {}, interna = {}
     case 'fila':
       return uidsPorRole(diretorio, 'chefe');
     case 'concluido':
-      return diretorio.filter(ativo).map(e => e.uid);
+      // Todos os perfis internos; o Campus só recebe conclusões do(s) seu(s) campus.
+      return diretorio.filter(e => ativo(e) && (e.role !== 'campus' || (e.campi || []).includes(demanda.campus))).map(e => e.uid);
     default:
       return [];
   }

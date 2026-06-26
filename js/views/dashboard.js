@@ -2,7 +2,7 @@
 // Dashboard público — resumo clicável, filtros, fila e exportação PDF efêmera
 // =============================================================================
 import { el, frag, fmtNum, fmtDataHora, badgeStatus, select, toast, debounce } from '../ui.js';
-import { STATUS, CAMPI, TIPOS_ATIVIDADE, ESPECIALIDADES, STATUS_ORDEM, DIAS_ARQUIVO_MORTO, campusNome, statusNome } from '../config.js';
+import { STATUS, CAMPI, TIPOS_ATIVIDADE, ESPECIALIDADES, STATUS_ORDEM, DIAS_ARQUIVO_MORTO, DIAS_NOTIFICACAO, campusNome, statusNome } from '../config.js';
 import { prioridade, pontosArt11, ordenarFila, cargaProfissionais, fiscaisDe } from '../calc.js';
 import { store } from '../store.js';
 import { can } from '../auth.js';
@@ -10,6 +10,7 @@ import { can } from '../auth.js';
 // Estado dos filtros (persiste durante a sessão de navegação)
 const filtros = { busca: '', campus: '', status: '', tipo: '', esp: '', minhas: false };
 let purgaFeita = false; // limpeza do arquivo morto roda uma vez por sessão (Chefe/Admin)
+let purgaNotifFeita = false; // limpeza do próprio inbox de notificações, 1x por sessão
 
 export function viewDashboard(rerender) {
   const s = store();
@@ -43,6 +44,8 @@ export function viewDashboard(rerender) {
   if (!gerencia) lista = lista.filter(d => d.status !== 'excluido');
   // Limpeza automática do arquivo morto (>30 dias) ao abrir, uma vez por sessão.
   if (gerencia && !purgaFeita) { purgaFeita = true; Promise.resolve(s.purgarExcluidos?.(DIAS_ARQUIVO_MORTO)).catch(() => {}); }
+  // Limpeza do próprio inbox (avisos lidos antigos), uma vez por sessão, para qualquer usuário autenticado.
+  if (user && !purgaNotifFeita) { purgaNotifFeita = true; Promise.resolve(s.purgarNotificacoes?.(DIAS_NOTIFICACAO)).catch(() => {}); }
 
   // Ordena por prioridade e reorganiza por STATUS na sequência operacional
   // (ativos primeiro; encerrados e o arquivo morto por último), preservando a
