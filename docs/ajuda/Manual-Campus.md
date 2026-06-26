@@ -190,7 +190,7 @@ Depois de cadastrada, acompanhe a evolução a qualquer momento.
 
 > A página mostra também a **priorização** calculada (GUT, prioridade e pontos). A **alocação de profissionais** só é exibida para usuários internos da SENG — no painel público, os nomes ficam ocultos, preservando o anonimato. Você também pode registrar uma **Observação do solicitante** na demanda (campo de texto no fim da página) — fica no histórico.
 
-> **Notificações (sino do cabeçalho).** Depois de entrar, o ícone de **sino** ao lado do seu nome mostra um **contador** de avisos não lidos e abre a sua **área pessoal de notificações** — cada linha leva direto à demanda. O campus é avisado, por exemplo, quando uma demanda é **concluída**. Abrir a notificação a marca como lida; há também **“marcar todas como lidas”**.
+> **Notificações (sino do cabeçalho).** Depois de entrar, o ícone de **sino** ao lado do seu nome mostra um **contador** de avisos não lidos e abre a sua **área pessoal de notificações** — cada linha leva direto à demanda. O campus é avisado quando uma demanda **do seu campus** é **concluída**. Abrir a notificação a marca como lida; há também **“marcar todas como lidas”**. Os avisos já lidos são removidos automaticamente após 30 dias.
 
 ---
 
