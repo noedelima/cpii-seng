@@ -123,6 +123,8 @@ O cálculo replica o modelo do Power BI da SENG (art. 5º, II):
 
 > **Ordenação do Painel.** A lista é organizada por **status**, na sequência operacional — **Em atendimento → Recebido → Em análise → Em diligência → Aguardando CODIR → Na fila → Suspenso → Concluído → Não enquadrado → Cancelado → Excluído** —, com a **prioridade** ordenando dentro de cada status. Assim o que está em andamento aparece primeiro; encerradas e excluídas ficam no fim. *(O status **Excluído** — arquivo morto — só aparece para Chefe/Admin.)*
 
+> **Notificações (sino do cabeçalho).** O ícone de **sino**, ao lado do seu nome, traz um **contador** de avisos não lidos e abre a sua **área pessoal de notificações** — uma lista em que **cada linha é um link** direto para a demanda. A Engenharia é avisada quando: uma **nova demanda** é cadastrada nas **suas disciplinas**; há **diligência** (devolução/resposta) ou **novo comentário** em demandas em que você está **envolvido** (fiscalização/planejamento) — ou, se ainda não há equipe alocada, nas demandas das **suas disciplinas**; e quando qualquer demanda é **concluída**. Abrir a notificação a marca como lida; há também **“marcar todas como lidas”**. Você nunca é notificado das suas próprias ações.
+
 ---
 
 ## 6. Fluxo 2 — Abrir e ler uma demanda

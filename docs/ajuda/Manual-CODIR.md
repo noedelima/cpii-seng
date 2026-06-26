@@ -101,6 +101,8 @@ A coluna **Pts** mostra os **pontos de complexidade** (art. 11) — o esforço e
 | **Prioridade** | Prioridade final (cálculo + ajuste do CODIR). Um `*` indica que há ajuste aplicado. |
 | **Pts** | Pontos de complexidade (art. 11). |
 
+> **Notificações (sino do cabeçalho).** O ícone de **sino**, ao lado do seu nome, traz um **contador** de avisos não lidos e abre a sua **área pessoal de notificações**, em que **cada linha é um link** para a demanda. O CODIR é avisado quando uma demanda é **enviada para aprovação** (após a análise GUT) e quando qualquer demanda é **concluída**. Abrir a notificação a marca como lida; há também **“marcar todas como lidas”**.
+
 ---
 
 ## 6. Fluxo 2 — Abrir uma demanda para deliberar
