@@ -33,6 +33,7 @@ class DemoProvider {
     try { this.db = JSON.parse(localStorage.getItem(LS_KEY)) || null; } catch { this.db = null; }
     if (!this.db || this.db._v !== 2) { this.db = seedDemo(); this._save(); }
     this.db.logs = this.db.logs || [];
+    this.db.notificacoes = this.db.notificacoes || []; // inbox pessoal (não destrutivo)
   }
   _save() { localStorage.setItem(LS_KEY, JSON.stringify(this.db)); this._emit(); }
   _emit() { this._subs.forEach(cb => { try { cb(); } catch (e) { console.error(e); } }); }
@@ -146,6 +147,44 @@ class DemoProvider {
     this.db.internas[id] = { ...(this.db.internas[id] || {}), ...patch };
     this._log('Alocação atualizada', id, Object.keys(patch).join(', '));
     this._save();
+  }
+
+  // --- Notificações (inbox pessoal) ---------------------------------------
+  // Diretório de roteamento (sem nomes): uid, papel, ativo, e — para quem é
+  // profissional ativo — id do profissional (pid) e disciplina (disc).
+  getDiretorio() {
+    const porEmail = {};
+    (this.db.profissionais || []).forEach(p => { if (p.email) porEmail[p.email.toLowerCase()] = p; });
+    return (this.db.usuarios || []).map(u => {
+      const p = porEmail[(u.email || '').toLowerCase()];
+      const profAtivo = p && p.ativo !== false;
+      return { uid: u.uid, role: u.role, ativo: u.ativo !== false, pid: profAtivo ? p.id : null, disc: profAtivo ? p.area : null };
+    });
+  }
+  listNotificacoes() {
+    if (!this.user) return [];
+    return (this.db.notificacoes || []).filter(n => n.para === this.user.uid).sort((a, b) => (b.criadoEm || 0) - (a.criadoEm || 0));
+  }
+  async criarNotificacoes(itens) {
+    if (!this.user || !Array.isArray(itens) || !itens.length) return;
+    const base = Date.now();
+    itens.forEach((it, i) => this.db.notificacoes.push({
+      id: 'n' + base.toString(36) + i.toString(36) + Math.random().toString(36).slice(2, 6),
+      para: it.para, de: this.user.uid, deNome: this.user.nome || '',
+      tipo: it.tipo, demandaId: it.demandaId, objeto: it.objeto || '', texto: it.texto || '',
+      criadoEm: base, lida: false,
+    }));
+    if (this.db.notificacoes.length > 5000) this.db.notificacoes = this.db.notificacoes.slice(-5000);
+    this._save();
+  }
+  async marcarNotificacaoLida(id) {
+    const n = (this.db.notificacoes || []).find(x => x.id === id && x.para === this.user?.uid);
+    if (n && !n.lida) { n.lida = true; this._save(); }
+  }
+  async marcarTodasLidas() {
+    let mud = false;
+    (this.db.notificacoes || []).forEach(n => { if (n.para === this.user?.uid && !n.lida) { n.lida = true; mud = true; } });
+    if (mud) this._save();
   }
 
   // --- Profissionais ---

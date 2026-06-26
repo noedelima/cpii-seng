@@ -340,3 +340,26 @@ html[data-tema="escuro"] .ajuda-doc h3 { color: var(--acento); }
 .ajuda-tabela { font-size: .9rem; }
 .ajuda-doc blockquote { margin: .8em 0; padding: .6em 1em; border-left: 3px solid var(--ouro); background: var(--aviso-fundo); border-radius: 0 var(--raio-sm) var(--raio-sm) 0; }
 .ajuda-doc blockquote p { margin: .2em 0; }
+
+/* --- Notificações ---------------------------------------------------------- */
+.notif-sino { position: relative; text-decoration: none; }
+.notif-sino.tem { border-color: var(--baga); }
+.notif-sino.ativo { background: var(--fundo-2); }
+.notif-badge { position: absolute; top: -7px; right: -7px; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 999px; background: var(--baga); color: #fff; font-size: .66rem; font-weight: 800; line-height: 17px; text-align: center; box-shadow: 0 0 0 2px var(--card); }
+
+.notif-lista { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.notif-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--borda); border-radius: var(--raio-sm); background: var(--card); text-decoration: none; color: var(--texto); transition: var(--transicao); }
+.notif-item:hover { background: var(--kpi-hover); border-color: var(--borda-forte); }
+.notif-item.nao-lida { background: var(--fundo-2); border-left: 3px solid var(--ouro); }
+.notif-tag { flex: 0 0 auto; font-size: .68rem; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; padding: 3px 9px; border-radius: 999px; white-space: nowrap; background: color-mix(in srgb, var(--st, var(--borda-forte)) 16%, transparent); color: var(--st, var(--texto-2)); border: 1px solid color-mix(in srgb, var(--st, var(--borda-forte)) 40%, transparent); }
+html[data-tema="escuro"] .notif-tag { color: color-mix(in srgb, var(--st) 72%, #fff); }
+.notif-corpo { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.notif-texto { font-size: .9rem; overflow-wrap: anywhere; }
+.notif-meta { font-size: .74rem; color: var(--texto-2); font-variant-numeric: tabular-nums; }
+.notif-ponto { flex: 0 0 auto; width: 9px; height: 9px; border-radius: 50%; background: var(--ouro); }
+.notif-tag.tipo-nova { --st: #6E7FA8; }
+.notif-tag.tipo-diligencia { --st: #C97B3C; }
+.notif-tag.tipo-comentario { --st: #C99A3C; }
+.notif-tag.tipo-codir { --st: #8A6BAA; }
+.notif-tag.tipo-fila { --st: #4A7FA0; }
+.notif-tag.tipo-concluido { --st: #4F8A57; }

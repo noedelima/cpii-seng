@@ -14,6 +14,7 @@ import { viewProfissionais } from './views/profissionais.js';
 import { viewAdmin } from './views/admin.js';
 import { viewConta } from './views/conta.js';
 import { viewAjuda } from './views/ajuda.js';
+import { viewNotificacoes } from './views/notificacoes.js';
 
 const main = document.getElementById('app');
 const header = document.getElementById('cabecalho');
@@ -43,11 +44,19 @@ function renderHeader() {
     navlink('#/ajuda', 'Ajuda'),
   );
 
+  const naoLidas = (user && typeof s.listNotificacoes === 'function') ? s.listNotificacoes().filter(n => !n.lida).length : 0;
+  const sino = user ? el('a', {
+    class: `btn icone notif-sino${naoLidas ? ' tem' : ''} ${rota === '#/notificacoes' ? 'ativo' : ''}`,
+    href: '#/notificacoes', 'aria-label': naoLidas ? `Notificações — ${naoLidas} não lida(s)` : 'Notificações',
+    title: naoLidas ? `Notificações — ${naoLidas} não lida(s)` : 'Notificações',
+  }, '\u{1F514}', naoLidas ? el('span', { class: 'notif-badge' }, naoLidas > 99 ? '99+' : String(naoLidas)) : null) : null;
+
   const acoes = el('div', { class: 'header-acoes' },
     el('button', { class: 'btn icone', title: 'Alternar tema claro/escuro', 'aria-label': 'Alternar tema',
       onclick: alternarTema }, temaAtual() === 'escuro' ? '☀' : '☾'),
     user
       ? el('div', { class: 'user-box' },
+          sino,
           el('a', { class: 'user-nome', href: '#/conta', title: 'Minha conta — dados e troca de senha' }, user.nome),
           el('button', { class: 'btn ghost sm', onclick: async () => { await s.logout(); toast('Sessão encerrada.'); location.hash = '#/'; } }, 'Sair'))
       : el('a', { class: 'btn ghost sm', href: '#/login' }, 'Entrar'),
@@ -80,6 +89,7 @@ const rotas = [
   { re: /^#\/admin$/, view: viewAdmin },
   { re: /^#\/conta$/, view: viewConta },
   { re: /^#\/ajuda$/, view: viewAjuda },
+  { re: /^#\/notificacoes$/, view: viewNotificacoes },
 ];
 
 let renderAgendado = false;

@@ -15,6 +15,8 @@ export class FirebaseProvider {
     this._profissionais = [];
     this._usuarios = [];
     this._logs = [];
+    this._notificacoes = [];
+    this._diretorio = [];
     this._params = null;
     this._unsubPriv = [];
     this.ready = this._init(config);
@@ -71,6 +73,7 @@ export class FirebaseProvider {
         } else {
           this.user = null;
           this._internas = {}; this._profissionais = []; this._usuarios = [];
+          this._notificacoes = []; this._diretorio = [];
         }
         this._emit();
         resolve();
@@ -80,15 +83,24 @@ export class FirebaseProvider {
 
   _assinarPrivados() {
     const fs = this._F;
+    const uid = this.user.uid;
     this._unsubPriv.push(fs.onSnapshot(fs.collection(this.db, 'internas'), (snap) => {
       this._internas = {}; snap.docs.forEach(d => { this._internas[d.id] = d.data(); }); this._emit();
     }, () => {}));
     this._unsubPriv.push(fs.onSnapshot(fs.collection(this.db, 'profissionais'), (snap) => {
-      this._profissionais = snap.docs.map(d => ({ id: d.id, ...d.data() })); this._emit();
+      this._profissionais = snap.docs.map(d => ({ id: d.id, ...d.data() })); this._emit(); this._talvezSincronizarDiretorio();
+    }, () => {}));
+    // Inbox pessoal: apenas as notificações destinadas a mim (regra reforça no servidor).
+    this._unsubPriv.push(fs.onSnapshot(fs.query(fs.collection(this.db, 'notificacoes'), fs.where('para', '==', uid)), (snap) => {
+      this._notificacoes = snap.docs.map(d => ({ id: d.id, ...d.data() })); this._emit();
+    }, () => {}));
+    // Diretório de roteamento (sem nomes) — todo perfil lê; só chefe/admin grava.
+    this._unsubPriv.push(fs.onSnapshot(fs.doc(this.db, 'diretorio', 'atual'), (snap) => {
+      this._diretorio = snap.exists() ? (snap.data().entradas || []) : []; this._emit();
     }, () => {}));
     if (['admin', 'chefe'].includes(this.user?.role)) {
       this._unsubPriv.push(fs.onSnapshot(fs.collection(this.db, 'usuarios'), (snap) => {
-        this._usuarios = snap.docs.map(d => ({ uid: d.id, ...d.data() })); this._emit();
+        this._usuarios = snap.docs.map(d => ({ uid: d.id, ...d.data() })); this._emit(); this._talvezSincronizarDiretorio();
       }, () => {}));
     }
     if (this.user?.role === 'admin') {
@@ -101,6 +113,61 @@ export class FirebaseProvider {
 
   _emit() { this._subs.forEach(cb => { try { cb(); } catch (e) { console.error(e); } }); }
   subscribe(cb) { this._subs.add(cb); return () => this._subs.delete(cb); }
+
+  // --- Notificações + diretório de roteamento -----------------------------
+  _montarDiretorio() {
+    const porEmail = {};
+    this._profissionais.forEach(p => { if (p.email) porEmail[p.email.toLowerCase()] = p; });
+    return this._usuarios.map(u => {
+      const p = porEmail[(u.email || '').toLowerCase()];
+      const profAtivo = p && p.ativo !== false;
+      return { uid: u.uid, role: u.role, ativo: u.ativo !== false, pid: profAtivo ? (p.id || null) : null, disc: profAtivo ? (p.area || null) : null };
+    });
+  }
+  getDiretorio() {
+    // Chefe/Admin têm usuários+profissionais ao vivo → diretório preciso;
+    // demais perfis usam o diretório armazenado (sem nomes).
+    if (['admin', 'chefe'].includes(this.user?.role) && this._usuarios.length) return this._montarDiretorio();
+    return this._diretorio || [];
+  }
+  async _talvezSincronizarDiretorio() {
+    if (!['admin', 'chefe'].includes(this.user?.role) || !this._usuarios.length) return;
+    const novo = this._montarDiretorio();
+    if (JSON.stringify(novo) === JSON.stringify(this._diretorio || [])) return;
+    const fs = this._F;
+    try { await fs.setDoc(fs.doc(this.db, 'diretorio', 'atual'), { entradas: novo, atualizadoEm: Date.now() }); }
+    catch (e) { console.warn('diretorio', e); }
+  }
+  listNotificacoes() {
+    return this.user ? [...this._notificacoes].sort((a, b) => (b.criadoEm || 0) - (a.criadoEm || 0)) : [];
+  }
+  async criarNotificacoes(itens) {
+    if (!this.user || !Array.isArray(itens) || !itens.length) return;
+    const fs = this._F;
+    const base = Date.now();
+    const batch = fs.writeBatch(this.db);
+    itens.forEach(it => {
+      const ref = fs.doc(fs.collection(this.db, 'notificacoes'));
+      batch.set(ref, {
+        para: it.para, de: this.user.uid, deNome: this.user.nome || '',
+        tipo: it.tipo, demandaId: it.demandaId, objeto: it.objeto || '', texto: it.texto || '',
+        criadoEm: base, lida: false,
+      });
+    });
+    try { await batch.commit(); } catch (e) { console.warn('criarNotificacoes', e); }
+  }
+  async marcarNotificacaoLida(id) {
+    const fs = this._F;
+    try { await fs.updateDoc(fs.doc(this.db, 'notificacoes', id), { lida: true }); } catch (e) { console.warn(e); }
+  }
+  async marcarTodasLidas() {
+    const fs = this._F;
+    const naoLidas = this._notificacoes.filter(n => !n.lida);
+    if (!naoLidas.length) return;
+    const batch = fs.writeBatch(this.db);
+    naoLidas.forEach(n => batch.update(fs.doc(this.db, 'notificacoes', n.id), { lida: true }));
+    try { await batch.commit(); } catch (e) { console.warn(e); }
+  }
 
   async login(email, senha) {
     await this._A.signInWithEmailAndPassword(this.auth, email.trim(), senha);

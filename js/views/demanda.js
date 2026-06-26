@@ -6,6 +6,7 @@ import { campusNome, statusNome, TIPOS_DEMANDA, PROJETO_EXISTE, PRAZOS, TIPOS_AT
 import { prioridade, pontosArt11, faixaValorLabel, cargaProfissionais, fiscaisDe } from '../calc.js';
 import { store } from '../store.js';
 import { can, podeAvaliar, podeExcluir, podeComplementar, podeDeliberarCodir, transicoesPermitidas, travada, ehReversaoStatus, podeEditarDados, ehCampusDe } from '../auth.js';
+import { notificar } from '../notificacoes.js';
 
 const nomeDe = (lista, id, campoNome = 'nome') => (lista.find(x => (x.id ?? x.v) === id) || {})[campoNome] ?? (lista.find(x => x.id === id) || {}).t ?? '—';
 
@@ -61,6 +62,7 @@ export function viewDemanda(rerender, id) {
         descricao: d.descricao + '\n\n[Complemento ' + new Date().toLocaleDateString('pt-BR') + ']\n' + inComp.value.trim(),
         status: 'analise',
       }, 'Diligência respondida pelo campus — retornou para análise');
+      await notificar(s, 'diligencia', d, interna);
       toast('Complemento registrado. Demanda devolvida para análise.');
     } },
       campo('Responder diligência', inComp, 'Ao enviar, a demanda retorna para “Em análise”.'),
@@ -219,6 +221,7 @@ export function viewDemanda(rerender, id) {
         let evento = ck.checked ? 'Aprovada pelo CODIR' : 'Aprovação do CODIR desmarcada';
         if (ck.checked && d.status === 'codir') { patch.status = 'fila'; evento = 'Aprovada pelo CODIR — posicionada na fila'; }
         await s.atualizarDemanda(d.id, patch, evento);
+        if (patch.status === 'fila') await notificar(s, 'fila', d, interna);
         toast('Registro de aprovação atualizado.');
       });
       filhosCodir.push(el('label', { class: 'chip-check destaque-codir' }, ck, ' Aprovada pelo CODIR',
@@ -226,6 +229,7 @@ export function viewDemanda(rerender, id) {
       if (d.status === 'codir') {
         filhosCodir.push(el('button', { class: 'btn ghost sm', onclick: async () => {
           await s.atualizarDemanda(d.id, { codirAprovado: true, status: 'fila' }, 'Aprovada pelo CODIR — posicionada na fila');
+          await notificar(s, 'fila', d, interna);
           toast('Demanda posicionada na fila.');
         } }, 'Posicionar na fila'));
       }
@@ -277,6 +281,8 @@ export function viewDemanda(rerender, id) {
             if (!okConf) return;
           }
           await s.atualizarDemanda(d.id, { status: st }, `Status alterado para “${statusNome(st)}”`);
+          const tipoN = { diligencia: 'diligencia', codir: 'codir', fila: 'fila', concluido: 'concluido' }[st];
+          if (tipoN) await notificar(s, tipoN, d, interna);
           toast(`Status: ${statusNome(st)}.`);
         } }, statusNome(st)))));
     }
@@ -341,6 +347,7 @@ export function viewDemanda(rerender, id) {
         if (!ok) return;
         await s.atualizarDemanda(d.id, { etapa: 'obra', tipoDemanda: 'obra', projetoExiste: 'completo', status: 'codir' },
           'Etapa de projeto concluída — retorna ao CODIR como obra (projeto existente)');
+        await notificar(s, 'codir', d, interna);
         toast('Etapa de projeto concluída. Demanda enviada ao CODIR como obra.');
       } }, 'Concluir projeto → obra ao CODIR')];
       if (d.projetoExiste === 'parcial') {
@@ -436,7 +443,7 @@ export function viewDemanda(rerender, id) {
         filhos.push(el('div', { class: 'obs-add' }, tan, el('button', { class: 'btn ghost sm', onclick: async () => {
           const t = tan.value.trim(); if (!t) { toast('Comentário vazio.', 'erro'); return; }
           const arr = [...baseDe(d[campo2], legado), { id: novoId(), autor: user.nome, autorUid: user.uid, ts: Date.now(), texto: t }];
-          await salvar(campo2, arr, `Comentário adicionado — ${titulo}`); toast('Comentário adicionado.');
+          await salvar(campo2, arr, `Comentário adicionado — ${titulo}`); await notificar(s, 'comentario', d, interna); toast('Comentário adicionado.');
         } }, 'Adicionar comentário')));
       }
       return el('div', { class: 'obs-bloco' }, filhos);

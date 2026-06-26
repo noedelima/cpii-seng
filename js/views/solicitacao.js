@@ -6,6 +6,7 @@ import { el, frag, campo, select, toast } from '../ui.js';
 import { CAMPI, TIPOS_DEMANDA, PROJETO_EXISTE, ESPECIALIDADES, PRAZOS, precisaEtapaProjeto } from '../config.js';
 import { store } from '../store.js';
 import { can, campiDoUsuario } from '../auth.js';
+import { notificar } from '../notificacoes.js';
 
 export function viewSolicitacao() {
   const s = store();
@@ -60,6 +61,8 @@ export function viewSolicitacao() {
         solicitante: { nome: user.nome, email: user.email },
         historico: [{ ts: Date.now(), user: user.nome, acao: 'Solicitação registrada' }],
       });
+      // Notifica os engenheiros/arquitetos das disciplinas marcadas (entra para análise).
+      await notificar(s, 'nova', { id, objeto: inObjeto.value.trim(), especialidades });
       toast(`Solicitação ${id} registrada.`);
       location.hash = `#/demanda/${id}`;
     } catch (err) {

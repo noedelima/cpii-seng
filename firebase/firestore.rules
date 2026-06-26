@@ -180,5 +180,35 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isChefe();
     }
+
+    // ---------- diretório de roteamento de notificações (SEM nomes) -------------
+    // Entradas: uid, papel, ativo e — para profissionais ativos — pid e disciplina.
+    // Lido por qualquer autenticado (necessário até ao Campus para endereçar os
+    // avisos da disciplina); gravado só por chefe/admin (auto-sincronizado a
+    // partir de /usuarios e /profissionais). Não contém nomes nem e-mails.
+    match /diretorio/{doc} {
+      allow read: if signedIn();
+      allow write: if isChefe();
+    }
+
+    // ---------- notificações (inbox pessoal) ------------------------------------
+    // Cada documento pertence a um destinatário (campo `para` = uid). Leitura só
+    // do próprio; criação por qualquer autenticado (fan-out client-side, com o
+    // autor carimbado em `de`); o destinatário só pode alternar `lida`.
+    match /notificacoes/{id} {
+      allow read: if signedIn() && resource.data.para == request.auth.uid;
+      allow create: if signedIn()
+        && request.resource.data.de == request.auth.uid
+        && request.resource.data.para is string
+        && request.resource.data.tipo is string
+        && request.resource.data.demandaId is string
+        && request.resource.data.texto is string && request.resource.data.texto.size() <= 300
+        && request.resource.data.lida == false
+        && request.resource.data.criadoEm is number;
+      allow update: if signedIn() && resource.data.para == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lida'])
+        && request.resource.data.lida is bool;
+      allow delete: if signedIn() && resource.data.para == request.auth.uid;
+    }
   }
 }
