@@ -99,6 +99,12 @@ export const DIAS_ARQUIVO_MORTO = 30;
 // preservados). Cada cliente limpa apenas o próprio inbox, 1x por sessão.
 export const DIAS_NOTIFICACAO = 30;
 
+// Camada de API (Fase 2 — modelo híbrido). Quando true, operações de escrita e
+// sensíveis passam pela API (/api/*, Azure Functions, autorização no servidor);
+// as leituras em tempo real seguem direto no Firestore (onSnapshot). Default off:
+// liga-se por recurso à medida que cada fatia é migrada (estrangulamento).
+export const USE_API = false;
+
 // Status em que se pode editar os DADOS da solicitação. A edição vai até a
 // SUBMISSÃO ao CODIR: ao entrar em “Aguardando aprovação do CODIR” (codir),
 // congela para todos. Reverter o status para uma etapa anterior reabre a edição.

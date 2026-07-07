@@ -1,0 +1,13 @@
+{
+  "name": "cpii-seng-api",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Camada de API (Azure Functions) do SENG Demandas — valida o ID token do Firebase e acessa o Firestore sob as Security Rules do usuário.",
+  "main": "src/functions/*.js",
+  "scripts": {
+    "start": "func start"
+  },
+  "dependencies": {
+    "@azure/functions": "^4.5.0"
+  }
+}
