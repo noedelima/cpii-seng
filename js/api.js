@@ -6,6 +6,7 @@
 // o `Authorization`, por isso não usamos Bearer aqui) — espelha o SANE.
 // =============================================================================
 import { store } from './store.js';
+import { USE_API } from './config.js';
 
 async function idToken() {
   const s = store();
@@ -32,7 +33,20 @@ async function req(method, path, body) {
 export const api = {
   health: () => req('GET', '/health'),
   me: () => req('GET', '/me'),
+  arquivar: (id) => req('POST', '/demandas/' + encodeURIComponent(id) + '/arquivar'),
+  resgatar: (id) => req('POST', '/demandas/' + encodeURIComponent(id) + '/resgatar'),
 };
+
+// Roteamento híbrido: liga a API por SESSÃO sem afetar a produção dos demais.
+// `?api=1` na URL liga (grava no localStorage); `?api=0` desliga. Default: USE_API.
+export function apiLigada() {
+  try {
+    const p = new URLSearchParams(location.search);
+    if (p.get('api') === '1') localStorage.setItem('seng-use-api', '1');
+    if (p.get('api') === '0') localStorage.removeItem('seng-use-api');
+    return USE_API || localStorage.getItem('seng-use-api') === '1';
+  } catch { return USE_API; }
+}
 
 // Verifica se a camada de API está no ar (usada para o roteamento híbrido).
 export async function apiDisponivel() {
