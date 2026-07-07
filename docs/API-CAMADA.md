@@ -58,8 +58,22 @@ api/
 |----------|--------|--------|
 | `/api/health` | diagnóstico (sem auth) | ✅ validado no ar |
 | `/api/me` | auth + leitura de `usuarios/{uid}` sob as rules | ✅ validado no ar (200 com o perfil) |
-| `POST /api/demandas/{id}/arquivar` | **escrita** sob as rules (arquivo morto) | ✅ no ar (404 em id inexistente) |
+| `POST /api/demandas/{id}/arquivar` | **escrita** sob as rules (arquivo morto) | ✅ no ar (testado ponta a ponta) |
 | `POST /api/demandas/{id}/resgatar` | **escrita** sob as rules (restaura) | ✅ no ar |
+| `PATCH /api/demandas/{id}` | atualizar (status, GUT, CODIR, edição, observações/comentários) | ✅ no ar (rules enforçam; 403 em escrita inválida) |
+| `PUT /api/demandas/{id}` | criar (id calculado no cliente) | ✅ no ar |
+| `PATCH /api/internas/{id}` | alocação / observação técnica interna | ✅ no ar |
+| `POST /api/profissionais` | criar/atualizar profissional | ✅ no ar |
+| `PATCH /api/config/params` | parâmetros do sistema | ✅ no ar |
+
+**Roteamento no provider.** As guardas ficam no `FirebaseProvider` (métodos
+`criarDemanda/atualizarDemanda/setInterna/arquivar/resgatar/salvarProfissional/setParams`):
+quando `apiLigada()`, a escrita vai pela API; senão, direto no Firestore. As views
+**não mudam** — chamam `s.xxx()` como sempre.
+
+**Segue direto (fora da API, por ora):** criação/edição de **usuário** (cria
+ credencial no Firebase Auth — exigiria Admin SDK), **troca de senha** (Auth), e a
+ mecânica interna de **notificações/diretório** (fan-out do sistema).
 
 ### Roteamento híbrido por sessão (flag)
 
