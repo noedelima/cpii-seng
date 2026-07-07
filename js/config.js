@@ -189,3 +189,68 @@ export const ROLES = [
   { id: 'admin',      nome: 'Administrador' },
 ];
 export const roleNome = (id) => (ROLES.find(r => r.id === id) || {}).nome || id;
+
+// =============================================================================
+// Módulo de Chamados (intake + triagem da SENG) — ver docs/ADR-002-chamados.md
+// =============================================================================
+export const STATUS_CHAMADO = [
+  { id: 'aberto',       nome: 'Aberto',                       cor: 'st-recebido' },
+  { id: 'triagem',      nome: 'Em triagem',                   cor: 'st-analise' },
+  { id: 'diligencia',   nome: 'Em diligência',                cor: 'st-diligencia' },
+  { id: 'atendimento',  nome: 'Em atendimento',               cor: 'st-atendimento' },
+  { id: 'obra',         nome: 'Encaminhado à fila de Obras',  cor: 'st-fila' },
+  { id: 'encaminhado',  nome: 'Encaminhado a outro setor',    cor: 'st-nao-enquadrado' },
+  { id: 'resolvido',    nome: 'Resolvido',                    cor: 'st-concluido' },
+  { id: 'improcedente', nome: 'Improcedente',                 cor: 'st-cancelado' },
+  { id: 'duplicado',    nome: 'Duplicado',                    cor: 'st-suspenso' },
+  { id: 'cancelado',    nome: 'Cancelado',                    cor: 'st-cancelado' },
+];
+export const statusChamadoNome = (id) => (STATUS_CHAMADO.find(s => s.id === id) || {}).nome || id;
+export const statusChamadoCor  = (id) => (STATUS_CHAMADO.find(s => s.id === id) || {}).cor || '';
+
+// Ordem operacional no painel (ativos primeiro; encerrados por último).
+export const STATUS_CHAMADO_ORDEM = [
+  'triagem', 'aberto', 'diligencia', 'atendimento', 'obra',
+  'resolvido', 'encaminhado', 'improcedente', 'duplicado', 'cancelado',
+];
+export const STATUS_CHAMADO_ABERTO = ['aberto', 'triagem', 'diligencia', 'atendimento']; // SLA corre
+
+// Categorias/assuntos — cada uma mapeia a disciplina (= área do profissional, p/
+// rotear notificações) e um SLA em dias corridos.
+export const CATEGORIAS_CHAMADO = [
+  { id: 'eletrica',       nome: 'Instalações elétricas',         disciplina: 'Elétrica',              slaDias: 5 },
+  { id: 'hidraulica',     nome: 'Hidráulica / sanitária',        disciplina: 'Civil',                 slaDias: 5 },
+  { id: 'cobertura',      nome: 'Cobertura / infiltração',       disciplina: 'Civil',                 slaDias: 10 },
+  { id: 'estrutura',      nome: 'Estrutura / patologia',         disciplina: 'Civil',                 slaDias: 15 },
+  { id: 'acessibilidade', nome: 'Acessibilidade',                disciplina: 'Arquitetura',           slaDias: 15 },
+  { id: 'climatizacao',   nome: 'Climatização',                  disciplina: 'Mecânica',              slaDias: 10 },
+  { id: 'incendio',       nome: 'Segurança / incêndio',          disciplina: 'Segurança do Trabalho', slaDias: 10 },
+  { id: 'consultoria',    nome: 'Consultoria / parecer técnico', disciplina: null,                    slaDias: 15 },
+  { id: 'outros',         nome: 'Outros',                        disciplina: null,                    slaDias: 15 },
+];
+export const categoriaChamado = (id) => CATEGORIAS_CHAMADO.find(c => c.id === id) || null;
+export const categoriaChamadoNome = (id) => (categoriaChamado(id) || {}).nome || id;
+
+// Urgência percebida pelo campus (não é o GUT — só sinalização inicial).
+export const URGENCIA_CHAMADO = [
+  { id: 'baixa',       nome: 'Baixa' },
+  { id: 'media',       nome: 'Média' },
+  { id: 'alta',        nome: 'Alta' },
+  { id: 'emergencial', nome: 'Emergencial — risco iminente' },
+];
+
+// Desfechos da triagem (o que a SENG decide fazer com o chamado).
+export const DESFECHO_CHAMADO = [
+  { id: 'obra',         nome: 'Encaminhar à fila de Obras (vira Demanda)', status: 'obra' },
+  { id: 'consultoria',  nome: 'Consultoria / assessoria técnica',          status: 'atendimento' },
+  { id: 'laudo',        nome: 'Laudo / avaliação técnica',                 status: 'atendimento' },
+  { id: 'encaminhado',  nome: 'Encaminhar a outro setor',                  status: 'encaminhado' },
+  { id: 'improcedente', nome: 'Improcedente',                              status: 'improcedente' },
+  { id: 'duplicado',    nome: 'Duplicado',                                 status: 'duplicado' },
+];
+
+// Setores de encaminhamento (desfecho “encaminhado”).
+export const SETORES_ENCAMINHAMENTO = [
+  'Prefeitura do campus / Manutenção', 'DTI (Tecnologia da Informação)',
+  'Administração / Material', 'Comunicação', 'Outro',
+];

@@ -73,6 +73,18 @@ service cloud.firestore {
           && mantemDeliberacao();
     }
 
+    function chamadoValido(c) {
+      return c.assunto is string && c.assunto.size() > 0 && c.assunto.size() <= 140
+          && c.descricao is string && c.descricao.size() <= 6000
+          && c.campus is string && c.campus.size() <= 8
+          && c.categoria is string
+          && c.status in ['aberto','triagem','diligencia','atendimento','obra','encaminhado','resolvido','improcedente','duplicado','cancelado']
+          && (!('anexos' in c) || (c.anexos is list && c.anexos.size() <= 20))
+          && (!('historico' in c) || (c.historico is list && c.historico.size() <= 400))
+          && (!('obsInterna' in c) || (c.obsInterna is list && c.obsInterna.size() <= 300))
+          && (!('obsExterna' in c) || (c.obsExterna is list && c.obsExterna.size() <= 300));
+    }
+
     // ---------- demandas (fila pública) --------------------------------------
     match /demandas/{id} {
       allow read: if true; // dashboard e relatório públicos
@@ -209,6 +221,27 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lida'])
         && request.resource.data.lida is bool;
       allow delete: if signedIn() && resource.data.para == request.auth.uid;
+    }
+
+    // ---------- chamados (intake da SENG) — ADR-002 -----------------------------
+    // Não é público: leem a SENG (interno) e o campus dono. Escrita direto ou pela
+    // camada de API (sob o token do usuário) — as rules valem igual.
+    match /chamados/{id} {
+      allow read: if isInterno() || (resource != null && isCampusDe(resource.data.campus));
+      allow create: if chamadoValido(request.resource.data)
+        && request.resource.data.status == 'aberto'
+        && ( isEng() || isCampusDe(request.resource.data.campus) );
+      allow update: if chamadoValido(request.resource.data)
+        && request.resource.data.campus == resource.data.campus
+        && (
+          // SENG/Admin: triagem, resolução e status
+          isEng()
+          // Campus dono: complementar/responder diligência, comentar (externa) e anexar
+          || ( isCampusDe(resource.data.campus)
+               && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['descricao','status','obsExterna','anexos','historico','atualizadoEm'])
+               && request.resource.data.status in ['aberto','triagem','diligencia'] )
+        );
+      allow delete: if isChefe();
     }
   }
 }
