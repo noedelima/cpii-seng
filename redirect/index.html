@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SENG Demandas — novo endereço</title>
+    <!--
+      ATENÇÃO: troque a URL abaixo (nos DOIS lugares) pela URL do seu Azure
+      Static Web App após criar o recurso — ex.: https://xxxx.azurestaticapps.net
+      Preserva a rota (hash) ao redirecionar.
+    -->
+    <script>
+      location.replace(
+        "https://SEU-APP.azurestaticapps.net/" + (location.hash || "")
+      );
+    </script>
+    <meta
+      http-equiv="refresh"
+      content="0; url=https://SEU-APP.azurestaticapps.net/"
+    />
+    <style>
+      body {
+        font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+        background: #15170F;
+        color: #E9E7DA;
+        display: grid;
+        place-items: center;
+        min-height: 100vh;
+        margin: 0;
+        text-align: center;
+        padding: 1rem;
+      }
+      a { color: #C9B98C; }
+      h1 { font-size: 1.2rem; margin: 0 0 0.5rem; }
+      p { color: #A4A78F; }
+    </style>
+  </head>
+  <body>
+    <div>
+      <h1>O SENG Demandas mudou de endereço</h1>
+      <p>
+        Redirecionando para a nova versão…<br />
+        <a href="https://SEU-APP.azurestaticapps.net/">clique aqui se não for automático</a>.
+      </p>
+    </div>
+  </body>
+</html>
