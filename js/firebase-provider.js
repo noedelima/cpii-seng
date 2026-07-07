@@ -4,6 +4,7 @@
 // Auth: e-mail/senha. Dados: Cloud Firestore (regras em firebase/firestore.rules).
 // =============================================================================
 import { api, apiLigada } from './api.js';
+import { CATEGORIAS_CHAMADO } from './config.js';
 
 const FB = 'https://www.gstatic.com/firebasejs/10.12.2';
 
@@ -19,6 +20,7 @@ export class FirebaseProvider {
     this._logs = [];
     this._notificacoes = [];
     this._diretorio = [];
+    this._chamados = [];
     this._params = null;
     this._unsubPriv = [];
     this.ready = this._init(config);
@@ -75,7 +77,7 @@ export class FirebaseProvider {
         } else {
           this.user = null;
           this._internas = {}; this._profissionais = []; this._usuarios = [];
-          this._notificacoes = []; this._diretorio = [];
+          this._notificacoes = []; this._diretorio = []; this._chamados = [];
         }
         this._emit();
         resolve();
@@ -100,6 +102,18 @@ export class FirebaseProvider {
     this._unsubPriv.push(fs.onSnapshot(fs.doc(this.db, 'diretorio', 'atual'), (snap) => {
       this._diretorio = snap.exists() ? (snap.data().entradas || []) : []; this._emit();
     }, () => {}));
+    // chamados: interno vê todos; campus vê os do(s) seu(s) campus.
+    const rl = this.user?.role;
+    if (['engenharia', 'chefe', 'codir', 'admin'].includes(rl)) {
+      this._unsubPriv.push(fs.onSnapshot(fs.collection(this.db, 'chamados'), (snap) => {
+        this._chamados = snap.docs.map(d => ({ id: d.id, ...d.data() })); this._emit();
+      }, () => {}));
+    } else if (rl === 'campus') {
+      const campi = (Array.isArray(this.user.campi) && this.user.campi.length) ? this.user.campi : (this.user.campus ? [this.user.campus] : []);
+      if (campi.length) this._unsubPriv.push(fs.onSnapshot(fs.query(fs.collection(this.db, 'chamados'), fs.where('campus', 'in', campi.slice(0, 10))), (snap) => {
+        this._chamados = snap.docs.map(d => ({ id: d.id, ...d.data() })); this._emit();
+      }, () => {}));
+    }
     if (['admin', 'chefe'].includes(this.user?.role)) {
       this._unsubPriv.push(fs.onSnapshot(fs.collection(this.db, 'usuarios'), (snap) => {
         this._usuarios = snap.docs.map(d => ({ uid: d.id, ...d.data() })); this._emit(); this._talvezSincronizarDiretorio();
@@ -217,6 +231,30 @@ export class FirebaseProvider {
 
   listDemandas() { return this._demandas; }
   getDemanda(id) { return this._demandas.find(d => d.id === id) || null; }
+
+  // --- Chamados (intake da SENG) ------------------------------------------
+  listChamados() { return this._chamados; }
+  getChamado(id) { return this._chamados.find(c => c.id === id) || null; }
+  async criarChamado(c) {
+    const ano = new Date().getFullYear();
+    const seq = Math.max(0, ...this._chamados.filter(x => x.ano === ano && x.campus === c.campus).map(x => x.seq || 0)) + 1;
+    const id = `CH${ano}${c.campus}${String(seq).padStart(3, '0')}`;
+    const cat = CATEGORIAS_CHAMADO.find(k => k.id === c.categoria);
+    const now = Date.now();
+    const data = { ...c, ano, seq, status: 'aberto', aberturaEm: now, atualizadoEm: now, prazoLimite: now + (cat ? cat.slaDias : 15) * 86400000 };
+    if (apiLigada()) { await api.criarChamado(id, data); return id; }
+    await this._F.setDoc(this._F.doc(this.db, 'chamados', id), data);
+    await this._log('Chamado aberto', id, c.assunto || '');
+    return id;
+  }
+  async atualizarChamado(id, patch, evento) {
+    if (apiLigada()) return api.atualizarChamado(id, patch, evento);
+    const fs = this._F;
+    const upd = { ...patch, atualizadoEm: Date.now() };
+    if (evento) upd.historico = fs.arrayUnion({ ts: Date.now(), user: this.user?.nome || 'Sistema', acao: evento });
+    await fs.updateDoc(fs.doc(this.db, 'chamados', id), upd);
+    await this._log('Chamado atualizado', id, evento || Object.keys(patch).join(', '));
+  }
 
   async criarDemanda(d) {
     const fs = this._F;

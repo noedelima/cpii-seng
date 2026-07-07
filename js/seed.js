@@ -229,10 +229,34 @@ export function seedDemo() {
     [`${ano}REIT01`]: { equipePlanejamento: ['p3', 'p7'] },
   };
 
+  // ---- Chamados de exemplo (intake da SENG) --------------------------------
+  const anoCh = new Date().getFullYear();
+  const chamados = [
+    { id: `CH${anoCh}CSCII001`, ano: anoCh, seq: 1, campus: 'CSCII', categoria: 'hidraulica',
+      assunto: 'Vazamento constante no banheiro do 1º pavimento', descricao: 'Vazamento sob a pia do banheiro masculino, com infiltração no piso.',
+      local: 'Bloco A, 1º pavimento — banheiro masculino', urgencia: 'alta', status: 'triagem',
+      aberturaEm: agora - 2 * dia, atualizadoEm: agora - 1 * dia, prazoLimite: agora + 3 * dia,
+      autor: { nome: 'DIAD São Cristóvão II', email: 'campus.sc2@cp2.demo' },
+      historico: [ev(2, 'DIAD São Cristóvão II', 'Chamado aberto'), ev(1, 'Beatriz Antunes', 'Em triagem')] },
+    { id: `CH${anoCh}CTII001`, ano: anoCh, seq: 1, campus: 'CTII', categoria: 'consultoria',
+      assunto: 'Orientação sobre acessibilidade na entrada', descricao: 'Solicitamos orientação técnica sobre exigências de acessibilidade para a reforma da entrada principal.',
+      local: 'Entrada principal', urgencia: 'baixa', status: 'aberto',
+      aberturaEm: agora - 1 * dia, atualizadoEm: agora - 1 * dia, prazoLimite: agora + 14 * dia,
+      autor: { nome: 'Prefeitura Tijuca II', email: 'campus.t2@cp2.demo' },
+      historico: [ev(1, 'Prefeitura Tijuca II', 'Chamado aberto')] },
+    { id: `CH${anoCh}CREII001`, ano: anoCh, seq: 1, campus: 'CREII', categoria: 'eletrica',
+      assunto: 'Disjuntor desarmando no laboratório', descricao: 'O disjuntor do laboratório de informática desarma ao ligar os equipamentos.',
+      local: 'Bloco C — laboratório', urgencia: 'media', status: 'encaminhado',
+      aberturaEm: agora - 8 * dia, atualizadoEm: agora - 5 * dia, prazoLimite: agora - 3 * dia,
+      autor: { nome: 'Direção do campus', email: 'demo@cp2.demo' },
+      resolucao: { tipo: 'encaminhado', encaminhadoA: 'Prefeitura do campus / Manutenção', texto: 'Manutenção corretiva de baixa complexidade; orientada a substituição do disjuntor pela equipe de manutenção.', encerradoEm: agora - 5 * dia, por: 'Beatriz Antunes' },
+      historico: [ev(8, 'Direção do campus', 'Chamado aberto'), ev(5, 'Beatriz Antunes', 'Encaminhado à manutenção com orientação')] },
+  ];
+
   return {
     _v: 2,
     params: { ...PARAMS_DEFAULT },
-    usuarios, profissionais, demandas, internas,
+    usuarios, profissionais, demandas, internas, chamados,
     logs: [{ ts: agora, uid: 'sistema', nome: 'Sistema', email: '', acao: 'Dados de demonstração gerados', alvo: 'sistema', detalhes: '' }],
   };
 }

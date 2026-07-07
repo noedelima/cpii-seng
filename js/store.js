@@ -6,7 +6,7 @@
 // A aplicação consome apenas a API do `store`, indiferente ao provedor.
 // Toda modificação gera entrada no LOG DE AUDITORIA (visível só ao administrador).
 // =============================================================================
-import { PARAMS_DEFAULT } from './config.js';
+import { PARAMS_DEFAULT, CATEGORIAS_CHAMADO } from './config.js';
 import { FIREBASE_CONFIG } from './firebase-config.js';
 import { seedDemo } from './seed.js';
 
@@ -34,6 +34,7 @@ class DemoProvider {
     if (!this.db || this.db._v !== 2) { this.db = seedDemo(); this._save(); }
     this.db.logs = this.db.logs || [];
     this.db.notificacoes = this.db.notificacoes || []; // inbox pessoal (não destrutivo)
+    this.db.chamados = this.db.chamados || [];
   }
   _save() { localStorage.setItem(LS_KEY, JSON.stringify(this.db)); this._emit(); }
   _emit() { this._subs.forEach(cb => { try { cb(); } catch (e) { console.error(e); } }); }
@@ -86,6 +87,35 @@ class DemoProvider {
   // --- Demandas ---
   listDemandas() { return this.db.demandas; }
   getDemanda(id) { return this.db.demandas.find(d => d.id === id) || null; }
+  // --- Chamados (intake da SENG) ---
+  listChamados() {
+    if (!this.user) return [];
+    const r = this.user.role;
+    if (['engenharia', 'chefe', 'codir', 'admin'].includes(r)) return this.db.chamados;
+    if (r === 'campus') {
+      const campi = (Array.isArray(this.user.campi) && this.user.campi.length) ? this.user.campi : (this.user.campus ? [this.user.campus] : []);
+      return this.db.chamados.filter(c => campi.includes(c.campus));
+    }
+    return [];
+  }
+  getChamado(id) { return (this.db.chamados || []).find(c => c.id === id) || null; }
+  async criarChamado(c) {
+    const ano = new Date().getFullYear();
+    const seq = Math.max(0, ...this.db.chamados.filter(x => x.ano === ano && x.campus === c.campus).map(x => x.seq || 0)) + 1;
+    const id = `CH${ano}${c.campus}${String(seq).padStart(3, '0')}`;
+    const cat = CATEGORIAS_CHAMADO.find(k => k.id === c.categoria);
+    const now = Date.now();
+    this.db.chamados.push({ ...c, id, ano, seq, status: 'aberto', aberturaEm: now, atualizadoEm: now, prazoLimite: now + (cat ? cat.slaDias : 15) * 86400000, historico: c.historico || [this._ev('Chamado aberto')] });
+    this._log('Chamado aberto', id, c.assunto || '');
+    this._save(); return id;
+  }
+  async atualizarChamado(id, patch, evento) {
+    const c = this.getChamado(id); if (!c) throw new Error('Chamado não encontrado.');
+    Object.assign(c, patch, { atualizadoEm: Date.now() });
+    if (evento) (c.historico = c.historico || []).push(this._ev(evento));
+    this._log('Chamado atualizado', id, evento || Object.keys(patch).join(', '));
+    this._save();
+  }
   async criarDemanda(d) {
     const ano = this.db.params.anoPlano;
     const seq = Math.max(0, ...this.db.demandas.filter(x => x.ano === ano && x.campus === d.campus).map(x => x.seq || 0)) + 1;

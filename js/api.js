@@ -41,6 +41,8 @@ export const api = {
   setInterna: (id, patch) => req('PATCH', '/internas/' + encodeURIComponent(id), { patch }),
   salvarProfissional: (p) => req('POST', '/profissionais', { p }),
   setParams: (p) => req('PATCH', '/config/params', { p }),
+  criarChamado: (id, data) => req('PUT', '/chamados/' + encodeURIComponent(id), { data }),
+  atualizarChamado: (id, patch, evento) => req('PATCH', '/chamados/' + encodeURIComponent(id), { patch, evento }),
 };
 
 // Roteamento híbrido. Fase 2 concluída: a API é o caminho de escrita PADRÃO
