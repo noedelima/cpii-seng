@@ -3,6 +3,8 @@
 // Carregado dinamicamente apenas quando js/firebase-config.js está preenchido.
 // Auth: e-mail/senha. Dados: Cloud Firestore (regras em firebase/firestore.rules).
 // =============================================================================
+import { api, apiLigada } from './api.js';
+
 const FB = 'https://www.gstatic.com/firebasejs/10.12.2';
 
 export class FirebaseProvider {
@@ -221,12 +223,14 @@ export class FirebaseProvider {
     const ano = this.getParams().anoPlano;
     const seq = Math.max(0, ...this._demandas.filter(x => x.ano === ano && x.campus === d.campus).map(x => x.seq || 0)) + 1;
     const id = `${ano}${d.campus}${String(seq).padStart(2, '0')}`;
-    await fs.setDoc(fs.doc(this.db, 'demandas', id),
-      { ...d, ano, seq, criadoEm: Date.now(), atualizadoEm: Date.now() });
+    const data = { ...d, ano, seq, criadoEm: Date.now(), atualizadoEm: Date.now() };
+    if (apiLigada()) { await api.criarDemanda(id, data); return id; }
+    await fs.setDoc(fs.doc(this.db, 'demandas', id), data);
     await this._log('Demanda criada', id, d.objeto || '');
     return id;
   }
   async atualizarDemanda(id, patch, evento) {
+    if (apiLigada()) return api.atualizarDemanda(id, patch, evento);
     const fs = this._F;
     const upd = { ...patch, atualizadoEm: Date.now() };
     if (evento) upd.historico = fs.arrayUnion({ ts: Date.now(), user: this.user?.nome || 'Sistema', acao: evento });
@@ -241,6 +245,7 @@ export class FirebaseProvider {
   }
   // Arquivo morto: soft-delete recuperável; expurgarEm (Timestamp) alimenta o TTL do Firestore.
   async arquivarDemanda(id) {
+    if (apiLigada()) return api.arquivar(id);
     const fs = this._F;
     const d = this.getDemanda(id); if (!d) throw new Error('Demanda não encontrada.');
     if (['atendimento', 'concluido'].includes(d.status))
@@ -254,6 +259,7 @@ export class FirebaseProvider {
     await this._log('Demanda arquivada (excluída)', id, d.objeto || '');
   }
   async resgatarDemanda(id) {
+    if (apiLigada()) return api.resgatar(id);
     const fs = this._F;
     const d = this.getDemanda(id); if (!d) throw new Error('Demanda não encontrada.');
     await fs.updateDoc(fs.doc(this.db, 'demandas', id), {
@@ -277,6 +283,7 @@ export class FirebaseProvider {
 
   getInternas() { return this._internas; }
   async setInterna(id, patch) {
+    if (apiLigada()) return api.setInterna(id, patch);
     const fs = this._F;
     await fs.setDoc(fs.doc(this.db, 'internas', id), patch, { merge: true });
     await this._log('Alocação atualizada', id, Object.keys(patch).join(', '));
@@ -287,6 +294,7 @@ export class FirebaseProvider {
     const fs = this._F;
     if (p.email && this._profissionais.some(x => x.id !== p.id && (x.email || '').toLowerCase() === p.email.toLowerCase()))
       throw new Error('Já existe profissional com este e-mail.');
+    if (apiLigada()) { const r = await api.salvarProfissional(p); return r.id; }
     if (p.id) {
       const { id, ...rest } = p;
       await fs.setDoc(fs.doc(this.db, 'profissionais', id), rest, { merge: true });
@@ -353,6 +361,7 @@ export class FirebaseProvider {
     };
   }
   async setParams(p) {
+    if (apiLigada()) return api.setParams(p);
     const fs = this._F;
     await fs.setDoc(fs.doc(this.db, 'config', 'params'), p, { merge: true });
     await this._log('Parâmetros alterados', 'config', JSON.stringify(p));

@@ -33,8 +33,14 @@ async function req(method, path, body) {
 export const api = {
   health: () => req('GET', '/health'),
   me: () => req('GET', '/me'),
+  // Escritas (híbrido): espelham os métodos do provider; rodam sob as rules.
+  criarDemanda: (id, data) => req('PUT', '/demandas/' + encodeURIComponent(id), { data }),
+  atualizarDemanda: (id, patch, evento) => req('PATCH', '/demandas/' + encodeURIComponent(id), { patch, evento }),
   arquivar: (id) => req('POST', '/demandas/' + encodeURIComponent(id) + '/arquivar'),
   resgatar: (id) => req('POST', '/demandas/' + encodeURIComponent(id) + '/resgatar'),
+  setInterna: (id, patch) => req('PATCH', '/internas/' + encodeURIComponent(id), { patch }),
+  salvarProfissional: (p) => req('POST', '/profissionais', { p }),
+  setParams: (p) => req('PATCH', '/config/params', { p }),
 };
 
 // Roteamento híbrido: liga a API por SESSÃO sem afetar a produção dos demais.

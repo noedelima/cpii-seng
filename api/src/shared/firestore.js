@@ -5,8 +5,9 @@
 // =============================================================================
 const { PROJECT_ID } = require('./auth');
 const BASE = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
+const COMMIT = `${BASE}:commit`;
 
-// Converte o formato tipado do Firestore REST em valor JS simples.
+// ---- Decodificação (formato tipado do Firestore → valor JS) -----------------
 function val(v) {
   if (v == null) return null;
   if ('stringValue' in v) return v.stringValue;
@@ -25,18 +26,7 @@ function unwrap(fields = {}) {
   return out;
 }
 
-// GET de um documento por caminho (ex.: "usuarios/abc"). Retorna objeto simples,
-// ou null se não existir. Lança em erro de autorização/servidor.
-async function docGet(path, token) {
-  const r = await fetch(`${BASE}/${path}`, { headers: { Authorization: 'Bearer ' + token } });
-  if (r.status === 404) return null;
-  if (!r.ok) throw new Error('firestore ' + r.status + ': ' + (await r.text()).slice(0, 300));
-  const d = await r.json();
-  return unwrap(d.fields || {});
-}
-
-// --- Escrita (sob o token do usuário; as Security Rules aprovam ou negam) ----
-// Codifica valor JS no formato tipado do Firestore.
+// ---- Codificação (valor JS → formato tipado) --------------------------------
 function enc(v) {
   if (v === null || v === undefined) return { nullValue: null };
   if (typeof v === 'string') return { stringValue: v };
@@ -46,8 +36,15 @@ function enc(v) {
   if (typeof v === 'object') { const f = {}; for (const [k, x] of Object.entries(v)) f[k] = enc(x); return { mapValue: { fields: f } }; }
   return { nullValue: null };
 }
+const encFields = (obj = {}) => { const f = {}; for (const [k, v] of Object.entries(obj)) f[k] = enc(v); return f; };
 
-// GET cru (mantém o formato tipado — usado para reescrever arrays como historico).
+// ---- Leitura ----------------------------------------------------------------
+async function docGet(path, token) {
+  const r = await fetch(`${BASE}/${path}`, { headers: { Authorization: 'Bearer ' + token } });
+  if (r.status === 404) return null;
+  if (!r.ok) throw new Error('firestore GET ' + r.status + ': ' + (await r.text()).slice(0, 300));
+  return unwrap((await r.json()).fields || {});
+}
 async function docGetRaw(path, token) {
   const r = await fetch(`${BASE}/${path}`, { headers: { Authorization: 'Bearer ' + token } });
   if (r.status === 404) return null;
@@ -55,8 +52,9 @@ async function docGetRaw(path, token) {
   return r.json();
 }
 
-// PATCH com updateMask: define os campos de `fields`; campos no mask e AUSENTES
-// de `fields` são APAGADOS (equivalente ao deleteField).
+// ---- Escrita (sob o token; as rules aprovam/negam) --------------------------
+// PATCH com updateMask: define os campos de `fields`; campos no mask e ausentes
+// de `fields` são apagados (deleteField). Cria o doc se não existir (merge/upsert).
 async function patchDoc(path, fields, maskPaths, token) {
   const qs = maskPaths.map((p) => 'updateMask.fieldPaths=' + encodeURIComponent(p)).join('&');
   const r = await fetch(`${BASE}/${path}?${qs}`, {
@@ -67,8 +65,6 @@ async function patchDoc(path, fields, maskPaths, token) {
   if (!r.ok) throw new Error('firestore PATCH ' + r.status + ': ' + (await r.text()).slice(0, 300));
   return r.json();
 }
-
-// POST (cria doc com id automático) — usado para o log de auditoria.
 async function createDoc(collection, fields, token) {
   const r = await fetch(`${BASE}/${collection}`, {
     method: 'POST',
@@ -78,5 +74,46 @@ async function createDoc(collection, fields, token) {
   if (!r.ok) throw new Error('firestore POST ' + r.status + ': ' + (await r.text()).slice(0, 200));
   return r.json();
 }
+async function commitWrite(write, token) {
+  const r = await fetch(COMMIT, {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ writes: [write] }),
+  });
+  if (!r.ok) throw new Error('firestore commit ' + r.status + ': ' + (await r.text()).slice(0, 300));
+  return r.json();
+}
+// Atualiza doc existente: só os campos do mask; `historyEvent` (opcional) faz o
+// arrayUnion em `historico` (appendMissingElements) — igual ao SDK.
+async function commitPatch(path, fields, maskPaths, historyEvent, token) {
+  const name = `projects/${PROJECT_ID}/databases/(default)/documents/${path}`;
+  const write = { update: { name, fields }, currentDocument: { exists: true } };
+  if (maskPaths && maskPaths.length) write.updateMask = { fieldPaths: maskPaths };
+  if (historyEvent) write.updateTransforms = [{ fieldPath: 'historico', appendMissingElements: { values: [historyEvent] } }];
+  return commitWrite(write, token);
+}
+// Cria doc num id definido; falha se já existir.
+async function commitCreate(path, fields, token) {
+  const name = `projects/${PROJECT_ID}/databases/(default)/documents/${path}`;
+  return commitWrite({ update: { name, fields }, currentDocument: { exists: false } }, token);
+}
 
-module.exports = { docGet, docGetRaw, patchDoc, createDoc, enc, unwrap, val, BASE };
+// ---- Auxiliares (nome do usuário + auditoria append-only) -------------------
+async function nomeDoUsuario(user) {
+  try { const p = await docGet('usuarios/' + user.uid, user.token); return (p && p.nome) || user.email || 'Sistema'; }
+  catch { return user.email || 'Sistema'; }
+}
+async function logAudit(user, nome, acao, alvo, detalhes) {
+  try {
+    await createDoc('logs', encFields({
+      ts: Date.now(), uid: user.uid, nome: nome || user.email || 'Sistema', email: user.email || '',
+      acao: String(acao || '').slice(0, 120), alvo: String(alvo || '').slice(0, 160), detalhes: String(detalhes || '').slice(0, 1000),
+    }), user.token);
+  } catch { /* auditoria best-effort */ }
+}
+
+module.exports = {
+  BASE, val, unwrap, enc, encFields,
+  docGet, docGetRaw, patchDoc, createDoc, commitPatch, commitCreate,
+  nomeDoUsuario, logAudit,
+};

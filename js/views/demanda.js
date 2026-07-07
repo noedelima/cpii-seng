@@ -7,7 +7,6 @@ import { prioridade, pontosArt11, faixaValorLabel, cargaProfissionais, fiscaisDe
 import { store } from '../store.js';
 import { can, podeAvaliar, podeExcluir, podeComplementar, podeDeliberarCodir, transicoesPermitidas, travada, ehReversaoStatus, podeEditarDados, ehCampusDe } from '../auth.js';
 import { notificar } from '../notificacoes.js';
-import { api, apiLigada } from '../api.js';
 
 const nomeDe = (lista, id, campoNome = 'nome') => (lista.find(x => (x.id ?? x.v) === id) || {})[campoNome] ?? (lista.find(x => x.id === id) || {}).t ?? '—';
 
@@ -368,11 +367,8 @@ export function viewDemanda(rerender, id) {
         el('button', { class: 'btn perigo', onclick: async () => {
           const okDel = await confirmar('Excluir demanda?', `A demanda ${d.id} vai para o arquivo morto e pode ser resgatada por ${DIAS_ARQUIVO_MORTO} dias; depois é removida definitivamente. Prefira “Cancelado” se quiser preservá-la na fila.`, { ok: 'Excluir (arquivo morto)', perigo: true });
           if (!okDel) return;
-          try {
-            if (apiLigada() && s.mode === 'firebase') await api.arquivar(d.id);
-            else await s.arquivarDemanda(d.id);
-            toast('Demanda enviada ao arquivo morto.'); location.hash = '#/';
-          } catch (e2) { toast(e2.message, 'erro'); }
+          try { await s.arquivarDemanda(d.id); toast('Demanda enviada ao arquivo morto.'); location.hash = '#/'; }
+          catch (e2) { toast(e2.message, 'erro'); }
         } }, 'Excluir demanda')));
     } else if (user && can(user, 'excluir') && bloqueada) {
       filhos.push(el('p', { class: 'nota' }, 'Demanda em atendimento/concluída: exclusão e alteração de classificação bloqueadas.'));
@@ -474,11 +470,8 @@ export function viewDemanda(rerender, id) {
       el('button', { class: 'btn primario', onclick: async () => {
         const ok = await confirmar('Resgatar demanda?', `A demanda ${d.id} volta para “${statusNome(d.statusAnterior || 'recebido')}” e sai do arquivo morto.`, { ok: 'Resgatar' });
         if (!ok) return;
-        try {
-          if (apiLigada() && s.mode === 'firebase') await api.resgatar(d.id);
-          else await s.resgatarDemanda(d.id);
-          toast('Demanda resgatada.');
-        } catch (e2) { toast(e2.message, 'erro'); }
+        try { await s.resgatarDemanda(d.id); toast('Demanda resgatada.'); }
+        catch (e2) { toast(e2.message, 'erro'); }
       } }, 'Resgatar demanda'));
   }
 
