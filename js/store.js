@@ -203,7 +203,7 @@ class DemoProvider {
       id: 'n' + base.toString(36) + i.toString(36) + Math.random().toString(36).slice(2, 6),
       para: it.para, de: this.user.uid, deNome: this.user.nome || '',
       tipo: it.tipo, demandaId: it.demandaId, objeto: it.objeto || '', texto: it.texto || '',
-      criadoEm: base, lida: false,
+      link: it.link || '', criadoEm: base, lida: false,
     }));
     if (this.db.notificacoes.length > 5000) this.db.notificacoes = this.db.notificacoes.slice(-5000);
     this._save();

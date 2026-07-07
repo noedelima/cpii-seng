@@ -17,6 +17,8 @@
 // O autor da ação nunca é notificado de si mesmo.
 // =============================================================================
 
+import { categoriaChamado } from './config.js';
+
 // especialidade da demanda ("Engenharia Civil") → área do profissional ("Civil")
 export const espParaArea = (esp) => String(esp || '').replace(/^Engenharia\s+/i, '').trim();
 
@@ -80,6 +82,10 @@ export const ROTULO_TIPO = {
   codir: 'Envio ao CODIR',
   fila: 'Na fila',
   concluido: 'Concluída',
+  'chamado-novo': 'Novo chamado',
+  'chamado-diligencia': 'Chamado — diligência',
+  'chamado-resolvido': 'Chamado resolvido',
+  'chamado-desfecho': 'Desfecho do chamado',
 };
 
 // Texto curto e informativo (≤ 300) por tipo de evento.
@@ -111,4 +117,54 @@ export async function notificar(s, tipo, demanda, interna) {
       para: uid, tipo, demandaId: demanda.id, objeto: demanda.objeto || '', texto,
     })));
   } catch (e) { console.warn('notificar', e); }
+}
+
+// ---- Chamados ---------------------------------------------------------------
+// uids dos usuários de perfil Campus vinculados a um campus.
+export function uidsPorCampus(diretorio = [], campus) {
+  return diretorio.filter(e => ativo(e) && e.role === 'campus' && (e.campi || []).includes(campus)).map(e => e.uid);
+}
+
+export function destinatariosChamado(tipo, { diretorio = [], chamado = {} } = {}) {
+  switch (tipo) {
+    case 'chamado-novo': {
+      const disc = chamado.disciplina;
+      const alvo = disc ? uidsPorDisciplina(diretorio, [disc]) : [];
+      return alvo.length ? alvo : uidsPorRole(diretorio, 'engenharia'); // sem disciplina → toda a Engenharia
+    }
+    case 'chamado-diligencia':
+    case 'chamado-resolvido':
+    case 'chamado-desfecho':
+      return uidsPorCampus(diretorio, chamado.campus);
+    default:
+      return [];
+  }
+}
+
+export function textoChamado(tipo, chamado = {}) {
+  const a = chamado.assunto || chamado.id || 'chamado';
+  const t = {
+    'chamado-novo': `Novo chamado para triagem — ${a}`,
+    'chamado-diligencia': `Chamado em diligência — ${a}`,
+    'chamado-resolvido': `Chamado resolvido — ${a}`,
+    'chamado-desfecho': `Chamado com desfecho — ${a}`,
+  }[tipo] || a;
+  return t.length > 300 ? t.slice(0, 297) + '…' : t;
+}
+
+// Dispara notificações de chamado (link para #/chamado/{id}). Robusto (não lança).
+export async function notificarChamado(s, tipo, chamado) {
+  try {
+    if (!s || !chamado || typeof s.criarNotificacoes !== 'function') return;
+    const diretorio = (typeof s.getDiretorio === 'function') ? (s.getDiretorio() || []) : [];
+    const disc = (categoriaChamado(chamado.categoria) || {}).disciplina || null;
+    const meu = s.user?.uid || null;
+    const alvos = [...new Set(destinatariosChamado(tipo, { diretorio, chamado: { ...chamado, disciplina: disc } }))]
+      .filter(uid => uid && uid !== meu);
+    if (!alvos.length) return;
+    const texto = textoChamado(tipo, chamado);
+    await s.criarNotificacoes(alvos.map(uid => ({
+      para: uid, tipo, demandaId: chamado.id, objeto: chamado.assunto || '', texto, link: '#/chamado/' + chamado.id,
+    })));
+  } catch (e) { console.warn('notificarChamado', e); }
 }

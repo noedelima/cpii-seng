@@ -31,7 +31,7 @@ export function viewNotificacoes(rerender) {
       el('li', {},
         el('a', {
           class: `notif-item ${n.lida ? '' : 'nao-lida'}`,
-          href: `#/demanda/${n.demandaId}`,
+          href: n.link || `#/demanda/${n.demandaId}`,
           onclick: () => { if (!n.lida) s.marcarNotificacaoLida(n.id); },
         },
           el('span', { class: `notif-tag tipo-${n.tipo}` }, ROTULO_TIPO[n.tipo] || n.tipo),

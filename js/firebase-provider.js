@@ -168,7 +168,7 @@ export class FirebaseProvider {
       batch.set(ref, {
         para: it.para, de: this.user.uid, deNome: this.user.nome || '',
         tipo: it.tipo, demandaId: it.demandaId, objeto: it.objeto || '', texto: it.texto || '',
-        criadoEm: base, lida: false,
+        link: it.link || '', criadoEm: base, lida: false,
       });
     });
     try { await batch.commit(); } catch (e) { console.warn('criarNotificacoes', e); }

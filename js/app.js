@@ -15,6 +15,9 @@ import { viewAdmin } from './views/admin.js';
 import { viewConta } from './views/conta.js';
 import { viewAjuda } from './views/ajuda.js';
 import { viewNotificacoes } from './views/notificacoes.js';
+import { viewChamados } from './views/chamados.js';
+import { viewChamadoNovo } from './views/chamado-novo.js';
+import { viewChamado } from './views/chamado.js';
 
 const main = document.getElementById('app');
 const header = document.getElementById('cabecalho');
@@ -38,6 +41,7 @@ function renderHeader() {
 
   const nav = el('nav', { class: 'nav', 'aria-label': 'Navegação principal' },
     navlink('#/', 'Painel'),
+    user ? navlink('#/chamados', 'Chamados') : null,
     user && can(user, 'criar') ? navlink('#/nova', 'Nova solicitação') : null,
     user && can(user, 'verInterno') ? navlink('#/profissionais', 'Profissionais') : null,
     user && (can(user, 'usuarios') || can(user, 'params')) ? navlink('#/admin', 'Administração') : null,
@@ -90,6 +94,9 @@ const rotas = [
   { re: /^#\/conta$/, view: viewConta },
   { re: /^#\/ajuda$/, view: viewAjuda },
   { re: /^#\/notificacoes$/, view: viewNotificacoes },
+  { re: /^#\/chamados$/, view: viewChamados },
+  { re: /^#\/chamado-novo$/, view: viewChamadoNovo },
+  { re: /^#\/chamado\/([\w-]+)$/, view: viewChamado },
 ];
 
 let renderAgendado = false;

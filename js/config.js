@@ -8,7 +8,7 @@ export const APP = {
   orgao: 'Colégio Pedro II',
   setor: 'Seção de Engenharia — SENG/DECOF',
   portaria: 'Portaria nº 7503/REITORIA/CPII, de 24/11/2025',
-  versao: '1.7.0',
+  versao: '1.8.0',
 };
 
 // --- Parâmetros ajustáveis pelo Administrador (defaults) ---------------------
@@ -214,6 +214,16 @@ export const STATUS_CHAMADO_ORDEM = [
   'resolvido', 'encaminhado', 'improcedente', 'duplicado', 'cancelado',
 ];
 export const STATUS_CHAMADO_ABERTO = ['aberto', 'triagem', 'diligencia', 'atendimento']; // SLA corre
+
+// Estado do SLA (prazo de triagem) de um chamado. `dias` = dias corridos restantes
+// (negativo = em atraso). Só corre nos status abertos; encerrados não têm prazo.
+export function slaChamado(c) {
+  if (!c || !STATUS_CHAMADO_ABERTO.includes(c.status)) return { estado: 'encerrado', dias: null };
+  const restante = Math.ceil(((c.prazoLimite || 0) - Date.now()) / 86400000);
+  if (restante < 0) return { estado: 'vencido', dias: restante };
+  if (restante <= 2) return { estado: 'vencendo', dias: restante };
+  return { estado: 'no-prazo', dias: restante };
+}
 
 // Categorias/assuntos — cada uma mapeia a disciplina (= área do profissional, p/
 // rotear notificações) e um SLA em dias corridos.
