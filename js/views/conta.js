@@ -5,6 +5,7 @@ import { el, frag, campo, toast } from '../ui.js';
 import { roleNome, campusNome } from '../config.js';
 import { store } from '../store.js';
 import { campiDoUsuario } from '../auth.js';
+import { api } from '../api.js';
 
 export function viewConta() {
   const s = store();
@@ -40,6 +41,18 @@ export function viewConta() {
     btn,
   );
 
+  // Checagem (somente leitura) da camada de API: exercita /api/me — valida o ID
+  // token (RS256) e a leitura de usuarios/{uid} sob as Security Rules do usuário.
+  const apiVal = el('span', { class: 'linha-valor' }, 'verificando…');
+  const apiLinha = el('div', { class: 'linha-info' }, el('span', { class: 'linha-rotulo' }, 'Camada de API'), apiVal);
+  if (s.mode === 'firebase') {
+    api.me()
+      .then((d) => { apiVal.textContent = (d && d.uid === user.uid) ? 'conectada ✓ — /api/me sob as Security Rules' : 'conectada ✓'; })
+      .catch(() => { apiVal.textContent = 'indisponível neste endereço (ativa no Azure SWA)'; });
+  } else {
+    apiVal.textContent = 'modo demonstração (sem API)';
+  }
+
   return frag(
     el('section', { class: 'hero' }, el('div', {},
       el('h1', {}, 'Minha conta'),
@@ -52,6 +65,7 @@ export function viewConta() {
         linha('Perfil', roleNome(user.role)),
         campiU.length ? linha(campiU.length > 1 ? 'Campi' : 'Campus', campiU.map(campusNome).join(', ')) : null,
         prof ? linha('Profissional vinculado', `${prof.nome} — ${prof.cargo} · ${prof.area}`) : null,
+        apiLinha,
       ),
       el('section', { class: 'card' },
         el('h2', {}, 'Trocar senha'),
