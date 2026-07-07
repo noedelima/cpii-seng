@@ -116,6 +116,18 @@ class DemoProvider {
     this._log('Chamado atualizado', id, evento || Object.keys(patch).join(', '));
     this._save();
   }
+  // Demo: anexo como data URL (limitado, pois vai para o localStorage).
+  async uploadAnexoChamado(chamadoId, campus, file) {
+    if ((file.size || 0) > 1.5 * 1024 * 1024)
+      throw new Error('No modo demonstração, anexos são limitados a ~1,5 MB.');
+    const url = await new Promise((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(fr.result); fr.onerror = () => reject(new Error('Falha ao ler o arquivo.'));
+      fr.readAsDataURL(file);
+    });
+    return { nome: file.name, path: `demo/${chamadoId}/${Date.now()}`, url, tipo: file.type || '', tamanho: file.size || 0, ts: Date.now(), por: this.user?.nome || 'Demo' };
+  }
+  async removerAnexoChamado() { /* demo: nada a remover no storage */ }
   async criarDemanda(d) {
     const ano = this.db.params.anoPlano;
     const seq = Math.max(0, ...this.db.demandas.filter(x => x.ano === ano && x.campus === d.campus).map(x => x.seq || 0)) + 1;

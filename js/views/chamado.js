@@ -86,6 +86,9 @@ export function viewChamado(rerender, id) {
     c.resolucao.setor ? el('p', {}, el('strong', {}, 'Encaminhado a: '), c.resolucao.setor) : null,
     c.resolucao.texto ? el('p', { class: 'ch-descricao' }, c.resolucao.texto) : null) : null;
 
+  // ---------------------------------------------------------------- anexos
+  const anexos = renderAnexos(c, s, user, ehSeng, ehDono);
+
   // -------------------------------------------------------------- comentários
   const comentarios = renderComentarios(c, s, user, ehSeng, ehDono, acao);
 
@@ -105,7 +108,7 @@ export function viewChamado(rerender, id) {
           el('span', { class: 'tl-acao' }, `${h.acao}${h.user ? ' — ' + h.user : ''}`))))
       : el('p', { class: 'sub' }, 'Sem eventos.'));
 
-  return frag(topo, dados, cartaoDemanda, cartaoResolucao, triagem, respostaCampus, comentarios, historico);
+  return frag(topo, dados, cartaoDemanda, cartaoResolucao, anexos, triagem, respostaCampus, comentarios, historico);
 }
 
 // ----------------------------------------------------------------------------
@@ -273,4 +276,68 @@ function renderComentarios(c, s, user, ehSeng, ehDono, acao) {
 // Objeto de comentário padronizado (fio público).
 function comentario(user, texto, tag) {
   return { ts: Date.now(), autor: user.nome, role: user.role, texto, ...(tag ? { tag } : {}) };
+}
+
+// ----------------------------------------------------------------------------
+// Anexos (fotos/plantas/PDF) via Cloud Storage. SENG sempre; campus dono até a
+// triagem (aberto/triagem/diligência). Imagens e PDF, até 10 MB.
+// ----------------------------------------------------------------------------
+const TIPOS_IMG = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
+const tipoAnexoOk = (t) => TIPOS_IMG.includes(t) || t === 'application/pdf';
+const ehImagem = (t) => (t || '').indexOf('image/') === 0;
+function fmtTam(n) {
+  if (!n) return '';
+  return n < 1048576 ? `${Math.round(n / 1024)} KB` : `${(n / 1048576).toFixed(1)} MB`;
+}
+function renderAnexos(c, s, user, ehSeng, ehDono) {
+  const lista = c.anexos || [];
+  const podeAnexar = ehSeng || (ehDono && ['aberto', 'triagem', 'diligencia'].includes(c.status));
+
+  const adicionar = async (files) => {
+    const novos = [];
+    for (const f of files) {
+      if ((f.size || 0) > 10 * 1048576) { toast(`${f.name}: acima de 10 MB.`, 'erro'); continue; }
+      if (!tipoAnexoOk(f.type)) { toast(`${f.name}: use imagem (JPG/PNG/WebP) ou PDF.`, 'erro'); continue; }
+      try { toast(`Enviando ${f.name}…`); novos.push(await s.uploadAnexoChamado(c.id, c.campus, f)); }
+      catch (e) { toast(e.message || `Falha ao enviar ${f.name}.`, 'erro'); }
+    }
+    if (!novos.length) return;
+    const anexos = [...(c.anexos || []), ...novos];
+    await s.atualizarChamado(c.id, { anexos }, `Anexo(s): ${novos.map(x => x.nome).join(', ')}`.slice(0, 110));
+    toast('Anexo(s) adicionado(s).');
+  };
+
+  const remover = async (a) => {
+    const ok = await confirmar('Remover anexo', `Remover "${a.nome}"? Esta ação não pode ser desfeita.`, { ok: 'Remover', perigo: true });
+    if (!ok) return;
+    try {
+      await s.removerAnexoChamado(a.path);
+      const anexos = (c.anexos || []).filter(x => x.path !== a.path);
+      await s.atualizarChamado(c.id, { anexos }, `Anexo removido: ${a.nome}`.slice(0, 110));
+      toast('Anexo removido.');
+    } catch (e) { toast(e.message || 'Falha ao remover.', 'erro'); }
+  };
+
+  const galeria = lista.length
+    ? el('div', { class: 'anexos-grid' }, lista.map(a => el('div', { class: 'anexo' },
+        el('a', { class: 'anexo-link', href: a.url, target: '_blank', rel: 'noopener', title: `${a.nome}${a.tamanho ? ' · ' + fmtTam(a.tamanho) : ''}` },
+          ehImagem(a.tipo)
+            ? el('img', { class: 'anexo-thumb', src: a.url, alt: a.nome, loading: 'lazy' })
+            : el('span', { class: 'anexo-file' }, 'PDF'),
+          el('span', { class: 'anexo-nome' }, a.nome)),
+        podeAnexar ? el('button', { class: 'anexo-rm', title: 'Remover', 'aria-label': 'Remover anexo', onclick: () => remover(a) }, '×') : null)))
+    : el('p', { class: 'sub' }, 'Sem anexos.');
+
+  let entrada = null;
+  if (podeAnexar) {
+    const input = el('input', { type: 'file', accept: 'image/*,application/pdf', multiple: true, style: 'display:none',
+      onchange: (e) => { const fs = [...e.target.files]; e.target.value = ''; adicionar(fs); } });
+    entrada = el('div', { class: 'anexo-add' }, input,
+      el('button', { class: 'btn', onclick: () => input.click() }, '+ Adicionar anexo'),
+      el('span', { class: 'sub' }, 'Imagens ou PDF, até 10 MB.'));
+  } else if (ehDono) {
+    entrada = el('p', { class: 'sub' }, 'Anexos podem ser incluídos enquanto o chamado está em aberto/triagem/diligência.');
+  }
+
+  return el('section', { class: 'card' }, el('h2', {}, 'Anexos'), galeria, entrada);
 }

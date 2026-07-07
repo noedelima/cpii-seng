@@ -46,16 +46,18 @@ export class FirebaseProvider {
   }
 
   async _init(config) {
-    const [appMod, auth, fs] = await Promise.all([
+    const [appMod, auth, fs, storage] = await Promise.all([
       import(`${FB}/firebase-app.js`),
       import(`${FB}/firebase-auth.js`),
       import(`${FB}/firebase-firestore.js`),
+      import(`${FB}/firebase-storage.js`),
     ]);
-    this._App = appMod; this._A = auth; this._F = fs;
+    this._App = appMod; this._A = auth; this._F = fs; this._St = storage;
     this._config = config;
     const app = appMod.initializeApp(config);
     this.auth = auth.getAuth(app);
     this.db = fs.getFirestore(app);
+    this.storage = storage.getStorage(app);
 
     // Públicos: demandas e parâmetros
     fs.onSnapshot(fs.query(fs.collection(this.db, 'demandas')), (snap) => {
@@ -254,6 +256,28 @@ export class FirebaseProvider {
     if (evento) upd.historico = fs.arrayUnion({ ts: Date.now(), user: this.user?.nome || 'Sistema', acao: evento });
     await fs.updateDoc(fs.doc(this.db, 'chamados', id), upd);
     await this._log('Chamado atualizado', id, evento || Object.keys(patch).join(', '));
+  }
+
+  // Anexos (Cloud Storage): chamados/{campus}/{chamadoId}/{arquivo}. As Storage
+  // Rules autorizam (SENG ou campus dono) — a apiKey não abre acesso.
+  async uploadAnexoChamado(chamadoId, campus, file, onProgress) {
+    const st = this._St;
+    const nome = String(file.name || 'arquivo').replace(/[^\w.\-]+/g, '_').slice(-80);
+    const path = `chamados/${campus}/${chamadoId}/${Date.now()}_${nome}`;
+    const ref = st.ref(this.storage, path);
+    await new Promise((resolve, reject) => {
+      const task = st.uploadBytesResumable(ref, file, { contentType: file.type || 'application/octet-stream' });
+      task.on('state_changed',
+        (snap) => { if (onProgress) onProgress(snap.totalBytes ? snap.bytesTransferred / snap.totalBytes : 0); },
+        reject, resolve);
+    });
+    const url = await st.getDownloadURL(ref);
+    return { nome: file.name || nome, path, url, tipo: file.type || '', tamanho: file.size || 0, ts: Date.now(), por: this.user?.nome || '' };
+  }
+  async removerAnexoChamado(path) {
+    if (!path) return;
+    try { await this._St.deleteObject(this._St.ref(this.storage, path)); }
+    catch (e) { console.warn('removerAnexoChamado', e); }
   }
 
   async criarDemanda(d) {
