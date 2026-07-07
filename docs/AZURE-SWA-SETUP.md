@@ -1,56 +1,43 @@
 # Migração para o Azure Static Web Apps — Fase 1 (host)
 
-Espelha o que foi feito no **SANE** (`ADR-001-host-e-backend.md`), adaptado ao
-cpii-seng, que é um app **estático sem build** (HTML/CSS/JS ES modules na raiz).
+Espelha o SANE (`ADR-001-host-e-backend.md`), adaptado ao cpii-seng, que é um app
+**estático sem build** (HTML/CSS/JS ES modules na raiz).
 
 Nesta fase **só muda a hospedagem**: o app continua igual, falando com o
 **Firebase** (Auth + Firestore) como hoje. Banco e autenticação **não se movem**.
 A camada de API entra na **Fase 2**.
 
-## O que já está no repositório
+## Estado atual (Opção B — o Portal gerencia o CI/CD)
 
-- `.github/workflows/azure-swa.yml` — publica a **raiz** do repo no Azure SWA
-  (sem npm/build). Fica **inerte** (job verde, sem publicar) até existir o secret
-  `AZURE_STATIC_WEB_APPS_API_TOKEN`. Roda **em paralelo** ao GitHub Pages.
-- `staticwebapp.config.json` (raiz) — fallback de SPA para `/index.html`,
-  cabeçalhos de segurança e `404 → index (200)`. Sem `apiRuntime` (só na Fase 2).
-- `redirect/` — página que redireciona o endereço antigo para o novo,
-  **preservando a rota em hash**. Ainda **não** está ativa (ver adiante).
+- **Recurso:** Azure Static Web App **`cpii-seng`** (plano **Free**), no grupo de
+  recursos **`rg-cpii-seng`**.
+- **URL:** `https://polite-forest-0f8e6fe10.<região>.azurestaticapps.net`
+  (o valor exato está no campo **URL** do recurso, na *Visão geral*).
+- **Deploy:** workflow **gerado pelo Portal** —
+  `.github/workflows/azure-static-web-apps-polite-forest-0f8e6fe10.yml`
+  (roda no push para `main` e cria *previews* de PR). O **token de deploy** já foi
+  cadastrado automaticamente como secret
+  `AZURE_STATIC_WEB_APPS_API_TOKEN_POLITE_FOREST_0F8E6FE10`.
+  Config (correta para app sem build): `app_location: "/"`, `api_location: ""`,
+  `output_location: ""`.
+- **`staticwebapp.config.json`** (raiz): fallback de SPA → `index.html`, cabeçalhos
+  de segurança e `404 → index (200)`. Sem `apiRuntime` (entra na Fase 2).
+- **`redirect/`**: páginas que redirecionam o endereço antigo para o novo,
+  preservando a rota em hash — **ainda não ativas** (ver adiante).
+- O workflow manual `azure-swa.yml` foi **removido** (era redundante com o do Portal).
 
-## Lado Azure (você) — uma vez
+O SWA roda **em paralelo** ao GitHub Pages: os dois no ar, apontando para o mesmo
+Firebase — dá para validar com os dados reais, sem risco.
 
-1. **Criar o recurso** Static Web App (Portal do Azure → *Create* → *Static Web App*):
-   - Plano: **Free**.
-   - *Deployment source*: **Other** (o deploy vem do nosso workflow; não conecte
-     o Portal ao GitHub para não criar um segundo workflow).
-   - Região: a que preferir (na Fase 1 é só conteúdo estático em CDN; quando
-     houver API/dados, avaliar **Brazil South**).
-2. **Pegar o token:** no recurso criado → *Overview* → **Manage deployment token**
-   → copiar.
-3. **Cadastrar o secret no GitHub:** repositório → *Settings* → *Secrets and
-   variables* → *Actions* → *New repository secret*:
-   - Nome: `AZURE_STATIC_WEB_APPS_API_TOKEN`
-   - Valor: o token copiado.
-4. **Disparar o deploy:** faça um push em `main` (ou rode o workflow
-   *Deploy to Azure Static Web Apps* manualmente em *Actions*). O app sobe na URL
-   `https://<gerada>.azurestaticapps.net`.
-5. **Validar** essa URL (login, painel, Ajuda, notificações). Como aponta para o
-   **mesmo Firebase**, os dados são os mesmos da produção atual.
+## Virar a URL canônica (quando validar)
 
-## Virar a URL canônica (opcional, quando validar)
-
-Enquanto isso, **o GitHub Pages continua servindo o app normalmente** — nada
-quebra. Quando quiser tornar o SWA o endereço oficial:
-
-1. Nos arquivos `redirect/index.html` e `redirect/404.html`, troque
-   `https://SEU-APP.azurestaticapps.net` pela **URL real** do seu SWA (ou pelo
+1. Em `redirect/index.html` e `redirect/404.html`, troque
+   `https://SEU-APP.azurestaticapps.net` pela **URL real** do SWA (ou por um
    domínio próprio, se configurar um).
 2. Em `.github/workflows/pages.yml`, troque **`path: .`** por **`path: ./redirect`**.
-   A partir daí o Pages passa a **redirecionar** para o SWA em vez de servir o app.
-3. *(Opcional)* Configurar **domínio próprio** no SWA (Free permite) e HTTPS.
-
-**Reverter** a qualquer momento: volte `path: ./redirect` para `path: .` no
-`pages.yml` — o Pages volta a servir o app. O SWA e o Pages são independentes.
+   A partir daí o Pages passa a **redirecionar** para o SWA. Reverter: volte a
+   `path: .`.
+3. *(Opcional)* Domínio próprio no SWA (o Free permite) + HTTPS.
 
 ## Próximas fases (resumo)
 
@@ -59,5 +46,5 @@ quebra. Quando quiser tornar o SWA o endereço oficial:
   tela (padrão do SANE, trocando Supabase/PostgREST/RLS por Firebase/Admin/rules).
   Aí entra `"platform": { "apiRuntime": "node:20" }` no `staticwebapp.config.json`.
 - **Fase 3 — banco (paridade plena com o SANE):** avaliar Firestore → Supabase
-  (Postgres + RLS) atrás da API, e migração de autenticação. É a fase maior;
-  pode ser adiada ou dispensada.
+  (Postgres + RLS) atrás da API, e migração de autenticação. É a fase maior; pode
+  ser adiada ou dispensada.
