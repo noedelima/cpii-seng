@@ -24,8 +24,11 @@ jobs:
       - uses: actions/configure-pages@v5
         with:
           enablement: true
+      # Migração concluída: a produção é o Azure Static Web Apps. O GitHub Pages
+      # agora apenas REDIRECIONA (preservando a rota em hash) — não serve mais o app.
+      # Reverter: trocar `path: ./redirect` de volta por `path: .`.
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: ./redirect
       - id: deployment
         uses: actions/deploy-pages@v4
