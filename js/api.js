@@ -43,14 +43,24 @@ export const api = {
   setParams: (p) => req('PATCH', '/config/params', { p }),
 };
 
-// Roteamento híbrido: liga a API por SESSÃO sem afetar a produção dos demais.
-// `?api=1` na URL liga (grava no localStorage); `?api=0` desliga. Default: USE_API.
+// Roteamento híbrido. Fase 2 concluída: a API é o caminho de escrita PADRÃO
+// onde ela existe (Azure Static Web Apps / domínio próprio). No GitHub Pages e em
+// localhost (sem Functions) as escritas seguem DIRETO no Firestore. Isso torna a
+// promoção segura mesmo com os dois hosts no ar. Override manual por sessão:
+// `?api=1` força ligar, `?api=0` força desligar (gravado no localStorage);
+// `USE_API` (config) força ligar em qualquer origem.
 export function apiLigada() {
   try {
     const p = new URLSearchParams(location.search);
     if (p.get('api') === '1') localStorage.setItem('seng-use-api', '1');
-    if (p.get('api') === '0') localStorage.removeItem('seng-use-api');
-    return USE_API || localStorage.getItem('seng-use-api') === '1';
+    if (p.get('api') === '0') localStorage.setItem('seng-use-api', '0');
+    const ov = localStorage.getItem('seng-use-api');
+    if (ov === '1') return true;
+    if (ov === '0') return false;
+    if (USE_API) return true;
+    const h = (location.hostname || '').toLowerCase();
+    if (h === 'localhost' || h === '127.0.0.1' || h === 'github.io' || h.endsWith('.github.io')) return false;
+    return true; // demais origens (SWA / domínio próprio) têm a API
   } catch { return USE_API; }
 }
 
