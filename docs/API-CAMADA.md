@@ -57,7 +57,18 @@ api/
 | Endpoint | Padrão | Status |
 |----------|--------|--------|
 | `/api/health` | diagnóstico (sem auth) | ✅ validado no ar |
-| `/api/me` | auth + leitura de `usuarios/{uid}` sob as rules | pronto — testável após o *fix* de Authorized domains/referrer |
+| `/api/me` | auth + leitura de `usuarios/{uid}` sob as rules | ✅ validado no ar (200 com o perfil) |
+| `POST /api/demandas/{id}/arquivar` | **escrita** sob as rules (arquivo morto) | ✅ no ar (404 em id inexistente) |
+| `POST /api/demandas/{id}/resgatar` | **escrita** sob as rules (restaura) | ✅ no ar |
+
+### Roteamento híbrido por sessão (flag)
+
+`apiLigada()` (em `js/api.js`) decide, por **fatia**, se a ação vai pela API ou
+direto no Firestore. Liga-se **por sessão** com **`?api=1`** na URL (grava no
+`localStorage`); **`?api=0`** desliga. Default global: `USE_API` (`js/config.js`,
+hoje `false`). Assim dá para exercitar uma escrita pela API **só na sua sessão**,
+sem mudar a produção dos demais. Fatia piloto ligada: **arquivar/resgatar** demanda
+(reaproveita `demanda.js`; as leituras seguem ao vivo).
 
 ## Como adicionar um endpoint (leitura sob as rules)
 
