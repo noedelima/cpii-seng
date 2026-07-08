@@ -6,6 +6,7 @@ import { el, frag, campo, select, toast, confirmar, fmtDataHora, fmtData } from 
 import {
   statusChamadoNome, statusChamadoCor, categoriaChamado, categoriaChamadoNome, campusNome,
   URGENCIA_CHAMADO, DESFECHO_CHAMADO, SETORES_ENCAMINHAMENTO, STATUS_CHAMADO_ABERTO, slaChamado,
+  TIPOS_DEMANDA, PROJETO_EXISTE, PRAZOS, ESPECIALIDADES, precisaEtapaProjeto,
 } from '../config.js';
 import { store } from '../store.js';
 import { can, ehCampusDe } from '../auth.js';
@@ -159,9 +160,37 @@ function renderTriagem(c, s, user, terminal, acao, rerender) {
   const wrapSetor = campo('Setor de destino', selSetor);
   wrapSetor.style.display = 'none';
   const inParecer = el('textarea', { rows: 3, maxlength: 4000, placeholder: 'Parecer / orientação (registrado no chamado e enviado ao campus quando resolver).' });
-  selDesf.onchange = () => { wrapSetor.style.display = selDesf.value === 'encaminhado' ? '' : 'none'; };
 
-  const btnDesf = el('button', { class: 'btn primario', onclick: () => aplicarDesfecho(c, s, user, selDesf.value, selSetor.value, inParecer.value.trim(), acao) }, 'Aplicar desfecho');
+  // Classificação da demanda — preenchida ao converter em OBRA. Unifica a antiga
+  // "Nova solicitação": a demanda nasce classificada aqui, na triagem.
+  const disc = (categoriaChamado(c.categoria) || {}).disciplina;
+  const espPre = espDaDisciplina(disc);
+  const selTipo = select(TIPOS_DEMANDA.filter(t => !t.oculto), { value: 'obra', placeholder: null });
+  const selProjeto = select(PROJETO_EXISTE, { value: 'nao', placeholder: null });
+  const selTombado = select([{ id: 'sim', nome: 'Sim' }, { id: 'nao', nome: 'Não' }, { id: 'ns', nome: 'Não sei' }], { value: 'ns', placeholder: null });
+  const selPrazo = select(PRAZOS, { placeholder: 'Sem previsão definida' });
+  const inValor = el('input', { type: 'number', min: 0, step: 'any', placeholder: 'Ex.: 250000 (opcional)' });
+  const inSuap = el('input', { type: 'text', maxlength: 25, placeholder: 'Ex.: 23040.001234/2026-11 (se houver)' });
+  const espChecks = ESPECIALIDADES.map(e2 => el('label', { class: 'chip-check' },
+    el('input', { type: 'checkbox', value: e2, ...(espPre.includes(e2) ? { checked: true } : {}) }), ' ' + e2));
+  const wrapObra = el('div', { class: 'obra-campos' },
+    el('div', { class: 'form-linha' }, campo('Tipo de demanda *', selTipo), campo('Projeto já existe? *', selProjeto)),
+    el('div', { class: 'form-linha' }, campo('Imóvel tombado?', selTombado), campo('Previsão de prazo', selPrazo)),
+    el('div', { class: 'form-linha' }, campo('Valor estimado (R$)', inValor), campo('Processo SUAP', inSuap)),
+    campo('Especialidades envolvidas *', el('div', { class: 'chips' }, espChecks)));
+  wrapObra.style.display = 'none';
+  const lerObra = () => ({
+    tipoDemanda: selTipo.value, projetoExiste: selProjeto.value, tombado: selTombado.value,
+    prazoEstimado: selPrazo.value || null, valorEstimado: inValor.value || null, processoSuap: inSuap.value.trim(),
+    especialidades: espChecks.map(l => l.querySelector('input')).filter(x => x.checked).map(x => x.value),
+  });
+
+  selDesf.onchange = () => {
+    wrapSetor.style.display = selDesf.value === 'encaminhado' ? '' : 'none';
+    wrapObra.style.display = selDesf.value === 'obra' ? '' : 'none';
+  };
+
+  const btnDesf = el('button', { class: 'btn primario', onclick: () => aplicarDesfecho(c, s, user, { desfecho: selDesf.value, setor: selSetor.value, parecer: inParecer.value.trim(), obra: lerObra() }, acao) }, 'Aplicar desfecho');
 
   // Resolver (consultoria/laudo em atendimento → resolvido)
   const resolver = c.status === 'atendimento' ? el('div', { class: 'triagem-bloco' },
@@ -181,28 +210,36 @@ function renderTriagem(c, s, user, terminal, acao, rerender) {
     el('div', { class: 'triagem-bloco' },
       el('h3', { class: 'sub-titulo' }, 'Desfecho'),
       campo('Decisão da triagem', selDesf,
-        'Obra → vira demanda na fila. Consultoria/Laudo → atendimento pela SENG. Encaminhado → outro setor.'),
+        'Obra → cria a demanda (classifique abaixo). Consultoria/Laudo → atendimento pela SENG. Encaminhado → outro setor.'),
       wrapSetor,
+      wrapObra,
       campo('Parecer / orientação', inParecer),
       el('div', { class: 'form-acoes' }, btnDesf)),
     resolver);
   return secao;
 }
 
-async function aplicarDesfecho(c, s, user, desfecho, setor, parecer, acao) {
+async function aplicarDesfecho(c, s, user, { desfecho, setor, parecer, obra = {} }, acao) {
   if (!desfecho) { toast('Selecione um desfecho.', 'erro'); return; }
   const def = DESFECHO_CHAMADO.find(d => d.id === desfecho);
 
   if (desfecho === 'obra') {
+    const esp = (obra.especialidades && obra.especialidades.length)
+      ? obra.especialidades : espDaDisciplina((categoriaChamado(c.categoria) || {}).disciplina);
+    if (!esp.length) { toast('Selecione ao menos uma especialidade.', 'erro'); return; }
     const ok = await confirmar('Converter em demanda de obra',
-      `O chamado ${c.id} passará a "Encaminhado à fila de Obras" e será criada uma nova demanda vinculada, que entra no fluxo de priorização (GUT/CODIR). Confirmar?`,
+      `O chamado ${c.id} passará a "Encaminhado à fila de Obras" e será criada uma nova demanda vinculada, com a classificação informada, que entra no fluxo de priorização (GUT/CODIR). Confirmar?`,
       { ok: 'Converter em demanda' });
     if (!ok) return;
     try {
-      const esp = espDaDisciplina((categoriaChamado(c.categoria) || {}).disciplina);
+      const tipoDemanda = obra.tipoDemanda || 'obra';
+      const projetoExiste = obra.projetoExiste || 'nao';
       const did = await s.criarDemanda({
-        campus: c.campus, local: c.local || '', tipoDemanda: 'obra', projetoExiste: 'nao',
-        etapa: 'projeto', tombado: 'ns', prazoEstimado: null, valorEstimado: null, processoSuap: '',
+        campus: c.campus, local: c.local || '', tipoDemanda, projetoExiste,
+        etapa: precisaEtapaProjeto({ tipoDemanda, projetoExiste }) ? 'projeto' : null,
+        tombado: obra.tombado || 'ns', prazoEstimado: obra.prazoEstimado || null,
+        valorEstimado: obra.valorEstimado ? Number(obra.valorEstimado) : null,
+        processoSuap: obra.processoSuap || '',
         objeto: (c.assunto || 'Demanda de obra').slice(0, 120),
         descricao: `${c.descricao || ''}${parecer ? '\n\nParecer da triagem: ' + parecer : ''}\n\n[Originado do chamado ${c.id}]`,
         emergencial: c.urgencia === 'emergencial', especialidades: esp, status: 'recebido',

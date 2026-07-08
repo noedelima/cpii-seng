@@ -176,7 +176,7 @@ export function viewDashboard(rerender) {
         el('p', { class: 'sub' }, 'Acompanhamento público da fila de demandas — Portaria nº 7503/2025. ',
           user ? null : 'A alocação de profissionais é exibida apenas para usuários autenticados.')),
       el('div', { class: 'hero-acoes' },
-        user && can(user, 'criar') ? el('a', { class: 'btn primario', href: '#/nova' }, '+ Nova solicitação') : null,
+        user && can(user, 'criar') ? el('a', { class: 'btn primario', href: '#/chamado-novo' }, '+ Abrir chamado') : null,
         btnPdf, btnXlsx)),
     // Carga da equipe vem ANTES da fila: card de tamanho fixo não deve ficar
     // soterrado pela fila, que cresce com o histórico.

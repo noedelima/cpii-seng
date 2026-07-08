@@ -8,7 +8,6 @@ import { can } from './auth.js';
 import { EMBLEMA } from './logos.js';
 import { viewDashboard } from './views/dashboard.js';
 import { viewLogin } from './views/login.js';
-import { viewSolicitacao } from './views/solicitacao.js';
 import { viewDemanda } from './views/demanda.js';
 import { viewProfissionais } from './views/profissionais.js';
 import { viewAdmin } from './views/admin.js';
@@ -42,7 +41,6 @@ function renderHeader() {
   const nav = el('nav', { class: 'nav', 'aria-label': 'Navegação principal' },
     navlink('#/', 'Painel'),
     user ? navlink('#/chamados', 'Chamados') : null,
-    user && can(user, 'criar') ? navlink('#/nova', 'Nova solicitação') : null,
     user && can(user, 'verInterno') ? navlink('#/profissionais', 'Profissionais') : null,
     user && (can(user, 'usuarios') || can(user, 'params')) ? navlink('#/admin', 'Administração') : null,
     navlink('#/ajuda', 'Ajuda'),
@@ -87,7 +85,9 @@ function renderHeader() {
 const rotas = [
   { re: /^#\/$/, view: viewDashboard },
   { re: /^#\/login$/, view: viewLogin },
-  { re: /^#\/nova$/, view: viewSolicitacao },
+  // Unificado: a Nova Solicitação deixou de existir como entrada própria — o
+  // chamado é a única porta. Redireciona links/marcadores antigos.
+  { re: /^#\/nova$/, view: () => { location.hash = '#/chamado-novo'; return document.createDocumentFragment(); } },
   { re: /^#\/demanda\/([\w-]+)$/, view: viewDemanda },
   { re: /^#\/profissionais$/, view: viewProfissionais },
   { re: /^#\/admin$/, view: viewAdmin },

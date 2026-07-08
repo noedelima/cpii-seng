@@ -436,3 +436,6 @@ html[data-tema="escuro"] .notif-tag { color: color-mix(in srgb, var(--st) 72%, #
 .sla-resumo { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
 .sla-pill { border: 1px solid var(--borda); border-radius: 999px; padding: 4px 12px; font-size: .8rem; font-weight: 600; cursor: pointer; }
 .sla-pill:hover { border-color: currentColor; }
+
+/* Campos de classificação da demanda no desfecho "obra" (triagem) */
+.obra-campos { margin-top: 8px; padding-top: 10px; border-top: 1px dashed var(--borda); }
