@@ -62,6 +62,31 @@ status ativo. O relógio **pausa** em *Em diligência* (aguardando o campus).
   próprio chamado.
 - **Escritas passam pela camada de API** (onde ela existe), como as demandas.
 
+### Anexos (Cloud Storage) — limitação cross-service e controles compensatórios
+
+O ideal seria espelhar as regras do Firestore no Storage com `firestore.get`
+(papel do usuário + campus do chamado). Porém as **regras cross-service** do
+Storage exigem bucket e Firestore em **local compatível**; aqui o bucket está em
+**us-central1** (nível gratuito) e o Firestore em **southamerica-east1** — logo
+`firestore.get/exists` **não resolvem** (negam tudo). Testado em 07/07/2026
+(inclusive isolando `exists` puro). Mover o bucket para a mesma região custaria o
+nível gratuito, então foi mantido em us-central1.
+
+**Regras adotadas** (`firebase/storage.rules`): autenticação obrigatória, restrito
+ao prefixo `chamados/`, apenas imagem/PDF até 10 MB, todo o resto negado.
+**Controles compensatórios:** base de usuários **fechada** (contas só pelo admin,
+sem cadastro público); a **descoberta** dos arquivos é controlada no Firestore (a
+lista `anexos` vive no doc do chamado, com regras por SENG/campus) e as **URLs de
+download são tokenizadas** e imprevisíveis. Risco residual: um usuário autenticado
+que adivinhe um caminho completo poderia ler arquivo de outro campus — baixo, dado
+o público interno fechado e as URLs com token.
+
+**Hardening futuro** (isolamento por campus na própria camada de Storage, sem
+cross-service): **custom claims** (`role`/`campi`) no token, definidos por uma
+função de bloqueio de login (Firebase Auth) ou callable com Admin SDK; as regras
+passariam a usar `request.auth.token.role`/`.campi` — sem `firestore.get` e sem
+dependência de região.
+
 ## Roadmap
 
 1. **Núcleo:** abrir + triagem + desfechos + conversão em Demanda + comentários +

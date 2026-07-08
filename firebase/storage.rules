@@ -2,40 +2,41 @@ rules_version = '2';
 // =============================================================================
 // SENG Demandas — Security Rules (Cloud Storage) — anexos de chamados
 // Publicar: npx -y firebase-tools@latest deploy --only storage --project cpii-seng
-// Espelha a autorização dos chamados no Firestore: leem/gravam a SENG (interno)
-// e o campus dono. O papel vem de /usuarios/{uid} via firestore.get.
+//
+// NOTA DE ARQUITETURA (por que não há checagem de papel/campus aqui):
+//   O ideal seria espelhar as regras do Firestore com firestore.get(usuarios/uid)
+//   e firestore.get(chamados/id). Porém as regras cross-service do Storage exigem
+//   Storage e Firestore em local COMPATÍVEL. Aqui o bucket está em us-central1
+//   (nível gratuito) e o Firestore em southamerica-east1 — assim, firestore.get/
+//   exists NÃO resolvem (retornam negação). Testado em 07/07/2026.
+//
+// CONTROLES COMPENSATÓRIOS (segurança em camadas):
+//   • Base de usuários FECHADA (contas criadas só pelo admin; sem cadastro público).
+//   • Autenticação obrigatória para ler/gravar; nada público.
+//   • Restrito ao prefixo chamados/ ; todo o resto é negado.
+//   • Apenas imagens comuns e PDF, até 10 MB.
+//   • A DESCOBERTA dos arquivos é controlada no Firestore: a lista `anexos` vive no
+//     doc do chamado (regras por SENG/campus) e as URLs de download são tokenizadas
+//     e imprevisíveis — o caminho não é exposto fora de docs já autorizados.
+//   Hardening futuro (isolamento por campus na própria camada de Storage sem
+//   cross-service): custom claims (role/campi) no token via função de bloqueio de
+//   login — ver docs/ADR-002-chamados.md.
 // =============================================================================
 service firebase.storage {
   match /b/{bucket}/o {
-
-    // ---- helpers (papel a partir do Firestore, sob o token do usuário) ------
-    function perfil() {
-      return firestore.get(/databases/(default)/documents/usuarios/$(request.auth.uid)).data;
-    }
-    function role()  { return request.auth != null ? perfil().role : ''; }
-    function ativo() { return request.auth != null && perfil().get('ativo', true) != false; }
-    function isInterno() { return ativo() && role() in ['engenharia', 'chefe', 'admin', 'codir']; }
-    // Campus pode estar vinculado a vários campi (lista `campi`); compat com `campus`.
-    function isCampusDe(campusId) {
-      return ativo() && role() == 'campus'
-        && (campusId in perfil().get('campi', []) || perfil().get('campus', '') == campusId);
-    }
-    // Só imagens comuns e PDF; até 10 MB por arquivo.
     function tipoOk() {
       return request.resource.contentType.matches('image/(jpeg|png|webp|heic|heif)')
           || request.resource.contentType == 'application/pdf';
     }
-
-    // ---- anexos de chamados: chamados/{campus}/{chamadoId}/{arquivo} ---------
+    // anexos de chamados: chamados/{campus}/{chamadoId}/{arquivo}
     match /chamados/{campus}/{chamadoId}/{arquivo} {
-      allow read:   if isInterno() || isCampusDe(campus);
-      allow write:  if (isInterno() || isCampusDe(campus))
+      allow read:   if request.auth != null;
+      allow write:  if request.auth != null
                     && request.resource.size < 10 * 1024 * 1024
                     && tipoOk();
-      allow delete: if isInterno() || isCampusDe(campus);
+      allow delete: if request.auth != null;
     }
-
-    // Tudo o mais: negado por padrão.
+    // Tudo o mais: negado.
     match /{allPaths=**} { allow read, write: if false; }
   }
 }
