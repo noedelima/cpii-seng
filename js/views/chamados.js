@@ -2,7 +2,7 @@
 // Painel de chamados — intake da SENG. SENG vê todos; campus vê os do seu campus.
 // Ordena por status operacional e prazo (SLA); filtros por situação/campus/categoria.
 // =============================================================================
-import { el, frag, fmtData, select, debounce } from '../ui.js';
+import { el, frag, fmtData, select, debounce, toast } from '../ui.js';
 import {
   CAMPI, CATEGORIAS_CHAMADO, STATUS_CHAMADO, STATUS_CHAMADO_ORDEM, STATUS_CHAMADO_ABERTO,
   statusChamadoNome, statusChamadoCor, categoriaChamadoNome, campusNome, slaChamado,
@@ -96,14 +96,42 @@ export function viewChamados(rerender) {
   const abrir = can(user, 'criar')
     ? el('a', { class: 'btn primario', href: '#/chamado-novo' }, '+ Abrir chamado') : null;
 
+  // Botao de relatorio PDF (efemero) da lista filtrada.
+  const btnPdf = el('button', { class: 'btn ghost', onclick: async () => {
+    btnPdf.disabled = true; const t = btnPdf.textContent; btnPdf.textContent = 'Gerando…';
+    try {
+      const { gerarRelatorioChamados } = await import('../pdf.js');
+      const desc = [
+        filtro.situacao !== 'todos' && `situação: ${filtro.situacao}`,
+        filtro.campus && `campus: ${campusNome(filtro.campus)}`,
+        filtro.categoria && `categoria: ${categoriaChamadoNome(filtro.categoria)}`,
+        filtro.texto && `busca: “${filtro.texto}”`,
+      ].filter(Boolean).join('; ');
+      await gerarRelatorioChamados({ chamados: filtrados, filtros: desc });
+      toast('Relatório gerado. Não fica armazenado no sistema.');
+    } catch (e) { toast('Falha ao gerar o PDF: ' + (e.message || e), 'erro'); }
+    btnPdf.disabled = false; btnPdf.textContent = t;
+  } }, 'Baixar PDF');
+
+  // Resumo de SLA (alerta operacional) sobre os chamados ativos visíveis.
+  const ativos = todos.filter(c => STATUS_CHAMADO_ABERTO.includes(c.status));
+  const nVenc = ativos.filter(c => slaChamado(c).estado === 'vencido').length;
+  const nVcndo = ativos.filter(c => slaChamado(c).estado === 'vencendo').length;
+  const nPrazo = ativos.length - nVenc - nVcndo;
+  const pill = (txt, cls, sit) => el('button', { class: `sla-pill ${cls}`, onclick: () => { filtro.situacao = sit; rerender(); } }, txt);
+  const resumoSla = ativos.length ? el('div', { class: 'sla-resumo' },
+    pill(`${nPrazo} no prazo`, 'sla-ok', 'ativos'),
+    pill(`${nVcndo} vencendo`, 'sla-alerta', 'ativos'),
+    pill(`${nVenc} vencidos`, 'sla-vencido', 'atraso')) : null;
+
   return frag(
     el('section', { class: 'hero' }, el('div', {},
       el('h1', {}, 'Chamados'),
       el('p', { class: 'sub' }, user.role === 'campus'
         ? 'Solicitações da sua unidade à Seção de Engenharia.'
         : 'Intake e triagem da Seção de Engenharia.')),
-      abrir),
-    el('section', { class: 'card' }, filtros,
+      el('div', { class: 'hero-acoes' }, abrir, todos.length ? btnPdf : null)),
+    el('section', { class: 'card' }, filtros, resumoSla,
       el('p', { class: 'sub cont' }, `${filtrados.length} de ${todos.length} chamado(s)`),
       corpo));
 }

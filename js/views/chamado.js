@@ -80,11 +80,25 @@ export function viewChamado(rerender, id) {
       el('a', { class: 'link', href: `#/demanda/${c.demandaId}` }, c.demandaId), '.'),
     (c.resolucao?.texto ? el('p', { class: 'ch-descricao' }, c.resolucao.texto) : null)) : null;
 
-  // Resolução/parecer registrado (consultoria, laudo, encaminhamento, improcedência)
-  const cartaoResolucao = (c.resolucao && !c.demandaId) ? el('section', { class: 'card' },
+  // Resolução/parecer + minuta de Nota Técnica (consultoria/laudo)
+  const temConsultoria = ['consultoria', 'laudo'].includes(c.desfecho);
+  const desfechoNome = (id) => (DESFECHO_CHAMADO.find(d => d.id === id) || {}).nome || id;
+  const btnNT = el('button', { class: 'btn', onclick: async (ev) => {
+    const b = ev.currentTarget; b.disabled = true; const t = b.textContent; b.textContent = 'Gerando…';
+    try {
+      const { gerarNotaTecnicaChamado } = await import('../pdf.js');
+      await gerarNotaTecnicaChamado({ chamado: c, assinante: { nome: user.nome } });
+      toast('Minuta de Nota Técnica gerada. Revise e numere antes de assinar.');
+    } catch (e) { toast('Falha ao gerar a NT: ' + (e.message || e), 'erro'); }
+    b.disabled = false; b.textContent = t;
+  } }, 'Gerar Nota Técnica (minuta)');
+  const cartaoResolucao = ((c.resolucao || temConsultoria) && !c.demandaId) ? el('section', { class: 'card' },
     el('h2', {}, 'Desfecho'),
-    c.resolucao.setor ? el('p', {}, el('strong', {}, 'Encaminhado a: '), c.resolucao.setor) : null,
-    c.resolucao.texto ? el('p', { class: 'ch-descricao' }, c.resolucao.texto) : null) : null;
+    c.desfecho ? el('p', {}, el('strong', {}, 'Trilha: '), desfechoNome(c.desfecho)) : null,
+    c.resolucao?.setor ? el('p', {}, el('strong', {}, 'Encaminhado a: '), c.resolucao.setor) : null,
+    c.resolucao?.texto ? el('p', { class: 'ch-descricao' }, c.resolucao.texto) : null,
+    (ehSeng && temConsultoria) ? el('div', { class: 'form-acoes' }, btnNT,
+      el('span', { class: 'sub' }, 'Rascunho — revise e numere antes de assinar.')) : null) : null;
 
   // ---------------------------------------------------------------- anexos
   const anexos = renderAnexos(c, s, user, ehSeng, ehDono);

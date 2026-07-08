@@ -431,3 +431,8 @@ html[data-tema="escuro"] .notif-tag { color: color-mix(in srgb, var(--st) 72%, #
 .anexo-rm { position: absolute; top: -8px; right: -8px; width: 22px; height: 22px; border-radius: 999px; border: 1px solid var(--borda); background: var(--card); color: var(--perigo); font-size: 1rem; line-height: 1; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,.18); }
 .anexo-rm:hover { background: var(--perigo); color: #fff; }
 .anexo-add { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+/* Resumo de SLA (pills clicáveis) no painel de chamados */
+.sla-resumo { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.sla-pill { border: 1px solid var(--borda); border-radius: 999px; padding: 4px 12px; font-size: .8rem; font-weight: 600; cursor: pointer; }
+.sla-pill:hover { border-color: currentColor; }
