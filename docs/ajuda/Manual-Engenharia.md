@@ -25,11 +25,12 @@ Guia operacional completo para a equipe da Seção de Engenharia (perfis **Engen
 12. Fluxo 8 — Profissionais (cadastro e art. 13)
 13. Fluxo 9 — Parâmetros do sistema (Chefia)
 14. Fluxo 10 — Administração: usuários e log (Administrador)
-15. Apêndice A — Escalas GUT completas
-16. Apêndice B — Status e transições por perfil
-17. Apêndice C — Boas práticas
-18. Apêndice D — Solução de problemas (FAQ)
-19. Apêndice E — Glossário
+15. Fluxo 11 — Módulo de Chamados (intake, triagem e desfechos)
+16. Apêndice A — Escalas GUT completas
+17. Apêndice B — Status e transições por perfil
+18. Apêndice C — Boas práticas
+19. Apêndice D — Solução de problemas (FAQ)
+20. Apêndice E — Glossário
 
 ---
 
@@ -45,6 +46,8 @@ Princípios de projeto:
 - **Segurança por design**: dados públicos e internos separados; permissões validadas no servidor.
 - **Rastreabilidade total**: histórico por demanda + log de auditoria.
 
+> **Porta de entrada: o Chamado.** O intake foi **unificado** — não há mais “Nova solicitação” avulsa. O campus **abre um chamado**; a SENG **triam** e define o desfecho, inclusive **converter em Demanda** de obra (com a classificação preenchida na triagem). O passo a passo do módulo está no **Fluxo 11**.
+
 ---
 
 ## 2. Perfis e permissões
@@ -53,8 +56,8 @@ As capacidades de cada perfil espelham a Portaria e são validadas **também nas
 
 | Perfil | Pode |
 |--------|------|
-| **Campus** | Cadastrar solicitações do seu campus; acompanhar; complementar em diligência. |
-| **Engenharia** | **Cadastrar** e acompanhar demandas de **qualquer campus** + ver dados internos, **avaliar (GUT)** e aplicar status de triagem (Em análise, Em diligência, Aguardando CODIR). |
+| **Campus** | **Abrir chamados** do seu campus (com anexos); acompanhar; complementar em diligência. |
+| **Engenharia** | **Triar chamados** (definir desfecho e converter em obra); abrir e acompanhar demandas de **qualquer campus**; ver dados internos, **avaliar (GUT)** e aplicar status de triagem (Em análise, Em diligência, Aguardando CODIR). |
 | **Chefe de Seção** | Tudo da Engenharia + **status total**, **alocação de fiscais**, exclusão, **profissionais** e **parâmetros**. |
 | **CODIR** | Ver dados internos + **aprovar** e definir **fator de ajuste** (após a análise GUT). |
 | **Administrador** | Executa **todas** as ações + gestão de **usuários** e **log de auditoria** (tudo registrado). |
@@ -332,7 +335,49 @@ Em **Administração**, o cartão **Parâmetros do sistema** controla o cálculo
 
 ---
 
-## 15. Apêndice A — Escalas GUT completas
+## 15. Fluxo 11 — Módulo de Chamados (intake, triagem e desfechos)
+
+O **Chamado** é a **porta de entrada única** da Engenharia (unifica a antiga “Nova solicitação”). O campus abre um chamado; a SENG **triam** e define o **desfecho** — inclusive **converter em Demanda** de obra, com a classificação preenchida aqui, na triagem.
+
+**Onde fica:** menu **Chamados**. A SENG vê **todos** os chamados; o campus vê só os da própria unidade.
+
+### Painel de chamados
+
+- Lista por **status operacional** e **prazo (SLA)**; filtros por **situação** (ativos / em atraso / encerrados / todos), **campus**, **categoria** e **busca**.
+- A **faixa de SLA** (no prazo / vencendo / vencido) é ao mesmo tempo **alerta** e filtro rápido.
+- **Baixar PDF**: relatório efêmero (timbre + data/hora) da lista filtrada.
+- **+ Abrir chamado**: a SENG também pode abrir um chamado (ex.: demanda de origem interna).
+
+### Triagem (cartão “Triagem”)
+
+1. **Iniciar triagem** (Aberto → Em triagem).
+2. **Solicitar diligência**: escreva o que falta; o chamado vai a **Em diligência**, o campus é avisado e o **SLA pausa**.
+3. **Desfecho** — escolha e aplique:
+   - **Obra (vira Demanda)** — abre o bloco de **classificação** (tipo de demanda, projeto existe, tombado, prazo, valor, Processo SUAP e **especialidades**, já pré-marcadas pela disciplina da categoria). Ao confirmar, cria-se a **Demanda** (status Recebido) vinculada ao chamado, que segue o fluxo **GUT → CODIR → fila**. O chamado passa a **“Encaminhado à fila de Obras”**, com link para a demanda.
+   - **Consultoria** / **Laudo** — o chamado vai a **Em atendimento**; conclua depois em **“Concluir o atendimento”** (registra a orientação/NT e marca **Resolvido**; o campus é avisado).
+   - **Encaminhar a outro setor** — selecione o setor e registre a orientação (status **Encaminhado**).
+   - **Improcedente** / **Duplicado** — encerra com o motivo.
+
+### Anexos, comentários e histórico
+
+- **Anexos**: imagens e PDF (até 10 MB) — enviados pela SENG a qualquer tempo e pelo campus enquanto o chamado está aberto/triagem/diligência.
+- **Comentários**: fio público campus ↔ SENG.
+- **Histórico**: cada evento com data/hora e autor.
+
+### Nota Técnica (minuta)
+
+Nos desfechos **consultoria/laudo**, o cartão **Desfecho** traz **“Gerar Nota Técnica (minuta)”** — um PDF na estrutura DECOF-SENG (cabeçalho institucional, `NOTA TÉCNICA Nº ___/AAAA/DECOF-SENG`, Assunto, Referência ao chamado, Histórico, Análise técnica e Conclusão/Recomendação). É **rascunho**: revise, numere e assine antes de oficializar.
+
+### Notificações do chamado
+
+- **Novo chamado** → engenheiros/arquitetos da **disciplina** da categoria (ou toda a Engenharia, se a categoria não tiver disciplina).
+- **Diligência / desfecho / resolvido** → o **campus** dono.
+
+> **Segurança dos anexos.** Os arquivos ficam no Cloud Storage **sob autenticação**, restritos ao prefixo `chamados/`, só imagem/PDF e com limite de tamanho; a **descoberta** é controlada pelo chamado (Firestore) e as **URLs são tokenizadas**. *(Detalhe técnico: o isolamento por campus na própria camada de Storage depende de custom claims — ver docs/ADR-002.)*
+
+---
+
+## 16. Apêndice A — Escalas GUT completas
 
 **G — Gravidade do dano**
 
@@ -368,7 +413,7 @@ Em **Administração**, o cartão **Parâmetros do sistema** controla o cálculo
 
 ---
 
-## 16. Apêndice B — Status e transições por perfil
+## 17. Apêndice B — Status e transições por perfil
 
 **Transições gerenciais** (para onde cada status pode ir):
 
@@ -404,7 +449,7 @@ Em **Administração**, o cartão **Parâmetros do sistema** controla o cálculo
 
 ---
 
-## 17. Apêndice C — Boas práticas
+## 18. Apêndice C — Boas práticas
 
 - **Classifique antes de avaliar.** Defina o tipo de atividade (fiscalização ou elaboração) — ele orienta a carga e a equipe.
 - **GUT com critério.** Avalie G, U e T de forma defensável; o índice é público e sustenta a posição na fila.
@@ -416,7 +461,7 @@ Em **Administração**, o cartão **Parâmetros do sistema** controla o cálculo
 
 ---
 
-## 18. Apêndice D — Solução de problemas (FAQ)
+## 19. Apêndice D — Solução de problemas (FAQ)
 
 **Não consigo avaliar o GUT.**
 Confira o status: a avaliação ocorre na triagem (Recebido/Em análise). Em atendimento ou concluída, a classificação está travada.
@@ -438,7 +483,7 @@ Ela está no **arquivo morto** por 30 dias (visível ao Chefe/Admin no fim do Pa
 
 ---
 
-## 19. Apêndice E — Glossário
+## 20. Apêndice E — Glossário
 
 - **SENG / DECOF** — Seção de Engenharia e a Diretoria de Engenharia, Contratos e Fiscalização à qual ela se vincula.
 - **SUAP** — Sistema Unificado de Administração Pública; sistema eletrônico de processos do CPII.

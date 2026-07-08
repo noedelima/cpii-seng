@@ -3,9 +3,11 @@
 **Colégio Pedro II · Seção de Engenharia — SENG/DECOF**
 **Portaria nº 7503/REITORIA/CPII, de 24/11/2025**
 
-Guia completo, passo a passo, para as unidades (campi) **cadastrarem e acompanharem** demandas de obras e serviços de engenharia. Este material foi escrito para servir também como **conteúdo das seções de ajuda do portal**: cada seção numerada é autocontida e pode ser publicada como um artigo de ajuda independente.
+Guia completo, passo a passo, para as unidades (campi) **abrirem e acompanharem chamados** de engenharia. Este material foi escrito para servir também como **conteúdo das seções de ajuda do portal**: cada seção numerada é autocontida e pode ser publicada como um artigo de ajuda independente.
 
-> **Nota sobre as imagens.** As telas deste manual foram reproduzidas a partir do próprio código do sistema, em **modo de demonstração** (dados fictícios). A aparência é idêntica à do sistema real; apenas os dados (campi, objetos, valores) são exemplos. Os marcadores vermelhos numerados (①, ②, …) foram acrescentados sobre os campos para fins didáticos — eles **não** aparecem no sistema.
+> **Novidade importante — o Chamado é a porta de entrada.** O campus **não cadastra mais a demanda diretamente**. Você **abre um chamado** descrevendo a necessidade; a Seção de Engenharia faz a **triagem** e decide o desfecho — que pode ser transformar o chamado em **demanda de obra** (entra na fila do CODIR), tratá-lo como **consultoria/laudo** (retorna com orientação ou Nota Técnica) ou **encaminhá-lo** ao setor responsável. Assim há uma única porta e a fila de demandas fica reservada às obras e serviços de engenharia de fato.
+
+> **Nota sobre as imagens.** As telas deste manual são reproduzidas a partir do próprio sistema, em **modo de demonstração** (dados fictícios). A aparência é idêntica à do sistema real; apenas os dados são exemplos.
 
 ---
 
@@ -16,12 +18,12 @@ Guia completo, passo a passo, para as unidades (campi) **cadastrarem e acompanha
 3. Conceitos essenciais (papéis, fluxo e status)
 4. Fluxo 1 — Acessar o sistema
 5. Fluxo 2 — Consultar a fila (painel público)
-6. Fluxo 3 — Cadastrar uma nova solicitação (campo a campo)
-7. Fluxo 4 — Acompanhar uma demanda
+6. Fluxo 3 — Abrir um chamado (campo a campo)
+7. Fluxo 4 — Acompanhar um chamado (e anexar fotos)
 8. Fluxo 5 — Responder a uma diligência
 9. Fluxo 6 — Minha conta e troca de senha
-10. Apêndice A — O que **não** é demanda da SENG (Art. 18)
-11. Apêndice B — Tabela de status
+10. Apêndice A — O que a SENG trata por chamado (e o que é da manutenção)
+11. Apêndice B — Tabela de status do chamado
 12. Apêndice C — Boas práticas
 13. Apêndice D — Solução de problemas (FAQ)
 14. Apêndice E — Glossário
@@ -30,16 +32,16 @@ Guia completo, passo a passo, para as unidades (campi) **cadastrarem e acompanha
 
 ## 1. A quem se destina e o que muda
 
-Este manual é para os responsáveis pelo cadastro de demandas nos campi — tipicamente a **DIAD** e a **Prefeitura** de cada unidade, além de substitutos e delegados.
+Este manual é para os responsáveis pelo contato com a Engenharia nos campi — tipicamente a **DIAD** e a **Prefeitura** de cada unidade, além de substitutos e delegados.
 
-O sistema substitui o antigo levantamento anual (Formulário + Excel + Power BI) por um **cadastro contínuo e on-line**. Na prática:
+O sistema substitui o antigo levantamento anual (Formulário + Excel + Power BI) e também o antigo módulo de chamados do SUAP por um **canal único e on-line**. Na prática:
 
-- Você registra a demanda **assim que a necessidade surge** — não precisa esperar a coleta anual.
-- A fila de demandas é **pública e transparente**: qualquer pessoa vê o status e a posição.
-- A **priorização é padronizada** (critérios GUT, valor e prazo, conforme a Portaria 7503/2025).
-- Todo o **histórico** fica registrado (quem fez o quê e quando).
+- Você **abre um chamado assim que a necessidade surge** — não precisa esperar a coleta anual nem abrir ticket no SUAP.
+- A Engenharia faz a **triagem** e define o caminho: obra (vira demanda na fila), consultoria/laudo, ou encaminhamento.
+- A fila de demandas é **pública e transparente**, e a **priorização é padronizada** (GUT, valor e prazo — Portaria 7503/2025).
+- Todo o **histórico** fica registrado (quem fez o quê e quando), com **prazo de triagem (SLA)** por categoria.
 
-**O que você consegue fazer no sistema:** consultar a fila e baixar o relatório (sem login); cadastrar solicitações do seu campus; acompanhar o andamento; responder diligências; e trocar a sua senha.
+**O que você consegue fazer no sistema:** consultar a fila e baixar o relatório (sem login); **abrir chamados** do seu campus; **anexar fotos/plantas/PDF**; acompanhar o andamento; responder diligências; e trocar a sua senha.
 
 ---
 
@@ -47,9 +49,9 @@ O sistema substitui o antigo levantamento anual (Formulário + Excel + Power BI)
 
 - **Navegador atualizado** (Chrome, Edge ou Firefox). O sistema é responsivo e funciona em computador, tablet e celular.
 - **Credencial de acesso**: e-mail institucional e senha, com perfil **Campus** já vinculado à sua unidade. Se ainda não tem acesso, solicite à SENG/Administração.
-- **Informações da demanda em mãos**: localização, tipo (obra, projeto, laudo…), uma breve descrição do problema e, se houver, o **número do Processo SUAP** e uma estimativa de valor.
+- **Informações do chamado em mãos**: o **assunto/categoria**, a **localização**, uma breve **descrição** do problema e, se possível, **fotos** do local.
 
-> **Dica.** Mesmo sem login você já pode **consultar a fila** (Fluxo 2). O login é necessário apenas para **cadastrar** e **acompanhar**.
+> **Dica.** Mesmo sem login você já pode **consultar a fila** (Fluxo 2). O login é necessário para **abrir chamados** e **acompanhar**.
 
 ---
 
@@ -57,27 +59,29 @@ O sistema substitui o antigo levantamento anual (Formulário + Excel + Power BI)
 
 **Quem faz o quê**
 
-- **Campus (você)** — cadastra solicitações do seu campus e responde diligências.
-- **Seção de Engenharia (SENG)** — faz a triagem, a avaliação técnica (GUT) e a execução/fiscalização.
-- **CODIR** — aprova a demanda e pode ajustar a prioridade, com justificativa.
+- **Campus (você)** — abre chamados do seu campus, anexa fotos e responde diligências.
+- **Seção de Engenharia (SENG)** — faz a triagem do chamado, define o desfecho, executa a avaliação técnica (GUT) e a fiscalização.
+- **CODIR** — aprova a demanda (quando o chamado vira obra) e pode ajustar a prioridade, com justificativa.
 - **Administração** — cadastra usuários e mantém os parâmetros do sistema.
 
-**Ciclo de vida da demanda (caminho principal)**
+**Do chamado ao atendimento (caminho principal)**
 
-**Recebido → Em análise → Aguardando aprovação do CODIR → Na fila → Em atendimento → Concluído**
+**Abrir chamado → Em triagem →** *desfecho*:
+
+- **Obra** → a SENG converte o chamado em **Demanda**, que segue o fluxo **Recebido → Análise → CODIR → Na fila → Em atendimento → Concluído**.
+- **Consultoria / Laudo** → a SENG atende e **resolve** com orientação técnica ou **Nota Técnica**.
+- **Encaminhado** → segue para o setor responsável (ex.: manutenção/prefeitura, DTI, Administração).
 
 **Estados laterais possíveis**
 
-- **Em diligência** — a SENG precisa de informações complementares e devolve a demanda para você responder.
-- **Suspenso** — temporariamente parada.
-- **Cancelado** — encerrada sem atendimento.
-- **Não enquadrado (Art. 18)** — não é uma demanda de engenharia da SENG (ver Apêndice A).
+- **Em diligência** — a SENG precisa de um complemento e devolve o chamado para você responder (o prazo de triagem pausa).
+- **Improcedente / Duplicado / Cancelado** — encerramentos sem atendimento, sempre com o motivo no histórico.
 
 ---
 
 ## 4. Fluxo 1 — Acessar o sistema
 
-A **consulta à fila** e o **relatório em PDF** são **públicos** — não exigem login. Para **cadastrar** e **acompanhar**, é preciso entrar.
+A **consulta à fila** e o **relatório em PDF** são **públicos** — não exigem login. Para **abrir chamados** e **acompanhar**, é preciso entrar.
 
 **Passo a passo**
 
@@ -87,10 +91,10 @@ A **consulta à fila** e o **relatório em PDF** são **públicos** — não exi
 4. Clique em **Entrar**. Você será levado ao Painel, já autenticado.
 
 ![Tela de acesso ao sistema](docs/ajuda/img/login.png)
-*Figura 1 — Tela de acesso. A consulta e o PDF são públicos; o login habilita cadastro e acompanhamento.*
+*Figura 1 — Tela de acesso. A consulta e o PDF são públicos; o login habilita a abertura de chamados e o acompanhamento.*
 
 > **Segurança**
-> - O perfil **Campus** já vem amarrado à sua unidade (ou unidades) — você cadastra e acompanha as ações do(s) seu(s) campus.
+> - O perfil **Campus** já vem amarrado à sua unidade (ou unidades) — você abre e acompanha os chamados do(s) seu(s) campus.
 > - A senha pode ser trocada por você a qualquer momento (Fluxo 6).
 > - Nunca compartilhe sua senha. Em caso de dúvida sobre o acesso, fale com a SENG.
 
@@ -98,117 +102,75 @@ A **consulta à fila** e o **relatório em PDF** são **públicos** — não exi
 
 ## 5. Fluxo 2 — Consultar a fila (painel público)
 
-O **Painel** lista todas as demandas, com campus, objeto, status, índice GUT, prioridade e data de atualização.
+O **Painel** lista todas as demandas de obras e serviços, com campus, objeto, status, índice GUT, prioridade e data de atualização. *(Os chamados em triagem não aparecem na fila pública — só as demandas.)*
 
 ![Painel público com a fila de demandas](docs/ajuda/img/pub-dashboard.png)
 *Figura 2 — Painel público: fila de demandas, barra de filtros e botão de exportação em PDF.*
 
 **O que você pode fazer aqui**
 
-1. **Filtrar** a fila por **campus**, **status**, **tipo de atividade**, **especialidade** ou por **busca livre** (digite parte do objeto, da descrição ou do nome do campus).
+1. **Filtrar** a fila por **campus**, **status**, **tipo de atividade**, **especialidade** ou por **busca livre**.
 2. **Abrir uma demanda**: clique em qualquer linha da tabela para ver os detalhes.
-3. **Baixar o PDF da fila**: clique em **Baixar PDF da fila** para gerar um relatório com timbre e data/hora. O arquivo é baixado para o seu computador e **não fica armazenado** no sistema (relatório efêmero).
-
-**Como ler a tabela**
-
-- **Fila** — posição (1º, 2º, …) apenas das demandas com status **Na fila**.
-- **GUT** — índice de gravidade × urgência × tendência.
-- **Prioridade** — valor final de priorização; um **asterisco (\*)** indica que o CODIR aplicou um fator de ajuste.
-- **Atualização** — data/hora da última movimentação.
+3. **Baixar o PDF da fila**: gera um relatório com timbre e data/hora, baixado para o seu computador e **não armazenado** no sistema (relatório efêmero).
 
 ---
 
-## 6. Fluxo 3 — Cadastrar uma nova solicitação (campo a campo)
+## 6. Fluxo 3 — Abrir um chamado (campo a campo)
 
-Este é o fluxo mais importante para o campus.
+Este é o fluxo mais importante para o campus. O formulário é **curto e direto**: descreva a necessidade; a classificação técnica é feita pela SENG na triagem.
 
 **Passo a passo**
 
 1. Faça login (Fluxo 1).
-2. No Painel, clique em **+ Nova solicitação** (botão no topo).
+2. Abra o menu **Chamados** e clique em **+ Abrir chamado** (o mesmo botão aparece no Painel).
+3. Preencha os campos (os obrigatórios têm asterisco *):
 
-![Painel autenticado do campus, com o botão Nova solicitação](docs/ajuda/img/campus-painel.png)
-*Figura 3 — Após entrar, use o botão “+ Nova solicitação”.*
+| Campo | Como preencher |
+|-------|----------------|
+| **Campus / unidade *** | Já vem definido pelo seu perfil. Se você atende a mais de uma unidade, selecione a correta. |
+| **Assunto / categoria *** | Escolha a categoria mais próxima: *Instalações elétricas, Hidráulica/sanitária, Cobertura/infiltração, Estrutura/patologia, Acessibilidade, Climatização, Segurança/incêndio, Consultoria/parecer técnico* ou *Outros*. Cada categoria tem um **prazo de triagem (SLA)** estimado, exibido ao selecionar. |
+| **Título do chamado *** | Um resumo curto e claro. Ex.: *Vazamento constante no banheiro do 2º pavimento*. |
+| **Localização** | Onde ocorre: bloco, pavimento, sala. |
+| **Urgência** | *Baixa / Média / Alta / Emergencial (risco iminente)*. É só a **percepção inicial** — a SENG confirma na triagem. |
+| **Descrição *** | O problema, onde ocorre e o resultado esperado. Quanto melhor descrito, mais rápida a triagem. |
 
-3. O formulário abre em branco. Os campos obrigatórios são marcados com asterisco (\*).
+4. Clique em **Abrir chamado**.
+5. O chamado é criado com status **Aberto** e recebe um identificador automático no padrão `CH + ANO + SIGLA DO CAMPUS + SEQUENCIAL` (ex.: `CH2026CSCII001`). Você é levado direto à página do chamado, onde pode **anexar fotos** (Fluxo 4).
 
-![Formulário de nova solicitação em branco](docs/ajuda/img/campus-nova-vazia.png)
-*Figura 4 — Formulário em branco, pronto para preenchimento.*
+> **E os laudos e consultorias?** Não existe mais formulário separado: qualquer necessidade — obra, reforma, laudo, parecer, orientação — entra **como chamado**. A SENG decide o desfecho na triagem.
 
-4. Preencha os campos. A figura a seguir mostra o formulário **preenchido** com os campos **numerados** de ① a ⑪; o detalhamento vem logo abaixo.
-
-![Formulário de nova solicitação com os campos numerados de 1 a 11](docs/ajuda/img/campus-nova-preenchida.png)
-*Figura 5 — Formulário preenchido (campos numerados ① a ⑪).*
-
-### Detalhamento dos campos 1 a 6
-
-![Detalhe dos campos 1 a 6](docs/ajuda/img/campus-form-a.png)
-*Figura 6 — Campos ① a ⑥.*
-
-| Nº | Campo | Como preencher |
-|----|-------|----------------|
-| ① | **Campus / unidade** | Já vem definido pelo seu perfil — não é necessário alterar. |
-| ② | **Localização no campus** | Onde fica a intervenção: bloco, pavimento, salas. Ex.: *Bloco B, 2º pavimento, salas 201–204*. |
-| ③ | **Tipo de demanda** | Obra/reforma, projeto (a elaborar ou contratar), projeto e obra, ou outro. *(Laudo e assessoria técnica seguem por chamado no SUAP, fora do sistema por enquanto.)* |
-| ④ | **Projeto já existe?** | *Sim, completo* / *Sim, parcial (precisa complementar)* / *Não — necessita contratar projeto*. |
-| ⑤ | **Imóvel tombado / patrimônio histórico?** | *Sim* / *Não* / *Não sei informar*. Influencia a complexidade e a pontuação. |
-| ⑥ | **Previsão de prazo desejada** | *Menos de 6 meses* / *6 a 12 meses* / *Mais de 12 meses* (ou sem previsão). |
-
-### Detalhamento dos campos 7 a 11
-
-![Detalhe dos campos 7 a 11](docs/ajuda/img/campus-form-b.png)
-*Figura 7 — Campos ⑦ a ⑪, especialidades e o aviso de serviço emergencial.*
-
-| Nº | Campo | Como preencher |
-|----|-------|----------------|
-| ⑦ | **Valor estimado (R$)** | Opcional. Se você conhece uma estimativa, informe — ajuda na priorização. |
-| ⑧ | **Processo SUAP** | Número do **Processo SUAP**, se já houver (ex.: `23040.001234/2026-11`). |
-| ⑨ | **Objeto resumido** | Título curto e claro. Ex.: *Reforma do telhado da quadra coberta*. |
-| ⑩ | **Especialidades envolvidas** | Marque **uma ou mais**: Arquitetura, Engenharia Civil, Elétrica, Mecânica, Segurança do Trabalho. |
-| ⑪ | **Descrição completa** | O problema, o objetivo e o resultado esperado. Quanto melhor, mais rápida a triagem. |
-
-5. **Serviço emergencial:** marque essa opção **apenas** quando houver **risco iminente** à segurança de pessoas ou ao patrimônio (art. 11, §5º). Não marque por padrão.
-6. Clique em **Registrar solicitação**.
-7. A demanda é criada com status **Recebido** e recebe um identificador automático no padrão `ANO + SIGLA DO CAMPUS + SEQUENCIAL` (ex.: `2026CSCII01`). Você é levado direto à página de detalhes.
-
-> **Dica.** Antes de cadastrar, confira no Painel (Fluxo 2) se a demanda **já não foi registrada** pelo seu campus, para evitar duplicidade.
+> **Dica.** Antes de abrir, confira em **Chamados** se a necessidade **já não foi registrada** pelo seu campus, para evitar duplicidade.
 
 ---
 
-## 7. Fluxo 4 — Acompanhar uma demanda
+## 7. Fluxo 4 — Acompanhar um chamado (e anexar fotos)
 
-Depois de cadastrada, acompanhe a evolução a qualquer momento.
+Depois de aberto, acompanhe a evolução a qualquer momento.
 
 **Passo a passo**
 
-1. No Painel, **filtre pelo seu campus** ou use a busca pelo objeto.
-2. Clique na linha da demanda para abrir os detalhes.
-3. Confira o **status atual** (selo colorido) e o **Histórico** completo, que registra cada etapa: registro, análise, diligência, aprovação do CODIR, entrada na fila, atendimento e conclusão.
+1. Abra o menu **Chamados**. Você vê apenas os chamados da(s) sua(s) unidade(s).
+2. Use os filtros (**situação**, **categoria**, **busca**) para localizar; a faixa de **SLA** mostra rapidamente o que está no prazo, vencendo ou vencido.
+3. Clique no chamado para abrir os detalhes: **status** (selo colorido), **prazo (SLA)**, **descrição**, **histórico** e o fio de **comentários** com a Engenharia.
+4. **Anexos:** no cartão **Anexos**, clique em **+ Adicionar anexo** para enviar **imagens ou PDF** (até 10 MB cada) — fotos do local, plantas, orçamentos. As miniaturas abrem em nova aba. Você pode anexar enquanto o chamado está **aberto / em triagem / em diligência**.
+5. **Comentários:** use o campo de comentário para se comunicar com a SENG sobre o chamado; tudo fica registrado.
 
-![Página de detalhes de uma demanda, com status e histórico](docs/ajuda/img/campus-demanda-acompanhar.png)
-*Figura 8 — Detalhe da demanda (visão do campus): dados, descrição e histórico.*
+> **Quando o chamado vira obra.** Se a SENG classificar o chamado como **obra**, ele é convertido em uma **Demanda** (com um identificador próprio, ex.: `2026CSCII05`) que passa a aparecer na **fila pública** e segue o fluxo GUT → CODIR → atendimento. A página do chamado mostra o **link para a demanda** gerada.
 
-> A página mostra também a **priorização** calculada (GUT, prioridade e pontos). A **alocação de profissionais** só é exibida para usuários internos da SENG — no painel público, os nomes ficam ocultos, preservando o anonimato. Você também pode registrar uma **Observação do solicitante** na demanda (campo de texto no fim da página) — fica no histórico.
-
-> **Notificações (sino do cabeçalho).** Depois de entrar, o ícone de **sino** ao lado do seu nome mostra um **contador** de avisos não lidos e abre a sua **área pessoal de notificações** — cada linha leva direto à demanda. O campus é avisado quando uma demanda **do seu campus** é **concluída**. Abrir a notificação a marca como lida; há também **“marcar todas como lidas”**. Os avisos já lidos são removidos automaticamente após 30 dias.
+> **Notificações (sino do cabeçalho).** O ícone de **sino** ao lado do seu nome mostra um **contador** de avisos não lidos e abre a sua **área pessoal de notificações** — cada linha leva direto ao chamado. O campus é avisado quando um chamado do seu campus entra **em diligência**, é **resolvido** ou tem um **desfecho**. Abrir a notificação a marca como lida; há **“marcar todas como lidas”**. Os avisos lidos são removidos após 30 dias.
 
 ---
 
 ## 8. Fluxo 5 — Responder a uma diligência
 
-Quando faltam informações para a SENG avaliar a demanda, ela coloca a solicitação em **Em diligência**. Cabe ao campus complementar.
+Quando falta uma informação para a triagem, a SENG coloca o chamado **Em diligência**. Cabe ao campus complementar — enquanto isso, o **prazo (SLA) pausa**.
 
 **Passo a passo**
 
-1. Ao acompanhar suas demandas (Fluxo 4), localize a que está **Em diligência** — é o sinal de que a SENG aguarda um complemento seu.
-2. Abra a demanda.
-3. Localize o campo **“Responder diligência”** (na página de detalhes).
-4. Escreva as informações solicitadas (locais de intervenção, estimativa de área, etc.).
-5. Clique em **Enviar complemento**.
-6. Ao enviar, a demanda **retorna automaticamente para “Em análise”** e a SENG retoma a triagem. O seu complemento fica anexado à descrição e registrado no histórico.
-
-![Demanda em diligência, com o campo de resposta](docs/ajuda/img/campus-demanda-diligencia.png)
-*Figura 9 — Demanda “Em diligência”: use o campo “Responder diligência” para complementar.*
+1. Em **Chamados**, localize o que está **Em diligência** (ou abra pelo aviso no sino).
+2. Abra o chamado. No cartão **Diligência — resposta do campus**, escreva a informação solicitada.
+3. Se ajudar, **anexe fotos** no cartão Anexos.
+4. Clique em **Responder diligência**. O chamado **retorna para triagem** e a SENG retoma a análise. Seu complemento fica no histórico e nos comentários.
 
 ---
 
@@ -222,56 +184,55 @@ Quando faltam informações para a SENG avaliar a demanda, ela coloca a solicita
 4. Clique em **Alterar senha**.
 
 ![Tela Minha conta, com dados de acesso e troca de senha](docs/ajuda/img/campus-conta.png)
-*Figura 10 — “Minha conta”: dados de acesso e troca de senha pela própria interface.*
+*Figura 3 — “Minha conta”: dados de acesso e troca de senha pela própria interface.*
 
 > A nova senha deve ser **diferente** da atual e ter **ao menos 6 caracteres**. A troca é imediata e segura.
 
 ---
 
-## 10. Apêndice A — O que **não** é demanda da SENG (Art. 18)
+## 10. Apêndice A — O que a SENG trata por chamado (e o que é da manutenção)
 
-A Seção de Engenharia trata de **obras e serviços de engenharia**. **Não** são atendidas pela SENG (art. 18 da Portaria 7503/2025) e serão marcadas como **“Não enquadrado (Art. 18)”**:
+Abra um chamado sempre que precisar da **Engenharia** — obras, reformas, projetos, laudos, pareceres e orientações técnicas. **Na dúvida, abra o chamado:** a SENG faz a triagem e, se o caso for de outro setor, **encaminha** com a orientação (tudo no histórico).
 
-- **Manutenção predial rotineira e pequenos reparos** — troca de lâmpadas, reatores, torneiras, fechaduras, vidros, retoques de pintura e consertos do dia a dia, a cargo da **Prefeitura do campus**.
-- **Limpeza, jardinagem, capina, dedetização e controle de pragas** — contratos de apoio da Administração.
-- **Mobiliário, eletrodomésticos e equipamentos** — aquisição e reposição (mesas, cadeiras, geladeiras, bebedouros), pela Administração.
-- **Tecnologia da informação** — rede lógica, telefonia, CFTV, computadores e equipamentos de TIC, a cargo do setor de TI — salvo quando exigirem **obra civil** associada.
-- **Climatização avulsa** — instalação ou manutenção de aparelhos de ar-condicionado isolados, tratada como manutenção predial (salvo projeto/obra de climatização de maior porte).
+Tipicamente **não** são obras/serviços de engenharia e podem ser **encaminhados** à manutenção/prefeitura do campus ou à Administração:
+
+- **Manutenção predial rotineira e pequenos reparos** — troca de lâmpadas, reatores, torneiras, fechaduras, vidros, retoques de pintura e consertos do dia a dia.
+- **Limpeza, jardinagem, capina, dedetização e controle de pragas.**
+- **Mobiliário, eletrodomésticos e equipamentos** — aquisição e reposição.
+- **Tecnologia da informação** — rede, telefonia, CFTV, computadores (salvo quando exigirem **obra civil** associada).
+- **Climatização avulsa** — instalação/manutenção de aparelhos isolados (salvo projeto/obra de maior porte).
 - **Serviços administrativos** — mudanças, transporte, comunicação visual e eventos.
 
-> **Na dúvida, cadastre.** Se não tiver certeza do enquadramento, registre a demanda mesmo assim: a SENG faz a triagem e, se não for caso de engenharia, marca como **“Não enquadrado (Art. 18)”** com a orientação do setor competente — tudo fica no histórico.
+> Quando o chamado é, na verdade, **manutenção**, a SENG pode registrar o desfecho **Encaminhado** para a prefeitura do campus — inclusive com uma **Nota Técnica** de orientação, quando couber.
 
 ---
 
-## 11. Apêndice B — Tabela de status
+## 11. Apêndice B — Tabela de status do chamado
 
-A fila usa os mesmos status em todo o sistema. Do ponto de vista do campus:
+| Status do chamado | O que significa | O que o campus faz |
+|-------------------|-----------------|--------------------|
+| **Aberto** | O chamado chegou e aguarda a triagem da SENG. | Acompanhar; anexar fotos. |
+| **Em triagem** | A SENG está analisando e classificando. | Acompanhar. |
+| **Em diligência** | A SENG precisa de um complemento. | **Responder** (Fluxo 5). O SLA pausa. |
+| **Em atendimento** | Consultoria/laudo em andamento pela SENG. | Acompanhar. |
+| **Encaminhado à fila de Obras** | Virou **Demanda**; segue na fila pública (GUT/CODIR). | Acompanhar a **demanda** vinculada. |
+| **Encaminhado a outro setor** | Não é caso da SENG; foi direcionado (ex.: manutenção). | Seguir a orientação. |
+| **Resolvido** | Consultoria/laudo concluído (orientação/NT). | Ver a orientação; encerrar. |
+| **Improcedente / Duplicado** | Encerrado sem atendimento, com o motivo no histórico. | Ver o motivo. |
+| **Cancelado** | Encerrado sem atendimento. | Ver o motivo. |
 
-| Status | O que significa | O que o campus faz |
-|--------|-----------------|--------------------|
-| **Recebido** | A solicitação chegou e aguarda a triagem da SENG. | Acompanhar. |
-| **Em análise** | A SENG está avaliando (classificação e GUT). | Acompanhar. |
-| **Em diligência** | A SENG precisa de informações complementares. | **Responder** (Fluxo 5). |
-| **Aguardando aprovação do CODIR** | Avaliada; aguarda a deliberação do Conselho. | Acompanhar. |
-| **Na fila** | Aprovada; aguarda atendimento, na posição dada pela prioridade. | Acompanhar a posição. |
-| **Em atendimento** | A SENG está executando ou fiscalizando. | Acompanhar; atender a contatos. |
-| **Concluído** | Demanda encerrada com atendimento. | — |
-| **Suspenso** | Temporariamente parada. | Ver o motivo no histórico. |
-| **Cancelado** | Encerrada sem atendimento. | Ver o motivo no histórico. |
-| **Não enquadrado (Art. 18)** | Não é demanda de engenharia da SENG. | Encaminhar ao setor competente. |
-| **Excluído** | Removida; fica no arquivo morto por 30 dias. | Falar com a SENG se foi engano. |
+> Quando o chamado vira **obra**, passa a valer também a **tabela de status da demanda** (Recebido, Em análise, Aguardando CODIR, Na fila, Em atendimento, Concluído…), visível na fila pública.
 
 ---
 
 ## 12. Apêndice C — Boas práticas
 
-- **Objeto curto e claro.** Um título direto agiliza a triagem (ex.: *Reforma do telhado da quadra coberta*).
-- **Descrição completa.** Explique o problema, o objetivo e o resultado esperado; quanto melhor, mais rápida a análise.
-- **Evite duplicidade.** Antes de cadastrar, consulte o Painel para ver se a demanda já não foi registrada pelo campus.
-- **Anexe o Processo SUAP.** Se já houver processo, informe o número — ele liga a demanda à tramitação oficial.
-- **Emergencial é exceção.** Marque “Serviço emergencial” **apenas** com risco iminente (art. 11, §5º). Mesmo assim, a demanda passa pelo CODIR — não é “fura-fila”.
-- **Responda diligências rápido.** Enquanto a diligência não é respondida, a demanda fica parada.
-- **Mantenha o contato atualizado.** A SENG pode precisar falar com o campus durante o atendimento.
+- **Título curto e claro.** Um resumo direto agiliza a triagem.
+- **Descrição completa + fotos.** Explique o problema e anexe imagens do local; quanto melhor, mais rápida a análise.
+- **Escolha bem a categoria.** Ela define a disciplina que recebe o aviso e o prazo (SLA).
+- **Evite duplicidade.** Antes de abrir, consulte **Chamados** para ver se já não foi registrado.
+- **Urgência “Emergencial” é exceção.** Use apenas com risco iminente (art. 11, §5º). Quando o chamado vira obra, ainda passa pelo CODIR — não é “fura-fila”.
+- **Responda diligências rápido.** Enquanto a diligência não é respondida, o chamado fica parado.
 
 ---
 
@@ -280,37 +241,35 @@ A fila usa os mesmos status em todo o sistema. Do ponto de vista do campus:
 **Não consigo entrar.**
 Confira o e-mail institucional e a senha. Persistindo, peça a redefinição à SENG/Administração.
 
-**Não vejo o botão “+ Nova solicitação”.**
-Ele aparece apenas após o login, no perfil **Campus**. Sem login, você só consulta a fila.
+**Não vejo o botão “+ Abrir chamado”.**
+Ele aparece após o login. Sem login, você só consulta a fila pública.
 
-**Posso editar a demanda depois de enviar?**
-Os dados podem ser ajustados até a submissão ao CODIR. Depois disso, congelam — fale com a SENG. Você sempre pode registrar uma **Observação do solicitante** na demanda.
+**Onde foi parar a “Nova solicitação”?**
+Foi unificada no chamado. Agora **tudo começa por um chamado**; a SENG classifica e, se for obra, converte em demanda. Links antigos de “Nova solicitação” levam automaticamente para **Abrir chamado**.
 
-**Marquei “emergencial” sem querer.**
-Sem problema: não há atalho automático na fila. Avise a SENG para corrigir, se for o caso.
+**Posso anexar fotos?**
+Sim — na página do chamado, cartão **Anexos** (imagens ou PDF, até 10 MB). Você pode anexar enquanto o chamado está aberto, em triagem ou em diligência.
 
-**Minha demanda sumiu da lista.**
-Pode ter sido excluída. Demandas excluídas ficam recuperáveis por 30 dias — fale com a SENG.
+**Meu chamado sumiu / virou outro número.**
+Se a SENG o converteu em obra, ele passou a ser uma **Demanda** (número no padrão `2026...`) na fila pública; a página do chamado traz o link.
 
-**Posso cadastrar para outro campus?**
-Não. Cada perfil Campus cadastra para a(s) sua(s) unidade(s). Casos de gestão compartilhada (ex.: CREIR + Realengo I) são configurados pela Administração.
-
-**Quando minha demanda entra na fila?**
-Depois de avaliada pela SENG (GUT) e **aprovada pelo CODIR**.
+**Posso abrir chamado para outro campus?**
+Não. Cada perfil Campus abre para a(s) sua(s) unidade(s). Gestão compartilhada é configurada pela Administração.
 
 ---
 
 ## 14. Apêndice E — Glossário
 
-- **SENG** — Seção de Engenharia do Colégio Pedro II (vinculada à **DECOF**).
-- **DECOF** — Diretoria de Engenharia, Contratos e Fiscalização.
-- **CODIR** — instância colegiada que aprova as demandas e pode ajustar a prioridade.
-- **SUAP** — Sistema Unificado de Administração Pública; sistema eletrônico de processos do CPII.
+- **Chamado** — porta de entrada da Engenharia; solicitação triada pela SENG (identificador `CH...`).
+- **Demanda** — obra/serviço de engenharia que entra na fila pública (identificador `ANO+CAMPUS+Nº`); nasce da triagem de um chamado.
+- **Triagem** — análise inicial da SENG que define o desfecho do chamado.
+- **Desfecho** — decisão da triagem: obra (vira demanda), consultoria, laudo, encaminhamento, improcedente ou duplicado.
+- **SLA** — prazo de triagem estimado por categoria; pausa quando o chamado está em diligência.
+- **Anexo** — imagem ou PDF ligado ao chamado (foto, planta, orçamento).
+- **Nota Técnica (NT)** — documento técnico com que a SENG pode encerrar consultorias/laudos.
+- **SENG / DECOF** — Seção de Engenharia / Diretoria de Engenharia, Contratos e Fiscalização.
+- **CODIR** — instância que aprova as demandas e pode ajustar a prioridade.
+- **SUAP** — sistema eletrônico de processos do CPII; o Processo SUAP entra quando o chamado vira obra/contratação.
 - **GUT** — método de priorização: Gravidade × Urgência × Tendência.
-- **Prioridade** — índice que ordena a fila; um `*` indica ajuste do CODIR.
-- **Fila** — demandas aprovadas, aguardando atendimento, por ordem de prioridade.
-- **Diligência** — devolução da demanda ao campus para complementar informações.
+- **Diligência** — devolução do chamado ao campus para complementar informações.
 - **Serviço emergencial** — risco iminente a pessoas ou patrimônio (art. 11, §5º); não é “fura-fila”.
-- **Não enquadrado (Art. 18)** — demanda que não é obra ou serviço de engenharia da SENG.
-- **Arquivo morto** — demandas excluídas, mantidas 30 dias antes da remoção definitiva.
-- **Processo SUAP** — número do processo eletrônico ligado à demanda.
