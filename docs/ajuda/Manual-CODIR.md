@@ -5,7 +5,7 @@
 
 Guia do Conselho Diretor (CODIR) para **aprovar** demandas de obras e serviços de engenharia e, quando necessário, aplicar um **fator de ajuste** de prioridade — sempre com justificativa e total rastreabilidade. Escrito também para servir de base às **seções de ajuda do portal**.
 
-> **Nota sobre as imagens.** As telas foram reproduzidas a partir do próprio código do sistema, em **modo de demonstração** (dados fictícios). A aparência é idêntica à do sistema real. Os marcadores vermelhos numerados (①, ②, …) foram acrescentados para fins didáticos — não aparecem no sistema.
+> [!nota] **Sobre as imagens.** As telas são **reproduções fiéis** do sistema (mesmas cores e componentes), com dados de exemplo e **marcadores numerados** apenas didáticos. Acompanham o **tema claro/escuro** da página.
 
 ---
 
@@ -84,15 +84,13 @@ A coluna **Pts** mostra os **pontos de complexidade** (art. 11) — o esforço e
 
 1. Entre com seu e-mail e senha. *(A consulta à fila e o PDF são públicos; o login habilita a deliberação.)*
 
-![Tela de acesso](docs/ajuda/img/login.png)
-*Figura 1 — Acesso ao sistema.*
+@fig login
 
 2. No **Painel**, veja a fila ordenada por prioridade, com **GUT**, **Prioridade** e **Pts**.
 3. Use os **filtros** (campus, status, tipo de atividade, especialidade) ou a **busca**.
 4. Se desejar, clique em **Baixar PDF da fila** (relatório com timbre e data/hora).
 
-![Painel do CODIR com a fila priorizada](docs/ajuda/img/codir-painel.png)
-*Figura 2 — Painel: fila ordenada por prioridade, com GUT, prioridade e pontos.*
+@fig codir-painel
 
 **Leitura das colunas**
 
@@ -115,8 +113,7 @@ A coluna **Pts** mostra os **pontos de complexidade** (art. 11) — o esforço e
 2. Clique na demanda para abrir os detalhes.
 3. Revise os **dados**, a **priorização calculada** e o **histórico**. O cartão de **Deliberação do CODIR** aparece na coluna da direita.
 
-![Detalhe de uma demanda na visão do CODIR](docs/ajuda/img/codir-demanda.png)
-*Figura 3 — Detalhe da demanda: dados e histórico à esquerda; priorização e deliberação do CODIR à direita.*
+@fig codir-demanda
 
 ---
 
@@ -124,8 +121,7 @@ A coluna **Pts** mostra os **pontos de complexidade** (art. 11) — o esforço e
 
 No cartão **Deliberação do CODIR**:
 
-![Cartão de deliberação do CODIR, com campos numerados](docs/ajuda/img/codir-deliberacao-marcado.png)
-*Figura 4 — Deliberação do CODIR. Marcadores ① a ③ correspondem às ações abaixo.*
+@fig codir-deliberacao
 
 1. **① “Aprovada pelo CODIR”** — marque esta caixa para validar a demanda. Ao marcar, a demanda **entra automaticamente na fila**.
 2. A ação é registrada no **histórico** com data e responsável.
@@ -150,15 +146,13 @@ Quando o Conselho entender que a ordem deve ser ajustada (por relevância instit
 
 Após salvar, confira o resultado no cartão **Priorização**:
 
-![Cartão de priorização com o ajuste aplicado](docs/ajuda/img/codir-priorizacao-ajuste.png)
-*Figura 5 — Priorização com ajuste: a linha “Ajuste (CODIR)” mostra o valor e a justificativa; a prioridade final é recalculada.*
+@fig codir-prioriz-ajuste
 
 - A **Prioridade final** = prioridade calculada **+** fator de ajuste.
 - A linha **“Ajuste (CODIR)”** exibe o valor e a justificativa.
 - Ao aprovar, a demanda passa a **“Na fila”** e assume sua posição (com a marca `*`).
 
-![Demanda aprovada, agora na fila](docs/ajuda/img/codir-demanda-aprovada.png)
-*Figura 6 — Após a aprovação e o ajuste: a demanda entra na fila, com o histórico atualizado.*
+@fig codir-aprovada
 
 ---
 

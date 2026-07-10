@@ -4,6 +4,7 @@
 // monta nós do DOM (sem innerHTML) — coerente com a política de segurança.
 // =============================================================================
 import { el, frag } from '../ui.js';
+import { figura } from '../ajuda-figs.js';
 
 const MANUAIS = [
   { id: 'campus', rotulo: 'Campus', arq: 'docs/ajuda/Manual-Campus.md' },
@@ -36,14 +37,18 @@ export function mdToNodes(md) {
   const linhas = md.replace(/\r/g, '').split('\n');
   const nodes = [];
   let i = 0;
+  let sumarioNext = false; // a lista logo após “Sumário/Conteúdo” vira caixa destacada
   const ehTabelaSep = (s) => /^\s*\|?[\s:|-]+\|?\s*$/.test(s) && s.includes('-');
   const celulas = (s) => s.replace(/^\s*\|/, '').replace(/\|\s*$/, '').split('|').map(c => c.trim());
   while (i < linhas.length) {
     let ln = linhas[i];
     if (!ln.trim()) { i++; continue; }
+    // reprodução de tela (padrão SANE): token @fig <id> em linha própria
+    let mfig = /^@fig\s+([\w-]+)\s*$/.exec(ln.trim());
+    if (mfig) { nodes.push(figura(mfig[1])); i++; continue; }
     // título
     let mh = /^(#{1,6})\s+(.*)$/.exec(ln);
-    if (mh) { const n = Math.min(5, mh[1].length + 1); nodes.push(el('h' + n, {}, inline(mh[2]))); i++; continue; }
+    if (mh) { const n = Math.min(5, mh[1].length + 1); nodes.push(el('h' + n, {}, inline(mh[2]))); sumarioNext = /^(sum[áa]rio|conte[úu]do)\s*$/i.test(mh[2].trim()); i++; continue; }
     // hr
     if (/^---+$/.test(ln.trim())) { nodes.push(el('hr', {})); i++; continue; }
     // imagem (linha própria) + legenda itálica seguinte
@@ -56,11 +61,19 @@ export function mdToNodes(md) {
       }
       nodes.push(fig); i++; continue;
     }
-    // citação
+    // citação / callout ([!dica] [!atencao] [!nota] [!importante])
     if (/^>\s?/.test(ln)) {
       const buf = [];
       while (i < linhas.length && /^>\s?/.test(linhas[i])) { buf.push(linhas[i].replace(/^>\s?/, '')); i++; }
-      nodes.push(el('blockquote', {}, ...buf.map((b, k) => el('p', {}, inline(b)))));
+      const mc = /^\[!(dica|aten[cç][aã]o|nota|importante)\]\s*(.*)$/i.exec(buf[0] || '');
+      if (mc) {
+        const tipo = mc[1].toLowerCase().startsWith('aten') ? 'atencao' : mc[1].toLowerCase();
+        buf[0] = mc[2];
+        const corpo = buf.filter((b, k) => !(k === 0 && !b.trim())).map(b => el('p', {}, inline(b)));
+        nodes.push(el('div', { class: `ajuda-callout ${tipo}` }, ...corpo));
+        continue;
+      }
+      nodes.push(el('blockquote', {}, ...buf.map((b) => el('p', {}, inline(b)))));
       continue;
     }
     // tabela
@@ -78,12 +91,12 @@ export function mdToNodes(md) {
     if (/^\s*[-*]\s+/.test(ln)) {
       const itens = [];
       while (i < linhas.length && /^\s*[-*]\s+/.test(linhas[i])) { itens.push(linhas[i].replace(/^\s*[-*]\s+/, '')); i++; }
-      nodes.push(el('ul', {}, itens.map(t => el('li', {}, inline(t))))); continue;
+      nodes.push(el('ul', sumarioNext ? { class: 'ajuda-sumario' } : {}, itens.map(t => el('li', {}, inline(t))))); sumarioNext = false; continue;
     }
     if (/^\s*\d+\.\s+/.test(ln)) {
       const itens = [];
       while (i < linhas.length && /^\s*\d+\.\s+/.test(linhas[i])) { itens.push(linhas[i].replace(/^\s*\d+\.\s+/, '')); i++; }
-      nodes.push(el('ol', {}, itens.map(t => el('li', {}, inline(t))))); continue;
+      nodes.push(el('ol', sumarioNext ? { class: 'ajuda-sumario' } : {}, itens.map(t => el('li', {}, inline(t))))); sumarioNext = false; continue;
     }
     // legenda solta (itálico) → parágrafo em itálico
     if (/^\*[^*].*\*\s*$/.test(ln.trim())) { nodes.push(el('p', { class: 'ajuda-cap' }, el('em', {}, ln.trim().replace(/^\*|\*$/g, '')))); i++; continue; }
@@ -105,7 +118,7 @@ export function viewAjuda(rerender) {
       onclick: () => { abaAtual = m.id; rerender(); },
     }, m.rotulo)));
 
-  const doc = el('article', { class: 'ajuda-doc card' }, el('p', { class: 'sub' }, 'Carregando o manual…'));
+  const doc = el('article', { class: 'ajuda-doc' }, el('p', { class: 'sub' }, 'Carregando o manual…'));
   const man = MANUAIS.find(m => m.id === abaAtual);
 
   const render = (md) => doc.replaceChildren(...mdToNodes(md));

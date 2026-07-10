@@ -5,9 +5,9 @@
 
 Guia completo, passo a passo, para as unidades (campi) **abrirem e acompanharem chamados** de engenharia. Este material foi escrito para servir também como **conteúdo das seções de ajuda do portal**: cada seção numerada é autocontida e pode ser publicada como um artigo de ajuda independente.
 
-> **Novidade importante — o Chamado é a porta de entrada.** O campus **não cadastra mais a demanda diretamente**. Você **abre um chamado** descrevendo a necessidade; a Seção de Engenharia faz a **triagem** e decide o desfecho — que pode ser transformar o chamado em **demanda de obra** (entra na fila do CODIR), tratá-lo como **consultoria/laudo** (retorna com orientação ou Nota Técnica) ou **encaminhá-lo** ao setor responsável. Assim há uma única porta e a fila de demandas fica reservada às obras e serviços de engenharia de fato.
+> [!importante] **O Chamado é a porta de entrada.** O campus **não cadastra mais a demanda diretamente**. Você **abre um chamado** descrevendo a necessidade; a Seção de Engenharia faz a **triagem** e decide o desfecho — que pode ser transformar o chamado em **demanda de obra** (entra na fila do CODIR), tratá-lo como **consultoria/laudo** (retorna com orientação ou Nota Técnica) ou **encaminhá-lo** ao setor responsável. Assim há uma única porta e a fila de demandas fica reservada às obras e serviços de engenharia de fato.
 
-> **Nota sobre as imagens.** As telas deste manual são reproduzidas a partir do próprio sistema, em **modo de demonstração** (dados fictícios). A aparência é idêntica à do sistema real; apenas os dados são exemplos.
+> [!nota] **Sobre as imagens.** As telas deste manual são **reproduções fiéis** do sistema (mesmas cores e componentes), com dados de exemplo e **marcadores numerados** apenas para fins didáticos — eles não aparecem no sistema. Acompanham o **tema claro/escuro** da página.
 
 ---
 
@@ -90,8 +90,7 @@ A **consulta à fila** e o **relatório em PDF** são **públicos** — não exi
 3. Informe o seu **e-mail institucional** e a **senha**.
 4. Clique em **Entrar**. Você será levado ao Painel, já autenticado.
 
-![Tela de acesso ao sistema](docs/ajuda/img/login.png)
-*Figura 1 — Tela de acesso. A consulta e o PDF são públicos; o login habilita a abertura de chamados e o acompanhamento.*
+@fig login
 
 > **Segurança**
 > - O perfil **Campus** já vem amarrado à sua unidade (ou unidades) — você abre e acompanha os chamados do(s) seu(s) campus.
@@ -104,8 +103,7 @@ A **consulta à fila** e o **relatório em PDF** são **públicos** — não exi
 
 O **Painel** lista todas as demandas de obras e serviços, com campus, objeto, status, índice GUT, prioridade e data de atualização. *(Os chamados em triagem não aparecem na fila pública — só as demandas.)*
 
-![Painel público com a fila de demandas](docs/ajuda/img/pub-dashboard.png)
-*Figura 2 — Painel público: fila de demandas, barra de filtros e botão de exportação em PDF.*
+@fig campus-fila
 
 **O que você pode fazer aqui**
 
@@ -137,7 +135,9 @@ Este é o fluxo mais importante para o campus. O formulário é **curto e direto
 4. Clique em **Abrir chamado**.
 5. O chamado é criado com status **Aberto** e recebe um identificador automático no padrão `CH + ANO + SIGLA DO CAMPUS + SEQUENCIAL` (ex.: `CH2026CSCII001`). Você é levado direto à página do chamado, onde pode **anexar fotos** (Fluxo 4).
 
-> **E os laudos e consultorias?** Não existe mais formulário separado: qualquer necessidade — obra, reforma, laudo, parecer, orientação — entra **como chamado**. A SENG decide o desfecho na triagem.
+@fig campus-abrir
+
+> [!dica] **E os laudos e consultorias?** Não existe mais formulário separado: qualquer necessidade — obra, reforma, laudo, parecer, orientação — entra **como chamado**. A SENG decide o desfecho na triagem.
 
 > **Dica.** Antes de abrir, confira em **Chamados** se a necessidade **já não foi registrada** pelo seu campus, para evitar duplicidade.
 
@@ -154,6 +154,10 @@ Depois de aberto, acompanhe a evolução a qualquer momento.
 3. Clique no chamado para abrir os detalhes: **status** (selo colorido), **prazo (SLA)**, **descrição**, **histórico** e o fio de **comentários** com a Engenharia.
 4. **Anexos:** no cartão **Anexos**, clique em **+ Adicionar anexo** para enviar **imagens ou PDF** (até 10 MB cada) — fotos do local, plantas, orçamentos. As miniaturas abrem em nova aba. Você pode anexar enquanto o chamado está **aberto / em triagem / em diligência**.
 5. **Comentários:** use o campo de comentário para se comunicar com a SENG sobre o chamado; tudo fica registrado.
+
+@fig campus-painel
+
+@fig campus-detalhe
 
 > **Quando o chamado vira obra.** Se a SENG classificar o chamado como **obra**, ele é convertido em uma **Demanda** (com um identificador próprio, ex.: `2026CSCII05`) que passa a aparecer na **fila pública** e segue o fluxo GUT → CODIR → atendimento. A página do chamado mostra o **link para a demanda** gerada.
 
@@ -172,6 +176,8 @@ Quando falta uma informação para a triagem, a SENG coloca o chamado **Em dilig
 3. Se ajudar, **anexe fotos** no cartão Anexos.
 4. Clique em **Responder diligência**. O chamado **retorna para triagem** e a SENG retoma a análise. Seu complemento fica no histórico e nos comentários.
 
+@fig campus-diligencia
+
 ---
 
 ## 9. Fluxo 6 — Minha conta e troca de senha
@@ -183,8 +189,7 @@ Quando falta uma informação para a triagem, a SENG coloca o chamado **Em dilig
 3. Para trocar a senha, informe a **senha atual**, a **nova senha** (mínimo de 6 caracteres) e a **confirmação**.
 4. Clique em **Alterar senha**.
 
-![Tela Minha conta, com dados de acesso e troca de senha](docs/ajuda/img/campus-conta.png)
-*Figura 3 — “Minha conta”: dados de acesso e troca de senha pela própria interface.*
+@fig campus-conta
 
 > A nova senha deve ser **diferente** da atual e ter **ao menos 6 caracteres**. A troca é imediata e segura.
 

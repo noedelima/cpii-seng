@@ -5,7 +5,7 @@
 
 Guia operacional completo para a equipe da Seção de Engenharia (perfis **Engenharia**, **Chefe de Seção** e **Administrador**): triagem, avaliação técnica (GUT), tramitação, alocação de fiscais, profissionais, parâmetros e administração. Escrito também para servir de base às **seções de ajuda do portal** — cada seção é autocontida.
 
-> **Nota sobre as imagens.** As telas foram reproduzidas a partir do próprio código do sistema, em **modo de demonstração** (dados fictícios). A aparência é idêntica à do sistema real. Os marcadores vermelhos numerados (①, ②, …) foram acrescentados sobre os campos para fins didáticos — não aparecem no sistema.
+> [!nota] **Sobre as imagens.** As telas são **reproduções fiéis** do sistema (mesmas cores e componentes), com dados de exemplo e **marcadores numerados** apenas didáticos. Acompanham o **tema claro/escuro** da página.
 
 ---
 
@@ -46,7 +46,7 @@ Princípios de projeto:
 - **Segurança por design**: dados públicos e internos separados; permissões validadas no servidor.
 - **Rastreabilidade total**: histórico por demanda + log de auditoria.
 
-> **Porta de entrada: o Chamado.** O intake foi **unificado** — não há mais “Nova solicitação” avulsa. O campus **abre um chamado**; a SENG **triam** e define o desfecho, inclusive **converter em Demanda** de obra (com a classificação preenchida na triagem). O passo a passo do módulo está no **Fluxo 11**.
+> [!importante] **Porta de entrada: o Chamado.** O intake foi **unificado** — não há mais “Nova solicitação” avulsa. O campus **abre um chamado**; a SENG **triam** e define o desfecho, inclusive **converter em Demanda** de obra (com a classificação preenchida na triagem). O passo a passo do módulo está no **Fluxo 11**.
 
 ---
 
@@ -111,14 +111,12 @@ O cálculo replica o modelo do Power BI da SENG (art. 5º, II):
 
 1. Entre com seu e-mail e senha.
 
-![Tela de acesso](docs/ajuda/img/login.png)
-*Figura 1 — Acesso ao sistema.*
+@fig login
 
 2. No **Painel**, autenticado, a tabela ganha a coluna **Fiscal técnico** e o filtro **“Minhas atribuições”**; o cartão **Carga da equipe** aparece **logo acima da fila**, para ficar sempre visível independentemente do tamanho da lista.
 3. Para triar, filtre por **status “Recebido”** (ou por especialidade) e abra as demandas pendentes.
 
-![Painel interno da SENG, com colunas e carga da equipe](docs/ajuda/img/eng-painel.png)
-*Figura 2 — Painel autenticado: coluna de fiscal técnico, filtro “Minhas atribuições” e carga da equipe.*
+@fig eng-painel
 
 > **Triagem recomendada:** comece pelas demandas **Recebidas** mais antigas; mova rapidamente para **Em análise**; abra **diligência** quando faltar informação.
 
@@ -137,8 +135,7 @@ Clique em uma linha do painel para abrir o detalhe. A página é dividida em dua
 - **Esquerda:** dados da solicitação e **histórico** completo.
 - **Direita:** **Priorização**, **Avaliação técnica**, **Gestão**, **Alocação** e **Observações** — esta última um **histórico de comentários públicos** (fio interno da Engenharia e fio externo do solicitante/CODIR).
 
-![Detalhe de uma demanda, em duas colunas](docs/ajuda/img/eng-demanda.png)
-*Figura 3 — Detalhe da demanda: dados/histórico à esquerda; priorização, avaliação, gestão e alocação à direita.*
+@fig eng-demanda
 
 > **Editar dados da solicitação.** Enquanto a demanda **não foi submetida ao CODIR** (status Recebido, Em análise ou Em diligência), o cartão **“Editar dados da solicitação”** permite corrigir localização, tipo, situação do projeto, valor, prazo, processo SUAP, objeto, descrição, especialidades e o sinalizador emergencial. A edição é aberta a **Engenharia, Chefia, Administração e CODIR** (qualquer demanda) e ao **Campus** (apenas as da própria unidade). Ao entrar em **“Aguardando aprovação do CODIR”**, os dados **congelam para todos**; para corrigir, **reverta o status** (Fluxo 5) e a edição reabre. A **unidade (campus) não é editável** (compõe o identificador). Cada alteração registra no **histórico** e no **log de auditoria** **exatamente quais campos** mudaram — ex.: *“Dados da solicitação editados — campos: Processo SUAP, Valor estimado, Prazo estimado”*.
 
@@ -155,8 +152,7 @@ Este é o núcleo do trabalho da Engenharia.
 1. Abra a demanda (Fluxo 2).
 2. No cartão **Avaliação técnica (GUT)**, preencha os campos numerados:
 
-![Cartão de avaliação técnica com campos numerados](docs/ajuda/img/eng-avaliacao-marcado.png)
-*Figura 4 — Avaliação técnica (GUT). Marcadores ① a ⑥ correspondem à lista abaixo.*
+@fig eng-gut
 
 | Nº | Campo | Como preencher |
 |----|-------|----------------|
@@ -171,8 +167,7 @@ Este é o núcleo do trabalho da Engenharia.
 4. *(Apenas Chefia/Admin)* É possível definir **Pontos (manual)**. O cálculo automático do art. 11 depende do **valor considerado**: **sem valor, a Fiscalização de Obra/Projeto não recebe pontos automaticamente** (a ficha sinaliza “informe o valor para calcular”) — informe o valor ou defina os pontos aqui. *(Elaboração de Projeto = 3, independe de valor.)*
 5. Clique em **Salvar avaliação**. A **prioridade é recalculada automaticamente** e aparece no cartão **Priorização**.
 
-![Cartão de priorização com GUT, scores e prioridade final](docs/ajuda/img/eng-priorizacao-card.png)
-*Figura 5 — Priorização: G/U/T, GUT, Score de Valor (V) e de Prazo (P), Prazo×Custo, prioridade calculada e final, pontos (art. 11) e situação da aprovação do CODIR.*
+@fig eng-prioriz
 
 ---
 
@@ -180,8 +175,7 @@ Este é o núcleo do trabalho da Engenharia.
 
 No cartão **Gestão** ficam as transições de status disponíveis para o seu perfil.
 
-![Cartão de gestão com transições de status](docs/ajuda/img/eng-gestao-card.png)
-*Figura 6 — Gestão: a Engenharia aplica os status de triagem (Em diligência, Aguardando aprovação do CODIR).*
+@fig eng-gestao
 
 **Encaminhar ao CODIR**
 
@@ -205,8 +199,7 @@ Quando a demanda entra em **Em atendimento** (ou é **Concluída**), o sistema *
 - A demanda **não pode ser excluída**.
 - A trava vale na **interface** e nas **regras de segurança** do banco.
 
-![Aviso de demanda travada (em atendimento)](docs/ajuda/img/eng-demanda-travada.png)
-*Figura 7 — Demanda “Em atendimento”: avaliação e exclusão bloqueadas.*
+@fig eng-travada
 
 > **Desfazer um status indevido (Chefe/Admin).** Se uma demanda for marcada **Em atendimento** por engano, a **Chefia/Administração** pode **revertê-la diretamente**: no cartão **Gestão** aparecem os botões **Na fila**, **Aguardando aprovação do CODIR** e **Em análise**. Uma demanda **Concluída** por engano pode ser **reaberta** para **Em atendimento**. A ação pede confirmação e é registrada no histórico (muda **apenas o status** — a classificação é preservada; reverter o atendimento libera os pontos do art. 12, reabrir a conclusão volta a contá-los).
 >
@@ -232,8 +225,7 @@ Quando a demanda entra em **Em atendimento** (ou é **Concluída**), o sistema *
 5. Se a alocação **exceder o limite de 6 pontos** (art. 12), o sistema **avisa** e pede confirmação (serviço emergencial pode exceder, §2º).
 6. Clique em **Salvar alocação**.
 
-![Cartão de gestão com a alocação de fiscais (seleção múltipla)](docs/ajuda/img/chefe-gestao-card.png)
-*Figura 8 — Alocação: fiscais titulares e substitutos (um ou mais) e equipe de planejamento, cada um com a sua carga.*
+@fig eng-alocacao
 
 ---
 
@@ -241,8 +233,7 @@ Quando a demanda entra em **Em atendimento** (ou é **Concluída**), o sistema *
 
 No **Painel** autenticado, o cartão **Carga da equipe** consolida a pontuação de cada profissional.
 
-![Painel de carga da equipe](docs/ajuda/img/eng-carga-equipe.png)
-*Figura 9 — Carga da equipe: pontos por profissional, com barra de uso do limite (art. 12).*
+@fig eng-carga
 
 - A barra indica o uso em relação ao **limite de 6 pontos**.
 - São separados **pontos regulares**, **emergenciais** e de **planejamento**.
@@ -256,16 +247,14 @@ No **Painel** autenticado, o cartão **Carga da equipe** consolida a pontuação
 
 O cadastro está em **Profissionais** (menu superior).
 
-![Página de profissionais, com carga e art. 13](docs/ajuda/img/chefe-profissionais.png)
-*Figura 10 — Profissionais: cartões com carga individual e o painel de equipes de planejamento por especialidade (art. 13).*
+@fig eng-profissionais
 
 **Cadastrar/editar um profissional**
 
 1. Clique em **+ Novo profissional**.
 2. Preencha os campos:
 
-![Formulário de novo profissional, com campos numerados](docs/ajuda/img/profissional-novo.png)
-*Figura 11 — Novo profissional. Marcadores ① a ④.*
+@fig eng-prof-novo
 
 | Nº | Campo | Como preencher |
 |----|-------|----------------|
@@ -287,8 +276,7 @@ O cadastro está em **Profissionais** (menu superior).
 
 Em **Administração**, o cartão **Parâmetros do sistema** controla o cálculo.
 
-![Cartão de parâmetros do sistema](docs/ajuda/img/chefe-parametros-card.png)
-*Figura 12 — Parâmetros: ano do plano, valor de referência, pesos e limite de pontos.*
+@fig eng-parametros
 
 - **Ano do Plano** — usado nos IDs das novas demandas.
 - **Valor de referência (art. 75-I)** — base das faixas de valor e dos pontos; atualizado anualmente por decreto.
@@ -307,13 +295,11 @@ Em **Administração**, o cartão **Parâmetros do sistema** controla o cálculo
 
 1. Em **Administração**, no cartão **Usuários**, clique em **+ Novo usuário**.
 
-![Cartão de usuários da administração](docs/ajuda/img/admin-usuarios-card.png)
-*Figura 13 — Lista de usuários e perfis (exclusivo do Administrador).*
+@fig eng-usuarios
 
 2. Preencha o formulário:
 
-![Formulário de novo usuário, com campos numerados](docs/ajuda/img/admin-novo-usuario.png)
-*Figura 14 — Novo usuário. Marcadores ① a ⑤.*
+@fig eng-usuario-novo
 
 | Nº | Campo | Como preencher |
 |----|-------|----------------|
@@ -330,8 +316,7 @@ Em **Administração**, o cartão **Parâmetros do sistema** controla o cálculo
 - Um administrador **não pode revogar o próprio perfil**; sempre resta ao menos um administrador ativo.
 - O **Log de auditoria** registra **toda** modificação (o quê, quando, quem), de forma **imutável** — visível apenas ao Administrador.
 
-![Log de auditoria](docs/ajuda/img/admin-log-card.png)
-*Figura 15 — Log de auditoria: trilha imutável de todas as ações.*
+@fig eng-log
 
 ---
 
@@ -348,6 +333,8 @@ O **Chamado** é a **porta de entrada única** da Engenharia (unifica a antiga �
 - **Baixar PDF**: relatório efêmero (timbre + data/hora) da lista filtrada.
 - **+ Abrir chamado**: a SENG também pode abrir um chamado (ex.: demanda de origem interna).
 
+@fig ch-painel
+
 ### Triagem (cartão “Triagem”)
 
 1. **Iniciar triagem** (Aberto → Em triagem).
@@ -357,6 +344,8 @@ O **Chamado** é a **porta de entrada única** da Engenharia (unifica a antiga �
    - **Consultoria** / **Laudo** — o chamado vai a **Em atendimento**; conclua depois em **“Concluir o atendimento”** (registra a orientação/NT e marca **Resolvido**; o campus é avisado).
    - **Encaminhar a outro setor** — selecione o setor e registre a orientação (status **Encaminhado**).
    - **Improcedente** / **Duplicado** — encerra com o motivo.
+
+@fig ch-triagem
 
 ### Anexos, comentários e histórico
 
