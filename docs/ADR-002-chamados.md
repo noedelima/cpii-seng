@@ -81,11 +81,34 @@ download são tokenizadas** e imprevisíveis. Risco residual: um usuário autent
 que adivinhe um caminho completo poderia ler arquivo de outro campus — baixo, dado
 o público interno fechado e as URLs com token.
 
-**Hardening futuro** (isolamento por campus na própria camada de Storage, sem
-cross-service): **custom claims** (`role`/`campi`) no token, definidos por uma
-função de bloqueio de login (Firebase Auth) ou callable com Admin SDK; as regras
-passariam a usar `request.auth.token.role`/`.campi` — sem `firestore.get` e sem
-dependência de região.
+**Hardening implementado (2026-07-10, v1.12.0)** — isolamento por papel/campus
+na própria camada de Storage, sem cross-service, via **custom claims**
+(`role`/`campi`) no ID token:
+
+- **Definição das claims:** endpoints na camada de API (Azure Functions) —
+  `POST /api/claims/self` (o próprio usuário; copia o SEU doc `/usuarios/{uid}`,
+  sem escalada possível) e `POST /api/claims/sync` (admin, após criar/editar/
+  desativar usuário). Fonte da verdade continua sendo `/usuarios/{uid}` no
+  Firestore, sob as rules.
+- **Credencial:** service account **dedicada**, papel único
+  `roles/firebaseauth.admin` (Firebase Authentication Admin) — gere contas/
+  claims, **não acessa Firestore/Storage**. Chave JSON na App Setting
+  `FB_SA_JSON` do SWA (nunca no repositório); implementação REST zero-deps
+  (`api/src/shared/adminAuth.js`). Sem a App Setting → endpoints respondem 501
+  e nada quebra (recurso dormente).
+- **Sincronização automática:** no login, o `FirebaseProvider` compara as
+  claims do token com o perfil; divergiu → chama `claims/self` e renova o token
+  (`getIdToken(true)`). Ao salvar usuário, o admin dispara `claims/sync` do
+  afetado (efetiva na próxima renovação do token dele, ≤ 1 h).
+- **Storage rules v2:** `request.auth.token.get('role'/'campi')` — leitura por
+  interno (inclui CODIR) ou campus dono do caminho `chamados/{campus}/…`;
+  create/update/delete por SENG (eng/chefe/admin) ou campus dono; token sem
+  claims é negado. Espelham as rules do Firestore.
+- **Ordem de ativação:** 1) deploy do código (SWA CI/CD); 2) criar a SA e a App
+  Setting `FB_SA_JSON`; 3) usuários renovam claims no próximo acesso
+  (automático); 4) só então `firebase deploy --only storage`. **Rollback:**
+  restaurar as rules anteriores (histórico git) e republicar — os controles
+  compensatórios acima voltam a ser a proteção vigente.
 
 ## Roadmap
 

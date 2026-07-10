@@ -1,40 +1,43 @@
 rules_version = '2';
 // =============================================================================
-// SENG Demandas — Security Rules (Cloud Storage) — anexos de chamados
+// SENG Demandas — Security Rules (Cloud Storage) — anexos de chamados — v2
 // Publicar: npx -y firebase-tools@latest deploy --only storage --project cpii-seng
 //
-// NOTA DE ARQUITETURA (por que não há checagem de papel/campus aqui):
-//   O ideal seria espelhar as regras do Firestore com firestore.get(usuarios/uid)
-//   e firestore.get(chamados/id). Porém as regras cross-service do Storage exigem
-//   Storage e Firestore em local COMPATÍVEL. Aqui o bucket está em us-central1
-//   (nível gratuito) e o Firestore em southamerica-east1 — assim, firestore.get/
-//   exists NÃO resolvem (retornam negação). Testado em 07/07/2026.
+// ISOLAMENTO POR PAPEL/CAMPUS VIA CUSTOM CLAIMS (hardening do ADR-002):
+//   As claims (role/campi) são copiadas de /usuarios/{uid} para o ID token pela
+//   camada de API (POST /api/claims/self|sync — service account dedicada, papel
+//   somente "Firebase Authentication Admin"). Aqui as regras leem
+//   request.auth.token — SEM cross-service, que não funciona entre o bucket
+//   (us-central1) e o Firestore (southamerica-east1); testado em 07/07/2026.
 //
-// CONTROLES COMPENSATÓRIOS (segurança em camadas):
-//   • Base de usuários FECHADA (contas criadas só pelo admin; sem cadastro público).
-//   • Autenticação obrigatória para ler/gravar; nada público.
-//   • Restrito ao prefixo chamados/ ; todo o resto é negado.
-//   • Apenas imagens comuns e PDF, até 10 MB.
-//   • A DESCOBERTA dos arquivos é controlada no Firestore: a lista `anexos` vive no
-//     doc do chamado (regras por SENG/campus) e as URLs de download são tokenizadas
-//     e imprevisíveis — o caminho não é exposto fora de docs já autorizados.
-//   Hardening futuro (isolamento por campus na própria camada de Storage sem
-//   cross-service): custom claims (role/campi) no token via função de bloqueio de
-//   login — ver docs/ADR-002-chamados.md.
+//   ⚠️ ORDEM DE ATIVAÇÃO (ver docs/ADR-002-chamados.md): publicar estas regras
+//   somente APÓS configurar FB_SA_JSON no SWA e os usuários renovarem o token
+//   (o app sincroniza e renova sozinho no login). Token sem claims = negado.
+//
+// Controles mantidos: base de usuários fechada; restrito ao prefixo chamados/;
+// apenas imagem comum/PDF até 10 MB; descoberta dos arquivos controlada no
+// Firestore (lista `anexos` no doc do chamado); URLs de download tokenizadas.
 // =============================================================================
 service firebase.storage {
   match /b/{bucket}/o {
+    function role() { return request.auth != null ? request.auth.token.get('role', '') : ''; }
+    function meusCampi() { return request.auth != null ? request.auth.token.get('campi', []) : []; }
+    // Espelham as rules do Firestore: interno (inclui CODIR) lê tudo; anexa e
+    // remove a SENG (eng/chefe/admin) ou o campus dono; CODIR lê, não anexa.
+    function isInterno() { return role() in ['engenharia', 'chefe', 'codir', 'admin']; }
+    function isSeng() { return role() in ['engenharia', 'chefe', 'admin']; }
+    function isCampusDe(c) { return role() == 'campus' && c in meusCampi(); }
     function tipoOk() {
       return request.resource.contentType.matches('image/(jpeg|png|webp|heic|heif)')
           || request.resource.contentType == 'application/pdf';
     }
     // anexos de chamados: chamados/{campus}/{chamadoId}/{arquivo}
     match /chamados/{campus}/{chamadoId}/{arquivo} {
-      allow read:   if request.auth != null;
-      allow write:  if request.auth != null
-                    && request.resource.size < 10 * 1024 * 1024
-                    && tipoOk();
-      allow delete: if request.auth != null;
+      allow read:           if isInterno() || isCampusDe(campus);
+      allow create, update: if (isSeng() || isCampusDe(campus))
+                            && request.resource.size < 10 * 1024 * 1024
+                            && tipoOk();
+      allow delete:         if isSeng() || isCampusDe(campus);
     }
     // Tudo o mais: negado.
     match /{allPaths=**} { allow read, write: if false; }

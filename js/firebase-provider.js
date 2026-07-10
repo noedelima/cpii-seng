@@ -75,6 +75,7 @@ export class FirebaseProvider {
         if (u) {
           const prof = await fs.getDoc(fs.doc(this.db, 'usuarios', u.uid));
           this.user = { uid: u.uid, email: u.email, ...(prof.exists() ? prof.data() : { role: 'campus', nome: u.email }) };
+          await this._sincronizarClaims(u);
           this._assinarPrivados();
         } else {
           this.user = null;
@@ -211,6 +212,31 @@ export class FirebaseProvider {
     // aguarda o onAuthStateChanged carregar o perfil de /usuarios/{uid}
     for (let i = 0; i < 50 && !this.user; i++) await new Promise(r => setTimeout(r, 100));
     return this.user;
+  }
+
+  // Custom claims (hardening do Storage — ADR-002): garante que o ID token
+  // carregue role/campi espelhando /usuarios/{uid}. As Storage rules dependem
+  // disso. Caso comum (claims já corretas): custo zero — só leitura local do
+  // token. Divergiu (1º acesso ou perfil alterado): sincroniza pela API e
+  // renova o token. Best-effort: sem API/FB_SA_JSON, segue sem claims.
+  async _sincronizarClaims(u) {
+    try {
+      if (!apiLigada()) return;
+      const r = await u.getIdTokenResult();
+      const doc = this.user || {};
+      const roleDoc = doc.ativo === false ? '' : (doc.role || '');
+      const campiDoc = roleDoc !== 'campus' ? []
+        : (Array.isArray(doc.campi) && doc.campi.length) ? doc.campi
+        : (doc.campus ? [doc.campus] : []);
+      const roleTok = r.claims.role || '';
+      const campiTok = Array.isArray(r.claims.campi) ? r.claims.campi : [];
+      const iguais = roleTok === roleDoc
+        && campiTok.length === campiDoc.length
+        && campiDoc.every(c => campiTok.includes(c));
+      if (iguais) return;
+      await api.claimsSelf();
+      await u.getIdToken(true); // força novo token já com as claims
+    } catch (e) { console.warn('claims', e); }
   }
   async logout() { await this._A.signOut(this.auth); }
   async resetSenha(email) {
@@ -392,6 +418,8 @@ export class FirebaseProvider {
     }
     const { uid: _u, senha: _s, ...rest } = u;
     await fs.setDoc(fs.doc(this.db, 'usuarios', uid), rest, { merge: true });
+    // Claims (Storage): sincroniza o token do usuário afetado (best-effort).
+    if (apiLigada()) { try { await api.claimsSync(uid); } catch (e) { console.warn('claimsSync', e); } }
     await this._log(existente ? 'Usuário atualizado' : 'Usuário criado', u.email || uid, `perfil: ${u.role}${u.ativo === false ? ' (desativado)' : ''}`);
   }
 

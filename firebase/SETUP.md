@@ -71,6 +71,28 @@ usuário** — a credencial é criada pela própria interface, com senha inicial
 cada pessoa troca a senha depois em **Minha conta**, no nome no topo da
 página). O console do Firebase fica como alternativa, não como exigência.
 
+## 7. Claims do Storage — anexos de chamados (recomendado)
+As regras do Storage (`firebase/storage.rules`) isolam os anexos por papel/campus
+lendo **custom claims** do token (`role`/`campi`), sincronizadas pela camada de
+API (ADR-002). Para ativar:
+
+1. **Service account dedicada** — no console do Google Cloud (projeto
+   `cpii-seng`): **IAM e administrador → Contas de serviço → Criar**. Nome
+   sugerido: `seng-claims`. Conceda **somente** o papel **Firebase
+   Authentication Admin** (`roles/firebaseauth.admin`) — essa conta gere
+   contas/claims e **não acessa** Firestore nem Storage.
+2. **Chave JSON** — na conta criada: **Chaves → Adicionar chave → JSON**.
+3. **App Setting no SWA** — portal do Azure → Static Web App →
+   **Configuração (Variáveis de ambiente)** → nova configuração `FB_SA_JSON`
+   com o **conteúdo inteiro** do arquivo JSON. Salvar. *(A chave não entra no
+   repositório; sem ela os endpoints `/api/claims/*` respondem 501 e nada
+   quebra.)*
+4. **Renovação dos tokens** — automática: no próximo acesso de cada usuário o
+   app compara token × perfil, sincroniza e renova sozinho.
+5. **Publicar as regras** — só depois dos passos 1–4:
+   `npx -y firebase-tools@latest deploy --only storage --project cpii-seng`.
+   Token sem claims passa a ser **negado** no Storage.
+
 ## Custos e limites
 Plano gratuito: 50 mil leituras/dia, 20 mil gravações/dia, 1 GiB — muito acima
 da necessidade do fluxo de demandas do CP2.
