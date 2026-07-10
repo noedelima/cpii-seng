@@ -11,12 +11,11 @@ let _lib = null;
 async function lib() {
   if (_lib) return _lib;
   const pdfjs = await import(PDFJS);
-  try {
-    // Worker cross-origin não é permitido pelo navegador; baixa e serve via blob:
-    // (CSP: worker-src blob:). Se falhar, o pdf.js cai no "fake worker" (main thread).
-    const blob = await fetch(WORKER).then(r => r.blob());
-    pdfjs.GlobalWorkerOptions.workerSrc = URL.createObjectURL(blob);
-  } catch { /* fake worker */ }
+  // Worker cross-origin não pode ser instanciado diretamente; com o workerSrc
+  // apontando ao CDN o pdf.js cai no "fake worker" (import de módulo na main
+  // thread), permitido pelo CSP (script-src cdn.jsdelivr.net). Validado em
+  // produção — não usar fetch aqui (connect-src não inclui o CDN).
+  pdfjs.GlobalWorkerOptions.workerSrc = WORKER;
   _lib = pdfjs;
   return pdfjs;
 }
