@@ -105,11 +105,19 @@ export function fiscaisDe(interna) {
   return { titulares: (tit || []).filter(Boolean), substitutos: (sub || []).filter(Boolean) };
 }
 
-export function cargaProfissionais(demandas, internas, profissionais, params) {
+export function cargaProfissionais(demandas, internas, profissionais, params, chamados = []) {
   const mapa = {};
   for (const p of profissionais) {
     mapa[p.id] = { prof: p, titular: 0, substituto: 0, planejamento: 0,
-                   emergencial: 0, demandas: [] };
+                   emergencial: 0, demandas: [], chamados: [] };
+  }
+  // Chamados (consultoria/laudo) em atendimento: contagem à parte, sem somar
+  // nos pontos do art. 12 — a Portaria não pontua consultorias/laudos.
+  for (const ch of chamados || []) {
+    if (ch.status !== 'atendimento') continue;
+    for (const pid of (ch.atendentes || [])) {
+      if (pid && mapa[pid]) mapa[pid].chamados.push({ id: ch.id, assunto: ch.assunto || ch.id });
+    }
   }
   for (const d of demandas) {
     if (d.status !== 'atendimento') continue;

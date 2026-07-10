@@ -127,6 +127,15 @@ class DemoProvider {
     });
     return { nome: file.name, path: `demo/${chamadoId}/${Date.now()}`, url, tipo: file.type || '', tamanho: file.size || 0, ts: Date.now(), por: this.user?.nome || 'Demo' };
   }
+  // Miniatura no modo demonstração: dataURL local (blob pequeno).
+  async uploadThumbChamado(chamadoId, campus, blob) {
+    const url = await new Promise((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(fr.result); fr.onerror = () => reject(new Error('Falha ao gerar miniatura.'));
+      fr.readAsDataURL(blob);
+    });
+    return { path: `demo/${chamadoId}/thumb_${Date.now()}`, url };
+  }
   async removerAnexoChamado() { /* demo: nada a remover no storage */ }
   async criarDemanda(d) {
     const ano = this.db.params.anoPlano;

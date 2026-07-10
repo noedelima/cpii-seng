@@ -69,12 +69,14 @@ export function previewAnexo(a) {
   const corpo = ehImg
     ? el('img', { class: 'lightbox-img', src: a.url, alt: a.nome })
     : el('iframe', { class: 'lightbox-pdf', src: a.url, title: a.nome });
+  const titulo = a.titulo || a.nome;
   const wrap = el('div', { class: 'modal-wrap', onclick: (e) => e.target === wrap && close() },
-    el('div', { class: 'lightbox', role: 'dialog', 'aria-modal': 'true', 'aria-label': a.nome },
+    el('div', { class: 'lightbox', role: 'dialog', 'aria-modal': 'true', 'aria-label': titulo },
       el('div', { class: 'lightbox-topo' },
-        el('span', { class: 'lightbox-nome', title: a.nome }, a.nome),
+        el('span', { class: 'lightbox-nome', title: `${titulo} (${a.nome})` }, titulo),
         el('a', { class: 'btn ghost sm', href: a.url, target: '_blank', rel: 'noopener' }, 'Abrir em nova aba'),
         el('button', { class: 'btn ghost sm', onclick: close, 'aria-label': 'Fechar' }, '✕')),
+      a.descricao ? el('p', { class: 'lightbox-desc' }, a.descricao) : null,
       corpo));
   document.addEventListener('keydown', esc);
   document.body.append(wrap);

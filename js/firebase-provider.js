@@ -305,6 +305,16 @@ export class FirebaseProvider {
     try { await this._St.deleteObject(this._St.ref(this.storage, path)); }
     catch (e) { console.warn('removerAnexoChamado', e); }
   }
+  // Miniatura de anexo (JPEG pequeno, gerada no cliente) — mesmo prefixo do
+  // chamado no Storage (as rules valem igual: image/jpeg, < 10 MB).
+  async uploadThumbChamado(chamadoId, campus, blob, baseNome) {
+    const st = this._St;
+    const nome = String(baseNome || 'thumb').replace(/[^\w.\-]+/g, '_').slice(-60);
+    const path = `chamados/${campus}/${chamadoId}/${Date.now()}_${nome}.thumb.jpg`;
+    const ref = st.ref(this.storage, path);
+    await st.uploadBytesResumable(ref, blob, { contentType: 'image/jpeg' });
+    return { path, url: await st.getDownloadURL(ref) };
+  }
 
   async criarDemanda(d) {
     const fs = this._F;

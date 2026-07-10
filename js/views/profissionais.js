@@ -14,7 +14,8 @@ export function viewProfissionais(rerender) {
 
   const params = s.getParams();
   const profissionais = s.listProfissionais();
-  const carga = cargaProfissionais(s.listDemandas(), s.getInternas(), profissionais, params);
+  const carga = cargaProfissionais(s.listDemandas(), s.getInternas(), profissionais, params,
+    typeof s.listChamados === 'function' ? s.listChamados() : []);
   const podeEditar = can(user, 'profissionais');
 
   // ---- art. 13: equipes de planejamento em uso por especialidade -------------
@@ -30,6 +31,10 @@ export function viewProfissionais(rerender) {
     const det = c.demandas.map(x => el('li', {},
       el('a', { href: `#/demanda/${x.id}` }, x.objeto || x.id), ' ',
       el('span', { class: 'sub' }, `(${{ titular: 'titular', substituto: 'substituto', planejamento: 'planejamento' }[x.papel]}${x.papel === 'planejamento' ? '' : `, ${x.pontos} pt${x.pontos === 1 ? '' : 's'}`}${x.emergencial ? ', emergencial' : ''})`)));
+    // Chamados (consultoria/laudo) em atendimento — contagem à parte dos pontos.
+    const detCh = (c.chamados || []).map(x => el('li', {},
+      el('a', { href: `#/chamado/${x.id}` }, x.assunto || x.id), ' ',
+      el('span', { class: 'sub' }, '(chamado em atendimento)')));
     return el('section', { class: `card prof-detalhe ${p.ativo === false ? 'inativo' : ''}` },
       el('div', { class: 'prof-cab' },
         el('div', {},
@@ -39,10 +44,13 @@ export function viewProfissionais(rerender) {
       el('div', { class: 'prof-resumo' },
         stat('Titular', c.titular), stat('Substituto', c.substituto),
         stat('Total (art. 12)', c.total, c.excedido), stat('Emergencial', c.emergencial),
-        stat('Planejamento', c.planejamento), stat('Disponível', c.disponivel)),
+        stat('Planejamento', c.planejamento), stat('Disponível', c.disponivel),
+        stat('Chamados', (c.chamados || []).length)),
       el('div', { class: 'pontos-barra grande' },
         el('div', { class: `pontos-fill ${c.excedido ? 'cheia' : c.regular >= params.limitePontos ? 'limite' : ''}`, style: `width:${Math.min(100, (c.regular / params.limitePontos) * 100)}%` })),
-      det.length ? el('ul', { class: 'prof-demandas' }, det) : el('p', { class: 'sub' }, 'Sem demandas em atendimento.'));
+      (det.length || detCh.length)
+        ? el('ul', { class: 'prof-demandas' }, ...det, ...detCh)
+        : el('p', { class: 'sub' }, 'Sem demandas nem chamados em atendimento.'));
   });
 
   // ---- formulário (novo/edição) ------------------------------------------------

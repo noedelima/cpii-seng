@@ -86,6 +86,10 @@ export const ROTULO_TIPO = {
   'chamado-diligencia': 'Chamado — diligência',
   'chamado-resolvido': 'Chamado resolvido',
   'chamado-desfecho': 'Desfecho do chamado',
+  'chamado-atendimento': 'Chamado — atendimento',
+  'chamado-comentario': 'Chamado — comentário',
+  'chamado-anexo': 'Chamado — anexos',
+  'chamado-atualizado': 'Chamado atualizado',
 };
 
 // Texto curto e informativo (≤ 300) por tipo de evento.
@@ -125,17 +129,46 @@ export function uidsPorCampus(diretorio = [], campus) {
   return diretorio.filter(e => ativo(e) && e.role === 'campus' && (e.campi || []).includes(campus)).map(e => e.uid);
 }
 
+// uids dos profissionais alocados ao atendimento do chamado (lista `atendentes` de pids)
+export function uidsAtendentes(diretorio = [], chamado = {}) {
+  const pids = new Set((chamado.atendentes || []).filter(Boolean));
+  if (!pids.size) return [];
+  return diretorio.filter(e => ativo(e) && e.pid && pids.has(e.pid)).map(e => e.uid);
+}
+
+// Envolvidos diretos do chamado: autor da solicitação + profissionais alocados.
+export function envolvidosChamado(diretorio = [], chamado = {}) {
+  const uids = uidsAtendentes(diretorio, chamado);
+  if (chamado.autor && chamado.autor.uid) uids.push(chamado.autor.uid);
+  return [...new Set(uids)];
+}
+
 export function destinatariosChamado(tipo, { diretorio = [], chamado = {} } = {}) {
+  const env = envolvidosChamado(diretorio, chamado);
   switch (tipo) {
     case 'chamado-novo': {
       const disc = chamado.disciplina;
       const alvo = disc ? uidsPorDisciplina(diretorio, [disc]) : [];
       return alvo.length ? alvo : uidsPorRole(diretorio, 'engenharia'); // sem disciplina → toda a Engenharia
     }
+    // Eventos SENG → campus: usuários do campus dono + envolvidos diretos.
     case 'chamado-diligencia':
     case 'chamado-resolvido':
     case 'chamado-desfecho':
-      return uidsPorCampus(diretorio, chamado.campus);
+      return [...uidsPorCampus(diretorio, chamado.campus), ...env];
+    // Alocação: avisa os próprios atendentes.
+    case 'chamado-atendimento':
+      return uidsAtendentes(diretorio, chamado);
+    // Alterações gerais (comentário, anexo, status, complemento do campus):
+    // envolvidos diretos; sem atendentes ainda → cai para a disciplina/Engenharia.
+    case 'chamado-comentario':
+    case 'chamado-anexo':
+    case 'chamado-atualizado': {
+      if ((chamado.atendentes || []).length) return env;
+      const disc = chamado.disciplina;
+      const eng = disc ? uidsPorDisciplina(diretorio, [disc]) : uidsPorRole(diretorio, 'engenharia');
+      return [...env, ...eng];
+    }
     default:
       return [];
   }
@@ -148,6 +181,10 @@ export function textoChamado(tipo, chamado = {}) {
     'chamado-diligencia': `Chamado em diligência — ${a}`,
     'chamado-resolvido': `Chamado resolvido — ${a}`,
     'chamado-desfecho': `Chamado com desfecho — ${a}`,
+    'chamado-atendimento': `Chamado sob sua responsabilidade — ${a}`,
+    'chamado-comentario': `Novo comentário no chamado — ${a}`,
+    'chamado-anexo': `Anexos atualizados no chamado — ${a}`,
+    'chamado-atualizado': `Chamado atualizado — ${a}`,
   }[tipo] || a;
   return t.length > 300 ? t.slice(0, 297) + '…' : t;
 }

@@ -11,6 +11,7 @@ import {
 import { store } from '../store.js';
 import { can, ehCampusDe } from '../auth.js';
 import { notificar, notificarChamado } from '../notificacoes.js';
+import { thumbDePdf } from '../pdf-thumb.js';
 
 const urgenciaNome = (id) => (URGENCIA_CHAMADO.find(u => u.id === id) || {}).nome || id || '—';
 const espDaDisciplina = (d) => !d ? [] : (['Civil', 'Elétrica', 'Mecânica'].includes(d) ? ['Engenharia ' + d] : [d]);
@@ -138,10 +139,15 @@ function renderTriagem(c, s, user, terminal, acao, rerender) {
     return secao;
   }
 
+  // Profissionais ativos — alocação do atendimento (consultoria/laudo).
+  const profs = (s.listProfissionais() || []).filter(p => p.ativo !== false);
+  const chipProf = (p, marcado) => el('label', { class: 'chip-check' },
+    el('input', { type: 'checkbox', value: p.id, ...(marcado ? { checked: true } : {}) }), ` ${p.nome} (${p.area})`);
+
   // Ações rápidas de status
   const rapidas = el('div', { class: 'triagem-acoes' });
   if (c.status === 'aberto') {
-    rapidas.append(el('button', { class: 'btn', onclick: () => acao({ status: 'triagem' }, 'Triagem iniciada') }, 'Iniciar triagem'));
+    rapidas.append(el('button', { class: 'btn', onclick: () => acao({ status: 'triagem' }, 'Triagem iniciada', 'chamado-atualizado') }, 'Iniciar triagem'));
   }
 
   // Diligência (pedir complemento ao campus)
@@ -185,12 +191,21 @@ function renderTriagem(c, s, user, terminal, acao, rerender) {
     especialidades: espChecks.map(l => l.querySelector('input')).filter(x => x.checked).map(x => x.value),
   });
 
+  // Responsáveis pelo atendimento — obrigatório para consultoria/laudo.
+  const atendChecks = profs.map(p => chipProf(p, false));
+  const wrapAtend = campo('Responsáveis pelo atendimento *',
+    el('div', { class: 'chips' }, atendChecks.length ? atendChecks : [el('span', { class: 'sub' }, 'Nenhum profissional ativo cadastrado — cadastre em Profissionais.')]),
+    'Contabilizados na carga do profissional e notificados das alterações do chamado.');
+  wrapAtend.style.display = 'none';
+  const lerAtend = () => atendChecks.map(l => l.querySelector('input')).filter(x => x.checked).map(x => x.value);
+
   selDesf.onchange = () => {
     wrapSetor.style.display = selDesf.value === 'encaminhado' ? '' : 'none';
     wrapObra.style.display = selDesf.value === 'obra' ? '' : 'none';
+    wrapAtend.style.display = (selDesf.value === 'consultoria' || selDesf.value === 'laudo') ? '' : 'none';
   };
 
-  const btnDesf = el('button', { class: 'btn primario', onclick: () => aplicarDesfecho(c, s, user, { desfecho: selDesf.value, setor: selSetor.value, parecer: inParecer.value.trim(), obra: lerObra() }, acao) }, 'Aplicar desfecho');
+  const btnDesf = el('button', { class: 'btn primario', onclick: () => aplicarDesfecho(c, s, user, { desfecho: selDesf.value, setor: selSetor.value, parecer: inParecer.value.trim(), obra: lerObra(), atendentes: lerAtend() }, acao) }, 'Aplicar desfecho');
 
   // Resolver (consultoria/laudo em atendimento → resolvido)
   const resolver = c.status === 'atendimento' ? el('div', { class: 'triagem-bloco' },
@@ -201,6 +216,20 @@ function renderTriagem(c, s, user, terminal, acao, rerender) {
       if (!txt) { toast('Descreva a orientação/desfecho.', 'erro'); return; }
       await acao({ status: 'resolvido', resolucao: { texto: txt } }, 'Chamado resolvido (consultoria/laudo)', 'chamado-resolvido');
     } }, 'Marcar como resolvido')) : null;
+
+  // Em atendimento: edição dos responsáveis (realocação).
+  const alocacao = c.status === 'atendimento' ? (() => {
+    const marcados = new Set(c.atendentes || []);
+    const checks = profs.map(p => chipProf(p, marcados.has(p.id)));
+    return el('div', { class: 'triagem-bloco' },
+      el('h3', { class: 'sub-titulo' }, 'Responsáveis pelo atendimento'),
+      el('div', { class: 'chips' }, checks),
+      el('div', { class: 'form-acoes' }, el('button', { class: 'btn', onclick: async () => {
+        const pids = checks.map(l => l.querySelector('input')).filter(x => x.checked).map(x => x.value);
+        if (!pids.length) { toast('Mantenha ao menos um responsável.', 'erro'); return; }
+        await acao({ atendentes: pids }, 'Responsáveis pelo atendimento atualizados', 'chamado-atendimento');
+      } }, 'Salvar responsáveis')));
+  })() : null;
 
   secao.append(
     rapidas,
@@ -213,13 +242,15 @@ function renderTriagem(c, s, user, terminal, acao, rerender) {
         'Obra → cria a demanda (classifique abaixo). Consultoria/Laudo → atendimento pela SENG. Encaminhado → outro setor.'),
       wrapSetor,
       wrapObra,
+      wrapAtend,
       campo('Parecer / orientação', inParecer),
       el('div', { class: 'form-acoes' }, btnDesf)),
+    ...(alocacao ? [alocacao] : []),
     ...(resolver ? [resolver] : []));
   return secao;
 }
 
-async function aplicarDesfecho(c, s, user, { desfecho, setor, parecer, obra = {} }, acao) {
+async function aplicarDesfecho(c, s, user, { desfecho, setor, parecer, obra = {}, atendentes = [] }, acao) {
   if (!desfecho) { toast('Selecione um desfecho.', 'erro'); return; }
   const def = DESFECHO_CHAMADO.find(d => d.id === desfecho);
 
@@ -257,8 +288,10 @@ async function aplicarDesfecho(c, s, user, { desfecho, setor, parecer, obra = {}
   }
 
   if (desfecho === 'consultoria' || desfecho === 'laudo') {
-    await acao({ status: def.status, desfecho, resolucao: parecer ? { texto: parecer } : null },
-      `Desfecho: ${def.nome}`);
+    if (!atendentes.length) { toast('Selecione ao menos um responsável pelo atendimento.', 'erro'); return; }
+    await acao({ status: def.status, desfecho, atendentes, resolucao: parecer ? { texto: parecer } : null },
+      `Desfecho: ${def.nome}`, 'chamado-desfecho');
+    await notificarChamado(s, 'chamado-atendimento', { ...c, atendentes });
     return;
   }
 
@@ -283,7 +316,7 @@ function renderRespostaCampus(c, s, user, acao) {
     const txt = inTxt.value.trim();
     if (!txt) { toast('Escreva o complemento.', 'erro'); return; }
     const obs = [...(c.obsExterna || []), comentario(user, txt)];
-    await acao({ status: 'triagem', obsExterna: obs }, 'Complemento enviado pelo campus');
+    await acao({ status: 'triagem', obsExterna: obs }, 'Complemento enviado pelo campus', 'chamado-atualizado');
     inTxt.value = '';
   } }, 'Responder diligência');
   return el('section', { class: 'card destaque' },
@@ -315,7 +348,7 @@ function renderComentarios(c, s, user, ehSeng, ehDono, acao) {
       const txt = inTxt.value.trim();
       if (!txt) return;
       const obs = [...(c.obsExterna || []), comentario(user, txt)];
-      await acao({ obsExterna: obs }, 'Comentário adicionado');
+      await acao({ obsExterna: obs }, 'Comentário adicionado', 'chamado-comentario');
       inTxt.value = '';
     } }, 'Comentar');
     entrada = el('div', { class: 'coment-entrada' }, inTxt, el('div', { class: 'form-acoes' }, btn));
@@ -327,6 +360,31 @@ function renderComentarios(c, s, user, ehSeng, ehDono, acao) {
 // Objeto de comentário padronizado (fio público).
 function comentario(user, texto, tag) {
   return { ts: Date.now(), autor: user.nome, role: user.role, texto, ...(tag ? { tag } : {}) };
+}
+
+// Modal de título/descrição dos anexos (envio e edição). Resolve com a lista
+// [{ file?, titulo, descricao }] ou null (cancelado).
+function pedirMetaAnexos(files, tituloModal = 'Dados do(s) anexo(s)') {
+  return new Promise((resolve) => {
+    const linhas = files.map(f => {
+      const t = el('input', { type: 'text', maxlength: 80, value: f._titulo || String(f.name || '').replace(/\.[^.]+$/, '') });
+      const d = el('input', { type: 'text', maxlength: 200, value: f._descricao || '', placeholder: 'Descrição (opcional)' });
+      return { f, t, d, no: el('div', { class: 'anexo-meta-linha' },
+        el('span', { class: 'sub mono' }, f.name), campo('Título', t), campo('Descrição', d)) };
+    });
+    const close = (v) => { wrap.remove(); resolve(v); };
+    const wrap = el('div', { class: 'modal-wrap', onclick: (e) => e.target === wrap && close(null) },
+      el('div', { class: 'modal', role: 'dialog', 'aria-modal': 'true', 'aria-label': tituloModal },
+        el('h3', {}, tituloModal),
+        ...linhas.map(l => l.no),
+        el('div', { class: 'modal-acoes' },
+          el('button', { class: 'btn ghost', onclick: () => close(null) }, 'Cancelar'),
+          el('button', { class: 'btn primario', onclick: () => close(linhas.map(l => ({
+            file: l.f, titulo: l.t.value.trim() || l.f.name, descricao: l.d.value.trim(),
+          }))) }, 'Confirmar'))));
+    document.body.append(wrap);
+    linhas[0].t.focus();
+  });
 }
 
 // ----------------------------------------------------------------------------
@@ -351,25 +409,47 @@ function renderAnexos(c, s, user, ehSeng, ehDono) {
 
   const adicionar = async (files, btn) => {
     if (enviando) { toast('Aguarde — já há um envio em andamento.'); return; }
+    const validos = files.filter(f => {
+      if ((f.size || 0) > 10 * 1048576) { toast(`${f.name}: acima de 10 MB.`, 'erro'); return false; }
+      if (!tipoAnexoOk(f.type)) { toast(`${f.name}: use imagem (JPG/PNG/WebP) ou PDF.`, 'erro'); return false; }
+      return true;
+    });
+    if (!validos.length) return;
+    // Título/descrição antes do envio (cancelar aborta tudo).
+    const metas = await pedirMetaAnexos(validos);
+    if (!metas) return;
     enviando = true;
     const rotulo = btn ? btn.textContent : '';
     if (btn) btn.disabled = true;
     try {
       const novos = [];
-      for (const f of files) {
-        if ((f.size || 0) > 10 * 1048576) { toast(`${f.name}: acima de 10 MB.`, 'erro'); continue; }
-        if (!tipoAnexoOk(f.type)) { toast(`${f.name}: use imagem (JPG/PNG/WebP) ou PDF.`, 'erro'); continue; }
+      for (const m of metas) {
+        const f = m.file;
         try {
           if (btn) btn.textContent = `Enviando ${f.name.slice(0, 24)}… 0%`;
-          novos.push(await s.uploadAnexoChamado(c.id, c.campus, f, (p) => {
+          const anexo = await s.uploadAnexoChamado(c.id, c.campus, f, (p) => {
             if (btn) btn.textContent = `Enviando ${f.name.slice(0, 24)}… ${Math.round(p * 100)}%`;
-          }));
+          });
+          anexo.titulo = m.titulo; anexo.descricao = m.descricao;
+          // Miniatura da 1ª página (só PDF; imagem já é a própria thumb). Best-effort.
+          if (f.type === 'application/pdf' && typeof s.uploadThumbChamado === 'function') {
+            if (btn) btn.textContent = `Gerando miniatura de ${f.name.slice(0, 20)}…`;
+            const blob = await thumbDePdf(f);
+            if (blob) {
+              try {
+                const t = await s.uploadThumbChamado(c.id, c.campus, blob, f.name.replace(/\.pdf$/i, ''));
+                anexo.thumbUrl = t.url; anexo.thumbPath = t.path;
+              } catch (e) { console.warn('thumb upload', e); }
+            }
+          }
+          novos.push(anexo);
         } catch (e) { toast(e.message || `Falha ao enviar ${f.name}.`, 'erro'); }
       }
       if (!novos.length) return;
       const base = anexosAtuais();
       const anexos = [...base, ...novos.filter(n => !base.some(x => x.path === n.path))];
-      await s.atualizarChamado(c.id, { anexos }, `Anexo(s): ${novos.map(x => x.nome).join(', ')}`.slice(0, 110));
+      await s.atualizarChamado(c.id, { anexos }, `Anexo(s): ${novos.map(x => x.titulo || x.nome).join(', ')}`.slice(0, 110));
+      await notificarChamado(s, 'chamado-anexo', c);
       toast('Anexo(s) adicionado(s).');
     } finally {
       enviando = false;
@@ -378,24 +458,38 @@ function renderAnexos(c, s, user, ehSeng, ehDono) {
   };
 
   const remover = async (a) => {
-    const ok = await confirmar('Remover anexo', `Remover "${a.nome}"? Esta ação não pode ser desfeita.`, { ok: 'Remover', perigo: true });
+    const ok = await confirmar('Remover anexo', `Remover "${a.titulo || a.nome}"? Esta ação não pode ser desfeita.`, { ok: 'Remover', perigo: true });
     if (!ok) return;
     try {
       await s.removerAnexoChamado(a.path);
+      if (a.thumbPath) await s.removerAnexoChamado(a.thumbPath);
       const anexos = anexosAtuais().filter(x => x.path !== a.path);
-      await s.atualizarChamado(c.id, { anexos }, `Anexo removido: ${a.nome}`.slice(0, 110));
+      await s.atualizarChamado(c.id, { anexos }, `Anexo removido: ${a.titulo || a.nome}`.slice(0, 110));
+      await notificarChamado(s, 'chamado-anexo', c);
       toast('Anexo removido.');
     } catch (e) { toast(e.message || 'Falha ao remover.', 'erro'); }
+  };
+
+  const editarMeta = async (a) => {
+    const meta = await pedirMetaAnexos([{ name: a.nome, _titulo: a.titulo, _descricao: a.descricao }], 'Editar dados do anexo');
+    if (!meta) return;
+    const { titulo, descricao } = meta[0];
+    const anexos = anexosAtuais().map(x => x.path === a.path ? { ...x, titulo, descricao } : x);
+    await s.atualizarChamado(c.id, { anexos }, `Anexo atualizado: ${titulo}`.slice(0, 110));
+    toast('Dados do anexo atualizados.');
   };
 
   // Clique abre a pré-visualização (lightbox); "abrir em nova aba" fica no modal.
   const galeria = lista.length
     ? el('div', { class: 'anexos-grid' }, lista.map(a => el('div', { class: 'anexo' },
-        el('button', { class: 'anexo-link', title: `${a.nome}${a.tamanho ? ' · ' + fmtTam(a.tamanho) : ''}`, 'aria-label': `Pré-visualizar ${a.nome}`, onclick: () => previewAnexo(a) },
+        el('button', { class: 'anexo-link', title: `${a.titulo || a.nome}${a.descricao ? ' — ' + a.descricao : ''}${a.tamanho ? ' · ' + fmtTam(a.tamanho) : ''}`, 'aria-label': `Pré-visualizar ${a.titulo || a.nome}`, onclick: () => previewAnexo(a) },
           ehImagem(a.tipo)
-            ? el('img', { class: 'anexo-thumb', src: a.url, alt: a.nome, loading: 'lazy' })
-            : el('span', { class: 'anexo-file' }, 'PDF'),
-          el('span', { class: 'anexo-nome' }, a.nome)),
+            ? el('img', { class: 'anexo-thumb', src: a.url, alt: a.titulo || a.nome, loading: 'lazy' })
+            : (a.thumbUrl
+              ? el('img', { class: 'anexo-thumb', src: a.thumbUrl, alt: a.titulo || a.nome, loading: 'lazy' })
+              : el('span', { class: 'anexo-file' }, 'PDF')),
+          el('span', { class: 'anexo-nome' }, a.titulo || a.nome)),
+        podeAnexar ? el('button', { class: 'anexo-edit', title: 'Editar título/descrição', 'aria-label': 'Editar dados do anexo', onclick: () => editarMeta(a) }, '✎') : null,
         podeAnexar ? el('button', { class: 'anexo-rm', title: 'Remover', 'aria-label': 'Remover anexo', onclick: () => remover(a) }, '×') : null)))
     : el('p', { class: 'sub' }, 'Sem anexos.');
 
