@@ -215,7 +215,7 @@ function renderTriagem(c, s, user, terminal, acao, rerender) {
       wrapObra,
       campo('Parecer / orientação', inParecer),
       el('div', { class: 'form-acoes' }, btnDesf)),
-    resolver);
+    ...(resolver ? [resolver] : []));
   return secao;
 }
 
