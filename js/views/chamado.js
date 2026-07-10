@@ -362,6 +362,27 @@ function comentario(user, texto, tag) {
   return { ts: Date.now(), autor: user.nome, role: user.role, texto, ...(tag ? { tag } : {}) };
 }
 
+// Backfill de miniaturas dos PDFs antigos (sem thumbUrl). Silencioso: sem
+// evento de histórico, sem notificação — só completa o dado que faltava.
+const _thumbsFeitas = new Set();
+async function backfillThumbs(c, s, anexosAtuais) {
+  if (typeof s.uploadThumbChamado !== 'function') return;
+  const pendentes = (c.anexos || []).filter(a =>
+    a.tipo === 'application/pdf' && !a.thumbUrl && a.url && a.path && !_thumbsFeitas.has(a.path));
+  for (const a of pendentes) {
+    _thumbsFeitas.add(a.path);
+    try {
+      const r = await fetch(a.url);
+      if (!r.ok) continue;
+      const blob = await thumbDePdf(await r.blob());
+      if (!blob) continue;
+      const t = await s.uploadThumbChamado(c.id, c.campus, blob, String(a.nome || 'anexo').replace(/\.pdf$/i, ''));
+      const anexos = anexosAtuais().map(x => x.path === a.path ? { ...x, thumbUrl: t.url, thumbPath: t.path } : x);
+      await s.atualizarChamado(c.id, { anexos });
+    } catch (e) { console.warn('backfillThumbs', e); }
+  }
+}
+
 // Modal de título/descrição dos anexos (envio e edição). Resolve com a lista
 // [{ file?, titulo, descricao }] ou null (cancelado).
 function pedirMetaAnexos(files, tituloModal = 'Dados do(s) anexo(s)') {
@@ -492,6 +513,10 @@ function renderAnexos(c, s, user, ehSeng, ehDono) {
         podeAnexar ? el('button', { class: 'anexo-edit', title: 'Editar título/descrição', 'aria-label': 'Editar dados do anexo', onclick: () => editarMeta(a) }, '✎') : null,
         podeAnexar ? el('button', { class: 'anexo-rm', title: 'Remover', 'aria-label': 'Remover anexo', onclick: () => remover(a) }, '×') : null)))
     : el('p', { class: 'sub' }, 'Sem anexos.');
+
+  // Backfill: PDFs enviados antes da v1.13 não têm miniatura — gera em segundo
+  // plano (baixa, renderiza e grava), uma vez por anexo por sessão; best-effort.
+  if (podeAnexar) backfillThumbs(c, s, anexosAtuais);
 
   let entrada = null;
   if (podeAnexar) {

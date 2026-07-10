@@ -125,7 +125,8 @@ export function viewDashboard(rerender) {
   // ---- painel de carga dos profissionais (somente autenticado) ---------------------
   let painelProfs = null;
   if (user && can(user, 'verInterno') && profissionais.length) {
-    const carga = cargaProfissionais(todas, internas, profissionais, params);
+    const carga = cargaProfissionais(todas, internas, profissionais, params,
+      typeof s.listChamados === 'function' ? s.listChamados() : []);
     const cards = profissionais.filter(p => p.ativo !== false || carga[p.id].total > 0).map(p => {
       const c = carga[p.id];
       return el('a', { class: 'prof-card', href: '#/profissionais', title: 'Ver detalhes em Profissionais' },
@@ -134,7 +135,8 @@ export function viewDashboard(rerender) {
         el('div', { class: 'prof-pontos' },
           el('span', { class: c.excedido ? 'excedido' : '' }, `${c.regular} / ${params.limitePontos} pts`),
           c.emergencial ? el('span', { class: 'tag-emergencial' }, `+${c.emergencial} emerg.`) : null,
-          c.planejamento ? el('span', { class: 'sub' }, ` · ${c.planejamento} planej.`) : null),
+          c.planejamento ? el('span', { class: 'sub' }, ` · ${c.planejamento} planej.`) : null,
+          (c.chamados || []).length ? el('span', { class: 'sub' }, ` · ${c.chamados.length} chamado${c.chamados.length === 1 ? '' : 's'}`) : null),
         barra(c.regular, params.limitePontos));
     });
     painelProfs = el('section', { class: 'card' },
