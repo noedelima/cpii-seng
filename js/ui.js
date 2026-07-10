@@ -58,6 +58,28 @@ export function confirmar(titulo, texto, { ok = 'Confirmar', perigo = false } = 
   });
 }
 
+// --- Pré-visualização de anexo (imagem ou PDF) ---------------------------------
+// Lightbox acessível: fecha no ✕, no ESC e no clique fora; oferece "abrir em
+// nova aba" (download/zoom nativo). Imagem exibe direto; PDF via iframe (CSP
+// libera frame-src apenas para o Firebase Storage).
+export function previewAnexo(a) {
+  const ehImg = (a.tipo || '').indexOf('image/') === 0;
+  const esc = (e) => { if (e.key === 'Escape') close(); };
+  const close = () => { document.removeEventListener('keydown', esc); wrap.remove(); };
+  const corpo = ehImg
+    ? el('img', { class: 'lightbox-img', src: a.url, alt: a.nome })
+    : el('iframe', { class: 'lightbox-pdf', src: a.url, title: a.nome });
+  const wrap = el('div', { class: 'modal-wrap', onclick: (e) => e.target === wrap && close() },
+    el('div', { class: 'lightbox', role: 'dialog', 'aria-modal': 'true', 'aria-label': a.nome },
+      el('div', { class: 'lightbox-topo' },
+        el('span', { class: 'lightbox-nome', title: a.nome }, a.nome),
+        el('a', { class: 'btn ghost sm', href: a.url, target: '_blank', rel: 'noopener' }, 'Abrir em nova aba'),
+        el('button', { class: 'btn ghost sm', onclick: close, 'aria-label': 'Fechar' }, '✕')),
+      corpo));
+  document.addEventListener('keydown', esc);
+  document.body.append(wrap);
+}
+
 // --- Campos de formulário ------------------------------------------------------
 export function campo(labelTxt, inputEl, hint) {
   const wrap = el('label', { class: 'campo' }, el('span', { class: 'campo-label' }, labelTxt), inputEl);

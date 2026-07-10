@@ -2,7 +2,7 @@
 // Detalhe / triagem de chamado. SENG triam (desfecho); campus dono complementa,
 // comenta e responde diligências. Desfecho "obra" converte o chamado em Demanda.
 // =============================================================================
-import { el, frag, campo, select, toast, confirmar, fmtDataHora, fmtData } from '../ui.js';
+import { el, frag, campo, select, toast, confirmar, previewAnexo, fmtDataHora, fmtData } from '../ui.js';
 import {
   statusChamadoNome, statusChamadoCor, categoriaChamado, categoriaChamadoNome, campusNome,
   URGENCIA_CHAMADO, DESFECHO_CHAMADO, SETORES_ENCAMINHAMENTO, STATUS_CHAMADO_ABERTO, slaChamado,
@@ -344,18 +344,37 @@ function renderAnexos(c, s, user, ehSeng, ehDono) {
   const lista = c.anexos || [];
   const podeAnexar = ehSeng || (ehDono && ['aberto', 'triagem', 'diligencia'].includes(c.status));
 
-  const adicionar = async (files) => {
-    const novos = [];
-    for (const f of files) {
-      if ((f.size || 0) > 10 * 1048576) { toast(`${f.name}: acima de 10 MB.`, 'erro'); continue; }
-      if (!tipoAnexoOk(f.type)) { toast(`${f.name}: use imagem (JPG/PNG/WebP) ou PDF.`, 'erro'); continue; }
-      try { toast(`Enviando ${f.name}…`); novos.push(await s.uploadAnexoChamado(c.id, c.campus, f)); }
-      catch (e) { toast(e.message || `Falha ao enviar ${f.name}.`, 'erro'); }
+  // Estado FRESCO no momento de gravar: a lista parte do chamado atual no store
+  // (não do `c` capturado no render) — gravações concorrentes não se sobrescrevem.
+  const anexosAtuais = () => ((s.getChamado(c.id) || c).anexos || []);
+  let enviando = false; // trava de reentrância (duplo clique/reenvio no meio do upload)
+
+  const adicionar = async (files, btn) => {
+    if (enviando) { toast('Aguarde — já há um envio em andamento.'); return; }
+    enviando = true;
+    const rotulo = btn ? btn.textContent : '';
+    if (btn) btn.disabled = true;
+    try {
+      const novos = [];
+      for (const f of files) {
+        if ((f.size || 0) > 10 * 1048576) { toast(`${f.name}: acima de 10 MB.`, 'erro'); continue; }
+        if (!tipoAnexoOk(f.type)) { toast(`${f.name}: use imagem (JPG/PNG/WebP) ou PDF.`, 'erro'); continue; }
+        try {
+          if (btn) btn.textContent = `Enviando ${f.name.slice(0, 24)}… 0%`;
+          novos.push(await s.uploadAnexoChamado(c.id, c.campus, f, (p) => {
+            if (btn) btn.textContent = `Enviando ${f.name.slice(0, 24)}… ${Math.round(p * 100)}%`;
+          }));
+        } catch (e) { toast(e.message || `Falha ao enviar ${f.name}.`, 'erro'); }
+      }
+      if (!novos.length) return;
+      const base = anexosAtuais();
+      const anexos = [...base, ...novos.filter(n => !base.some(x => x.path === n.path))];
+      await s.atualizarChamado(c.id, { anexos }, `Anexo(s): ${novos.map(x => x.nome).join(', ')}`.slice(0, 110));
+      toast('Anexo(s) adicionado(s).');
+    } finally {
+      enviando = false;
+      if (btn) { btn.disabled = false; btn.textContent = rotulo; }
     }
-    if (!novos.length) return;
-    const anexos = [...(c.anexos || []), ...novos];
-    await s.atualizarChamado(c.id, { anexos }, `Anexo(s): ${novos.map(x => x.nome).join(', ')}`.slice(0, 110));
-    toast('Anexo(s) adicionado(s).');
   };
 
   const remover = async (a) => {
@@ -363,15 +382,16 @@ function renderAnexos(c, s, user, ehSeng, ehDono) {
     if (!ok) return;
     try {
       await s.removerAnexoChamado(a.path);
-      const anexos = (c.anexos || []).filter(x => x.path !== a.path);
+      const anexos = anexosAtuais().filter(x => x.path !== a.path);
       await s.atualizarChamado(c.id, { anexos }, `Anexo removido: ${a.nome}`.slice(0, 110));
       toast('Anexo removido.');
     } catch (e) { toast(e.message || 'Falha ao remover.', 'erro'); }
   };
 
+  // Clique abre a pré-visualização (lightbox); "abrir em nova aba" fica no modal.
   const galeria = lista.length
     ? el('div', { class: 'anexos-grid' }, lista.map(a => el('div', { class: 'anexo' },
-        el('a', { class: 'anexo-link', href: a.url, target: '_blank', rel: 'noopener', title: `${a.nome}${a.tamanho ? ' · ' + fmtTam(a.tamanho) : ''}` },
+        el('button', { class: 'anexo-link', title: `${a.nome}${a.tamanho ? ' · ' + fmtTam(a.tamanho) : ''}`, 'aria-label': `Pré-visualizar ${a.nome}`, onclick: () => previewAnexo(a) },
           ehImagem(a.tipo)
             ? el('img', { class: 'anexo-thumb', src: a.url, alt: a.nome, loading: 'lazy' })
             : el('span', { class: 'anexo-file' }, 'PDF'),
@@ -381,10 +401,11 @@ function renderAnexos(c, s, user, ehSeng, ehDono) {
 
   let entrada = null;
   if (podeAnexar) {
+    const btnAdd = el('button', { class: 'btn' }, '+ Adicionar anexo');
     const input = el('input', { type: 'file', accept: 'image/*,application/pdf', multiple: true, style: 'display:none',
-      onchange: (e) => { const fs = [...e.target.files]; e.target.value = ''; adicionar(fs); } });
-    entrada = el('div', { class: 'anexo-add' }, input,
-      el('button', { class: 'btn', onclick: () => input.click() }, '+ Adicionar anexo'),
+      onchange: (e) => { const fs = [...e.target.files]; e.target.value = ''; adicionar(fs, btnAdd); } });
+    btnAdd.onclick = () => { if (!enviando) input.click(); };
+    entrada = el('div', { class: 'anexo-add' }, input, btnAdd,
       el('span', { class: 'sub' }, 'Imagens ou PDF, até 10 MB.'));
   } else if (ehDono) {
     entrada = el('p', { class: 'sub' }, 'Anexos podem ser incluídos enquanto o chamado está em aberto/triagem/diligência.');

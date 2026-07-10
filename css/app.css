@@ -424,13 +424,21 @@ html[data-tema="escuro"] .notif-tag { color: color-mix(in srgb, var(--st) 72%, #
 /* Anexos do chamado */
 .anexos-grid { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 12px; }
 .anexo { position: relative; width: 120px; }
-.anexo-link { display: flex; flex-direction: column; gap: 4px; text-decoration: none; color: inherit; }
+.anexo-link { display: flex; flex-direction: column; gap: 4px; text-decoration: none; color: inherit; background: none; border: 0; padding: 0; font: inherit; cursor: pointer; text-align: left; }
+.anexo-link:hover .anexo-thumb, .anexo-link:hover .anexo-file { border-color: var(--ouro); }
 .anexo-thumb { width: 120px; height: 90px; object-fit: cover; border-radius: 8px; border: 1px solid var(--borda); background: var(--fundo); }
 .anexo-file { display: flex; align-items: center; justify-content: center; width: 120px; height: 90px; border-radius: 8px; border: 1px solid var(--borda); background: color-mix(in srgb, var(--ouro) 10%, var(--card)); font-weight: 800; letter-spacing: .05em; color: var(--texto-2); }
 .anexo-nome { font-size: .74rem; color: var(--texto-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 120px; }
 .anexo-rm { position: absolute; top: -8px; right: -8px; width: 22px; height: 22px; border-radius: 999px; border: 1px solid var(--borda); background: var(--card); color: var(--perigo); font-size: 1rem; line-height: 1; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,.18); }
 .anexo-rm:hover { background: var(--perigo); color: #fff; }
 .anexo-add { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+/* Pré-visualização de anexo (lightbox) */
+.lightbox { display: flex; flex-direction: column; gap: 10px; background: var(--card); border: 1px solid var(--borda); border-radius: var(--raio); box-shadow: var(--sombra); padding: 14px; width: min(920px, 96vw); max-height: 92vh; }
+.lightbox-topo { display: flex; align-items: center; gap: 10px; }
+.lightbox-nome { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lightbox-img { max-width: 100%; max-height: calc(92vh - 70px); object-fit: contain; border-radius: 8px; margin: 0 auto; }
+.lightbox-pdf { width: 100%; height: calc(92vh - 70px); min-height: 320px; border: 1px solid var(--borda); border-radius: 8px; background: #fff; }
 
 /* Resumo de SLA (pills clicáveis) no painel de chamados */
 .sla-resumo { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
