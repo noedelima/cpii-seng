@@ -92,6 +92,9 @@ API (ADR-002). Para ativar:
 5. **Publicar as regras** — só depois dos passos 1–4:
    `npx -y firebase-tools@latest deploy --only storage --project cpii-seng`.
    Token sem claims passa a ser **negado** no Storage.
+6. **CORS do bucket** (miniaturas/downloads via `fetch` no navegador):
+   `gsutil cors set firebase/cors.json gs://cpii-seng.firebasestorage.app`.
+   *(GET liberado — a autorização real segue sendo o token da URL + rules.)*
 
 ## Custos e limites
 Plano gratuito: 50 mil leituras/dia, 20 mil gravações/dia, 1 GiB — muito acima
