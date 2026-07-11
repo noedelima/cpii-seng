@@ -5,7 +5,7 @@
 
 Guia completo, passo a passo, para as unidades (campi) **abrirem e acompanharem chamados** de engenharia. Este material foi escrito para servir também como **conteúdo das seções de ajuda do portal**: cada seção numerada é autocontida e pode ser publicada como um artigo de ajuda independente.
 
-> [!importante] **O Chamado é a porta de entrada.** O campus **não cadastra mais a demanda diretamente**. Você **abre um chamado** descrevendo a necessidade; a Seção de Engenharia faz a **triagem** e decide o desfecho — que pode ser transformar o chamado em **demanda de obra** (entra na fila do CODIR), tratá-lo como **consultoria/laudo** (retorna com orientação ou Nota Técnica) ou **encaminhá-lo** ao setor responsável. Assim há uma única porta e a fila de demandas fica reservada às obras e serviços de engenharia de fato.
+> [!importante] **O Chamado é a porta de entrada.** Você **abre um chamado** descrevendo a necessidade; a Seção de Engenharia faz a **triagem** e decide o desfecho — que pode ser transformar o chamado em **demanda de obra** (entra na fila do CODIR), tratá-lo como **consultoria/laudo** (retorna com orientação ou Nota Técnica) ou **encaminhá-lo** ao setor responsável. Assim há uma única porta e a fila de demandas fica reservada às obras e serviços de engenharia de fato.
 
 > [!nota] **Sobre as imagens.** As telas deste manual são **reproduções fiéis** do sistema (mesmas cores e componentes), com dados de exemplo e **marcadores numerados** apenas para fins didáticos — eles não aparecem no sistema. Acompanham o **tema claro/escuro** da página.
 
@@ -13,7 +13,7 @@ Guia completo, passo a passo, para as unidades (campi) **abrirem e acompanharem 
 
 ## Sumário
 
-1. A quem se destina e o que muda
+1. A quem se destina
 2. Antes de começar (pré-requisitos)
 3. Conceitos essenciais (papéis, fluxo e status)
 4. Fluxo 1 — Acessar o sistema
@@ -30,13 +30,13 @@ Guia completo, passo a passo, para as unidades (campi) **abrirem e acompanharem 
 
 ---
 
-## 1. A quem se destina e o que muda
+## 1. A quem se destina
 
 Este manual é para os responsáveis pelo contato com a Engenharia nos campi — tipicamente a **DIAD** e a **Prefeitura** de cada unidade, além de substitutos e delegados.
 
-O sistema substitui o antigo levantamento anual (Formulário + Excel + Power BI) e também o antigo módulo de chamados do SUAP por um **canal único e on-line**. Na prática:
+O sistema é o **canal único e on-line** para o campus solicitar e acompanhar obras e serviços de engenharia. Na prática:
 
-- Você **abre um chamado assim que a necessidade surge** — não precisa esperar a coleta anual nem abrir ticket no SUAP.
+- Você **abre um chamado assim que a necessidade surge**, a qualquer momento do ano.
 - A Engenharia faz a **triagem** e define o caminho: obra (vira demanda na fila), consultoria/laudo, ou encaminhamento.
 - A fila de demandas é **pública e transparente**, e a **priorização é padronizada** (GUT, valor e prazo — Portaria 7503/2025).
 - Todo o **histórico** fica registrado (quem fez o quê e quando), com **prazo de triagem (SLA)** por categoria.
@@ -139,7 +139,7 @@ Este é o fluxo mais importante para o campus. O formulário é **curto e direto
 
 @fig campus-abrir
 
-> [!dica] **E os laudos e consultorias?** Não existe mais formulário separado: qualquer necessidade — obra, reforma, laudo, parecer, orientação — entra **como chamado**. A SENG decide o desfecho na triagem.
+> [!dica] **E os laudos e consultorias?** Qualquer necessidade — obra, reforma, laudo, parecer, orientação — entra **como chamado**. A SENG decide o desfecho na triagem.
 
 > **Dica.** Antes de abrir, confira em **Chamados** se a necessidade **já não foi registrada** pelo seu campus, para evitar duplicidade.
 
@@ -250,9 +250,6 @@ Confira o e-mail institucional e a senha. Persistindo, peça a redefinição à 
 
 **Não vejo o botão “+ Abrir chamado”.**
 Ele aparece após o login. Sem login, você só consulta a fila pública.
-
-**Onde foi parar a “Nova solicitação”?**
-Foi unificada no chamado. Agora **tudo começa por um chamado**; a SENG classifica e, se for obra, converte em demanda. Links antigos de “Nova solicitação” levam automaticamente para **Abrir chamado**.
 
 **Posso anexar fotos?**
 Sim — na página do chamado, cartão **Anexos** (imagens ou PDF, até 10 MB). Você pode anexar enquanto o chamado está aberto, em triagem ou em diligência.

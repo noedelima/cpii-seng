@@ -36,7 +36,7 @@ Guia operacional completo para a equipe da Seção de Engenharia (perfis **Engen
 
 ## 1. Visão geral
 
-O sistema unifica, em uma única ferramenta web, todo o ciclo das demandas de obras e serviços de engenharia — do cadastro pelo campus à conclusão pela SENG. Ele substitui o conjunto Formulário + Excel + Power BI e **replica o cálculo de priorização** já usado pela Seção, conforme a Portaria 7503/2025.
+O sistema reúne, em uma única ferramenta web, todo o ciclo das demandas de obras e serviços de engenharia — do cadastro pelo campus à conclusão pela SENG — com o **cálculo de priorização** da Seção, conforme a Portaria 7503/2025.
 
 Princípios de projeto:
 
@@ -46,7 +46,7 @@ Princípios de projeto:
 - **Segurança por design**: dados públicos e internos separados; permissões validadas no servidor.
 - **Rastreabilidade total**: histórico por demanda + log de auditoria.
 
-> [!importante] **Porta de entrada: o Chamado.** O intake foi **unificado** — não há mais “Nova solicitação” avulsa. O campus **abre um chamado**; a SENG **triam** e define o desfecho, inclusive **converter em Demanda** de obra (com a classificação preenchida na triagem). O passo a passo do módulo está no **Fluxo 11**.
+> [!importante] **Porta de entrada: o Chamado.** O campus **abre um chamado**; a SENG **tria** e define o desfecho, inclusive **converter em Demanda** de obra (com a classificação preenchida na triagem). O passo a passo do módulo está no **Fluxo 11**.
 
 ---
 
@@ -90,7 +90,7 @@ A tabela completa de transições por perfil está no **Apêndice B**.
 
 ## 4. Como a prioridade é calculada
 
-O cálculo replica o modelo do Power BI da SENG (art. 5º, II):
+O cálculo segue o modelo de priorização da Seção (art. 5º, II):
 
 1. **GUT** = G × U × T (escalas 1–5; resultado de 1 a 125).
 2. **Score de Valor (1–5)** por faixas do **valor de referência** (art. 75-I da Lei 14.133/2021, parametrizável):
@@ -322,7 +322,7 @@ Em **Administração**, o cartão **Parâmetros do sistema** controla o cálculo
 
 ## 15. Fluxo 11 — Módulo de Chamados (intake, triagem e desfechos)
 
-O **Chamado** é a **porta de entrada única** da Engenharia (unifica a antiga “Nova solicitação”). O campus abre um chamado; a SENG **triam** e define o **desfecho** — inclusive **converter em Demanda** de obra, com a classificação preenchida aqui, na triagem.
+O **Chamado** é a **porta de entrada única** da Engenharia. O campus abre um chamado; a SENG **tria** e define o **desfecho** — inclusive **converter em Demanda** de obra, com a classificação preenchida aqui, na triagem.
 
 @fig fluxo-chamado
 
