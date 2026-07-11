@@ -103,15 +103,15 @@ A **consulta à fila** e o **relatório em PDF** são **públicos** — não exi
 
 ## 5. Fluxo 2 — Consultar a fila (painel público)
 
-O **Painel** lista todas as demandas de obras e serviços, com campus, objeto, status, índice GUT, prioridade e data de atualização. *(Sem login, a fila mostra só as demandas; **autenticado**, você também vê os **chamados ativos** da sua unidade na mesma tabela, marcados com a etiqueta CHAMADO e ordenados pelo prazo.)*
+O **Painel** lista todas as demandas de obras e serviços, com campus, objeto, status, índice GUT, prioridade e data de atualização. *(Sem login, a fila mostra só as demandas; **autenticado**, você também vê os **chamados em atendimento** da sua unidade, agrupados com as demandas do mesmo status e marcados com a etiqueta CHAMADO. Chamados recém-abertos ou em triagem ficam no menu **Chamados** até a SENG concluir a triagem.)*
 
 @fig campus-fila
 
 **O que você pode fazer aqui**
 
-1. **Filtrar** a fila por **campus**, **status**, **tipo de atividade**, **especialidade** ou por **busca livre**.
+1. **Filtrar** a fila por **campus**, **status**, **tipo de atividade** (incluindo **Chamado**, para ver só os chamados em atendimento), **especialidade** ou por **busca livre**.
 2. **Abrir uma demanda**: clique em qualquer linha da tabela para ver os detalhes.
-3. **Baixar o PDF da fila**: gera um relatório com timbre e data/hora, baixado para o seu computador e **não armazenado** no sistema (relatório efêmero).
+3. **Baixar o PDF da fila**: gera um relatório com timbre e data/hora contendo **exatamente o que está filtrado na tela** — demandas e, quando visíveis, os chamados em atendimento. O arquivo baixa para o seu computador e **não fica armazenado** no sistema (relatório efêmero).
 
 ---
 
@@ -221,7 +221,7 @@ Tipicamente **não** são obras/serviços de engenharia e podem ser **encaminhad
 | **Aberto** | O chamado chegou e aguarda a triagem da SENG. | Acompanhar; anexar fotos. |
 | **Em triagem** | A SENG está analisando e classificando. | Acompanhar. |
 | **Em diligência** | A SENG precisa de um complemento. | **Responder** (Fluxo 5). O SLA pausa. |
-| **Em atendimento** | Consultoria/laudo em andamento pela SENG. | Acompanhar. |
+| **Em atendimento** | Consultoria/laudo em andamento pela SENG — aparece também na fila do Painel, junto às demandas em atendimento. | Acompanhar. |
 | **Encaminhado à fila de Obras** | Virou **Demanda**; segue na fila pública (GUT/CODIR). | Acompanhar a **demanda** vinculada. |
 | **Encaminhado a outro setor** | Não é caso da SENG; foi direcionado (ex.: manutenção). | Seguir a orientação. |
 | **Resolvido** | Consultoria/laudo concluído (orientação/NT). | Ver a orientação; encerrar. |

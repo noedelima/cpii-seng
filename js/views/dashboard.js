@@ -2,7 +2,7 @@
 // Dashboard público — resumo clicável, filtros, fila e exportação PDF efêmera
 // =============================================================================
 import { el, frag, fmtNum, fmtDataHora, badgeStatus, select, toast, debounce } from '../ui.js';
-import { STATUS, CAMPI, TIPOS_ATIVIDADE, ESPECIALIDADES, STATUS_ORDEM, DIAS_ARQUIVO_MORTO, DIAS_NOTIFICACAO, campusNome, statusNome, STATUS_CHAMADO_ABERTO, statusChamadoNome, statusChamadoCor, slaChamado } from '../config.js';
+import { STATUS, CAMPI, TIPOS_ATIVIDADE, ESPECIALIDADES, STATUS_ORDEM, DIAS_ARQUIVO_MORTO, DIAS_NOTIFICACAO, campusNome, statusNome, statusChamadoNome, statusChamadoCor, slaChamado, categoriaChamado } from '../config.js';
 import { prioridade, pontosArt11, ordenarFila, cargaProfissionais, fiscaisDe } from '../calc.js';
 import { store } from '../store.js';
 import { can } from '../auth.js';
@@ -67,7 +67,7 @@ export function viewDashboard(rerender) {
   selCampus.addEventListener('change', () => { filtros.campus = selCampus.value; rerender(); });
   const selStatus = select(STATUS, { value: filtros.status, placeholder: 'Todos os status', 'aria-label': 'Filtrar por status' });
   selStatus.addEventListener('change', () => { filtros.status = selStatus.value; rerender(); });
-  const selTipoF = select(TIPOS_ATIVIDADE, { value: filtros.tipo, placeholder: 'Todos os tipos de atividade', 'aria-label': 'Filtrar por tipo de atividade' });
+  const selTipoF = select([...TIPOS_ATIVIDADE, { id: 'chamado', nome: 'Chamado (consultoria/laudo)' }], { value: filtros.tipo, placeholder: 'Todos os tipos de atividade', 'aria-label': 'Filtrar por tipo de atividade' });
   selTipoF.addEventListener('change', () => { filtros.tipo = selTipoF.value; rerender(); });
   const selEsp = select(ESPECIALIDADES, { value: filtros.esp, placeholder: 'Todas as especialidades', 'aria-label': 'Filtrar por especialidade' });
   selEsp.addEventListener('change', () => { filtros.esp = selEsp.value; rerender(); });
@@ -108,19 +108,26 @@ export function viewDashboard(rerender) {
     );
   });
 
-  // ---- chamados ativos na fila (unificação) — somente autenticados ----------------
-  // Após as demandas priorizadas, ordenados pelo prazo (SLA) mais crítico primeiro.
-  // Respeitam busca/campus/minhas; filtros específicos de demanda ocultam chamados.
+  // ---- chamados EM ATENDIMENTO na fila (unificação) — somente autenticados --------
+  // Entram agrupados com as demandas “Em atendimento” (mesmo bloco de status),
+  // ordenados pelo prazo (SLA) mais crítico primeiro. Cadastro/triagem ficam na
+  // aba Chamados. Respeitam busca, campus, especialidade (disciplina), “minhas
+  // atribuições” e os filtros de status/tipo (opção “Chamado” nos tipos).
   let linhasChamados = [];
-  if (user && typeof s.listChamados === 'function' && !filtros.status && !filtros.tipo && !filtros.esp) {
+  let chamadosFila = [];
+  const mostraChamados = user && typeof s.listChamados === 'function'
+    && (!filtros.status || filtros.status === 'atendimento')
+    && (!filtros.tipo || filtros.tipo === 'chamado');
+  if (mostraChamados) {
     const busca = (filtros.busca || '').toLowerCase();
-    const ativos = s.listChamados()
-      .filter(ch => STATUS_CHAMADO_ABERTO.includes(ch.status))
+    chamadosFila = s.listChamados()
+      .filter(ch => ch.status === 'atendimento')
       .filter(ch => (!filtros.campus || ch.campus === filtros.campus)
         && (!busca || `${ch.assunto || ''} ${ch.descricao || ''} ${ch.id} ${campusNome(ch.campus)}`.toLowerCase().includes(busca))
+        && (!filtros.esp || ((categoriaChamado(ch.categoria) || {}).disciplina && filtros.esp.includes((categoriaChamado(ch.categoria) || {}).disciplina)))
         && (!filtros.minhas || (meuProf && (ch.atendentes || []).includes(meuProf.id))))
       .sort((a, b) => (slaChamado(a).dias ?? 999) - (slaChamado(b).dias ?? 999));
-    linhasChamados = ativos.map(ch => {
+    linhasChamados = chamadosFila.map(ch => {
       const sla = slaChamado(ch);
       return el('tr', { tabindex: 0, role: 'link', 'aria-label': `Abrir chamado: ${ch.assunto || ch.id}`,
         onclick: () => { location.hash = `#/chamado/${ch.id}`; },
@@ -153,7 +160,12 @@ export function viewDashboard(rerender) {
         el('th', {}, 'Atualização'),
       )),
       el('tbody', {}, (linhas.length || linhasChamados.length)
-        ? [...linhas, ...linhasChamados]
+        ? (() => {
+            // agrupa por status: chamados entram logo após as demandas “Em atendimento”
+            let corte = 0;
+            ordenadas.forEach((d, i) => { if (d.status === 'atendimento') corte = i + 1; });
+            return [...linhas.slice(0, corte), ...linhasChamados, ...linhas.slice(corte)];
+          })()
         : el('tr', {}, el('td', { colspan: user ? 9 : 8, class: 'vazio' }, 'Nenhuma demanda corresponde aos filtros.'))),
     ));
 
@@ -190,7 +202,7 @@ export function viewDashboard(rerender) {
         filtros.esp && `especialidade: ${filtros.esp}`,
         filtros.busca && `busca: “${filtros.busca}”`,
       ].filter(Boolean).join('; ');
-      await gerarRelatorio({ demandas: ordenadas, params, filtros: desc, autenticado: !!user, internas, profissionais });
+      await gerarRelatorio({ demandas: ordenadas, chamados: chamadosFila, params, filtros: desc, autenticado: !!user, internas, profissionais });
       toast('Relatório gerado. O arquivo não fica armazenado no sistema.');
     } catch (e) { console.error(e); toast('Não foi possível gerar o PDF: ' + e.message, 'erro'); }
     btnPdf.disabled = false; btnPdf.textContent = 'Baixar PDF da fila';

@@ -120,7 +120,7 @@ O cálculo segue o modelo de priorização da Seção (art. 5º, II):
 
 > **Triagem recomendada:** comece pelas demandas **Recebidas** mais antigas; mova rapidamente para **Em análise**; abra **diligência** quando faltar informação.
 
-> **Exportações:** além do **Baixar PDF da fila**, o painel interno tem **Baixar Excel** (.xlsx com todas as colunas — classificação, escores, alocação e observações), disponível apenas para Engenharia, Chefe e Administrador.
+> **Exportações:** o **Baixar PDF da fila** exporta **o que estiver filtrado na tela** — demandas e chamados em atendimento (use o filtro de tipo **Chamado** para uma lista só de chamados, ou o status **Em atendimento** para o bloco completo). Além dele, o painel interno tem **Baixar Excel** (.xlsx com todas as colunas — classificação, escores, alocação e observações), disponível apenas para Engenharia, Chefe e Administrador.
 
 > **Ordenação do Painel.** A lista é organizada por **status**, na sequência operacional — **Em atendimento → Recebido → Em análise → Em diligência → Aguardando CODIR → Na fila → Suspenso → Concluído → Não enquadrado → Cancelado → Excluído** —, com a **prioridade** ordenando dentro de cada status. Assim o que está em andamento aparece primeiro; encerradas e excluídas ficam no fim. *(O status **Excluído** — arquivo morto — só aparece para Chefe/Admin.)*
 
@@ -328,11 +328,11 @@ O **Chamado** é a **porta de entrada única** da Engenharia. O campus abre um c
 
 > O mesmo fluxo, em notação BPMN editável (Bizagi Modeler), está em `docs/fluxo-chamados.bpmn` no repositório.
 
-**Onde fica:** menu **Chamados**. A SENG vê **todos** os chamados; o campus vê só os da própria unidade.
+**Onde fica:** menu **Chamados** — focado no **cadastro e na triagem** (recorte padrão “Cadastro e triagem”). Após a triagem, os chamados **em atendimento** passam a aparecer também na **fila do Painel**, agrupados com as demandas do mesmo status, ordenados pelo prazo (SLA) e marcados com a etiqueta CHAMADO. A SENG vê **todos** os chamados; o campus vê só os da própria unidade.
 
 ### Painel de chamados
 
-- Lista por **status operacional** e **prazo (SLA)**; filtros por **situação** (ativos / em atraso / encerrados / todos), **campus**, **categoria** e **busca**.
+- Lista por **status operacional** e **prazo (SLA)**; filtros por **situação** (cadastro e triagem / em atendimento / todos os ativos / em atraso / encerrados / todos), **campus**, **categoria** e **busca**.
 - A **faixa de SLA** (no prazo / vencendo / vencido) é ao mesmo tempo **alerta** e filtro rápido.
 - **Baixar PDF**: relatório efêmero (timbre + data/hora) da lista filtrada.
 - **+ Abrir chamado**: a SENG também pode abrir um chamado (ex.: demanda de origem interna).

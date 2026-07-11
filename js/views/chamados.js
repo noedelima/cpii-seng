@@ -11,7 +11,7 @@ import { store } from '../store.js';
 import { can } from '../auth.js';
 
 // Estado dos filtros (persiste durante a sessão de navegação).
-const filtro = { situacao: 'ativos', campus: '', categoria: '', texto: '' };
+const filtro = { situacao: 'triagem', campus: '', categoria: '', texto: '' };
 
 const SLA_ROTULO = {
   'no-prazo': (d) => ({ txt: `no prazo · ${d}d`, cls: 'sla-ok' }),
@@ -29,6 +29,8 @@ export function viewChamados(rerender) {
   const ordStatus = (st) => { const i = STATUS_CHAMADO_ORDEM.indexOf(st); return i < 0 ? 99 : i; };
 
   const filtrados = todos.filter(c => {
+    if (filtro.situacao === 'triagem' && !['aberto', 'triagem', 'diligencia'].includes(c.status)) return false;
+    if (filtro.situacao === 'atendimento' && c.status !== 'atendimento') return false;
     if (filtro.situacao === 'ativos' && !STATUS_CHAMADO_ABERTO.includes(c.status)) return false;
     if (filtro.situacao === 'encerrados' && STATUS_CHAMADO_ABERTO.includes(c.status)) return false;
     if (filtro.situacao === 'atraso' && slaChamado(c).estado !== 'vencido') return false;
@@ -47,7 +49,8 @@ export function viewChamados(rerender) {
 
   // --- Filtros ---
   const selSit = select([
-    { id: 'ativos', nome: 'Ativos' }, { id: 'atraso', nome: 'Em atraso (SLA)' },
+    { id: 'triagem', nome: 'Cadastro e triagem' }, { id: 'atendimento', nome: 'Em atendimento' },
+    { id: 'ativos', nome: 'Todos os ativos' }, { id: 'atraso', nome: 'Em atraso (SLA)' },
     { id: 'encerrados', nome: 'Encerrados' }, { id: 'todos', nome: 'Todos' },
   ], { value: filtro.situacao, placeholder: null });
   selSit.onchange = () => { filtro.situacao = selSit.value; rerender(); };
@@ -129,7 +132,7 @@ export function viewChamados(rerender) {
       el('h1', {}, 'Chamados'),
       el('p', { class: 'sub' }, user.role === 'campus'
         ? 'Solicitações da sua unidade à Seção de Engenharia.'
-        : 'Intake e triagem da Seção de Engenharia.')),
+        : 'Cadastro e triagem da Seção de Engenharia — após a triagem, os chamados em atendimento entram na fila do Painel.')),
       el('div', { class: 'hero-acoes' }, abrir, todos.length ? btnPdf : null)),
     el('section', { class: 'card' }, filtros, resumoSla,
       el('p', { class: 'sub cont' }, `${filtrados.length} de ${todos.length} chamado(s)`),

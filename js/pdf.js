@@ -38,7 +38,7 @@ const tipoAtvNome = (id) => (TIPOS_ATIVIDADE.find(t => t.id === id) || {}).nome 
  *   autenticado   — inclui colunas de alocação de profissionais
  *   internas/profissionais — para resolver nomes quando autenticado
  */
-export async function gerarRelatorio({ demandas, params, filtros, autenticado, internas = {}, profissionais = [] }) {
+export async function gerarRelatorio({ demandas, chamados = [], params, filtros, autenticado, internas = {}, profissionais = [] }) {
   const { jsPDF } = await carregarLibs();
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const W = doc.internal.pageSize.getWidth();
@@ -95,6 +95,20 @@ export async function gerarRelatorio({ demandas, params, filtros, autenticado, i
     }
     return row;
   });
+
+  // Chamados em atendimento (fila unificada): entram no bloco “Em atendimento”,
+  // logo após as demandas desse status — mesma ordem exibida no painel.
+  if (chamados.length) {
+    const rowsCh = chamados.map(ch => {
+      const row = ['—', campusNome(ch.campus), `${ch.assunto || ch.id} [CHAMADO]`,
+        'Chamado (consultoria/laudo)', statusChamadoNome(ch.status), '—'];
+      if (autenticado) row.push((ch.atendentes || []).map(nomeProf).filter(Boolean).join(' / ') || '—');
+      return row;
+    });
+    let corte = 0;
+    demandas.forEach((d, i) => { if (d.status === 'atendimento') corte = i + 1; });
+    body.splice(corte, 0, ...rowsCh);
+  }
 
   doc.autoTable({
     head: [head], body,
