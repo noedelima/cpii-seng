@@ -308,9 +308,30 @@ export class FirebaseProvider {
   // Miniatura de anexo (JPEG pequeno, gerada no cliente) — mesmo prefixo do
   // chamado no Storage (as rules valem igual: image/jpeg, < 10 MB).
   async uploadThumbChamado(chamadoId, campus, blob, baseNome) {
+    return this._uploadThumb(`chamados/${campus}/${chamadoId}`, blob, baseNome);
+  }
+  // Anexos de DEMANDAS (unificação dos workflows): demandas/{campus}/{id}/{arquivo}.
+  async uploadAnexoDemanda(demandaId, campus, file, onProgress) {
+    const st = this._St;
+    const nome = String(file.name || 'arquivo').replace(/[^\w.\-]+/g, '_').slice(-80);
+    const path = `demandas/${campus}/${demandaId}/${Date.now()}_${nome}`;
+    const ref = st.ref(this.storage, path);
+    await new Promise((resolve, reject) => {
+      const task = st.uploadBytesResumable(ref, file, { contentType: file.type || 'application/octet-stream' });
+      task.on('state_changed',
+        (snap) => { if (onProgress) onProgress(snap.totalBytes ? snap.bytesTransferred / snap.totalBytes : 0); },
+        reject, resolve);
+    });
+    const url = await st.getDownloadURL(ref);
+    return { nome: file.name || nome, path, url, tipo: file.type || '', tamanho: file.size || 0, ts: Date.now(), por: this.user?.nome || '' };
+  }
+  async uploadThumbDemanda(demandaId, campus, blob, baseNome) {
+    return this._uploadThumb(`demandas/${campus}/${demandaId}`, blob, baseNome);
+  }
+  async _uploadThumb(prefixo, blob, baseNome) {
     const st = this._St;
     const nome = String(baseNome || 'thumb').replace(/[^\w.\-]+/g, '_').slice(-60);
-    const path = `chamados/${campus}/${chamadoId}/${Date.now()}_${nome}.thumb.jpg`;
+    const path = `${prefixo}/${Date.now()}_${nome}.thumb.jpg`;
     const ref = st.ref(this.storage, path);
     await st.uploadBytesResumable(ref, blob, { contentType: 'image/jpeg' });
     return { path, url: await st.getDownloadURL(ref) };

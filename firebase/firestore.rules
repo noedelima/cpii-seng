@@ -52,6 +52,8 @@ service cloud.firestore {
           && (!('obsSolicitante' in d) || (d.obsSolicitante is string && d.obsSolicitante.size() <= 4000))
           && (!('obsInterna' in d) || (d.obsInterna is list && d.obsInterna.size() <= 300))
           && (!('obsExterna' in d) || (d.obsExterna is list && d.obsExterna.size() <= 300))
+          && (!('comentarios' in d) || (d.comentarios is list && d.comentarios.size() <= 300))
+          && (!('anexos' in d) || (d.anexos is list && d.anexos.size() <= 20))
           && (!('etapa' in d) || d.etapa == null || d.etapa in ['projeto','obra']);
     }
     // Deliberação do CODIR: muda somente codirAprovado/ajuste/status/historico/atualizadoEm,
@@ -82,7 +84,8 @@ service cloud.firestore {
           && (!('anexos' in c) || (c.anexos is list && c.anexos.size() <= 20))
           && (!('historico' in c) || (c.historico is list && c.historico.size() <= 400))
           && (!('obsInterna' in c) || (c.obsInterna is list && c.obsInterna.size() <= 300))
-          && (!('obsExterna' in c) || (c.obsExterna is list && c.obsExterna.size() <= 300));
+          && (!('obsExterna' in c) || (c.obsExterna is list && c.obsExterna.size() <= 300))
+          && (!('comentarios' in c) || (c.comentarios is list && c.comentarios.size() <= 300));
     }
 
     // ---------- demandas (fila pública) --------------------------------------
@@ -132,6 +135,9 @@ service cloud.firestore {
         // Interna (Engenharia): Eng/Chefe/Admin. Externa (Solicitante/CODIR): campus dono / CODIR / Admin.
         || ( isEng() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['obsInterna','historico','atualizadoEm']) )
         || ( (isCampusDe(resource.data.campus) || isCodir()) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['obsExterna','historico','atualizadoEm']) )
+        // Linha do tempo unificada: fio único de comentários + anexos — Eng, CODIR e campus dono.
+        || ( (isEng() || isCodir() || isCampusDe(resource.data.campus))
+             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['comentarios','anexos','historico','atualizadoEm']) )
       );
 
       // Exclusão: chefe/admin e nunca em atendimento/concluído
@@ -238,7 +244,7 @@ service cloud.firestore {
           isEng()
           // Campus dono: complementar/responder diligência, comentar (externa) e anexar
           || ( isCampusDe(resource.data.campus)
-               && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['descricao','status','obsExterna','anexos','historico','atualizadoEm'])
+               && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['descricao','status','obsExterna','comentarios','anexos','historico','atualizadoEm'])
                && request.resource.data.status in ['aberto','triagem','diligencia'] )
         );
       allow delete: if isChefe();

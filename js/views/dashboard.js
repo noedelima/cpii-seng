@@ -2,7 +2,7 @@
 // Dashboard público — resumo clicável, filtros, fila e exportação PDF efêmera
 // =============================================================================
 import { el, frag, fmtNum, fmtDataHora, badgeStatus, select, toast, debounce } from '../ui.js';
-import { STATUS, CAMPI, TIPOS_ATIVIDADE, ESPECIALIDADES, STATUS_ORDEM, DIAS_ARQUIVO_MORTO, DIAS_NOTIFICACAO, campusNome, statusNome } from '../config.js';
+import { STATUS, CAMPI, TIPOS_ATIVIDADE, ESPECIALIDADES, STATUS_ORDEM, DIAS_ARQUIVO_MORTO, DIAS_NOTIFICACAO, campusNome, statusNome, STATUS_CHAMADO_ABERTO, statusChamadoNome, statusChamadoCor, slaChamado } from '../config.js';
 import { prioridade, pontosArt11, ordenarFila, cargaProfissionais, fiscaisDe } from '../calc.js';
 import { store } from '../store.js';
 import { can } from '../auth.js';
@@ -108,6 +108,39 @@ export function viewDashboard(rerender) {
     );
   });
 
+  // ---- chamados ativos na fila (unificação) — somente autenticados ----------------
+  // Após as demandas priorizadas, ordenados pelo prazo (SLA) mais crítico primeiro.
+  // Respeitam busca/campus/minhas; filtros específicos de demanda ocultam chamados.
+  let linhasChamados = [];
+  if (user && typeof s.listChamados === 'function' && !filtros.status && !filtros.tipo && !filtros.esp) {
+    const busca = (filtros.busca || '').toLowerCase();
+    const ativos = s.listChamados()
+      .filter(ch => STATUS_CHAMADO_ABERTO.includes(ch.status))
+      .filter(ch => (!filtros.campus || ch.campus === filtros.campus)
+        && (!busca || `${ch.assunto || ''} ${ch.descricao || ''} ${ch.id} ${campusNome(ch.campus)}`.toLowerCase().includes(busca))
+        && (!filtros.minhas || (meuProf && (ch.atendentes || []).includes(meuProf.id))))
+      .sort((a, b) => (slaChamado(a).dias ?? 999) - (slaChamado(b).dias ?? 999));
+    linhasChamados = ativos.map(ch => {
+      const sla = slaChamado(ch);
+      return el('tr', { tabindex: 0, role: 'link', 'aria-label': `Abrir chamado: ${ch.assunto || ch.id}`,
+        onclick: () => { location.hash = `#/chamado/${ch.id}`; },
+        onkeydown: (e) => { if (e.key === 'Enter') location.hash = `#/chamado/${ch.id}`; } },
+        el('td', { class: 'num' }, '—'),
+        el('td', {}, campusNome(ch.campus)),
+        el('td', { class: 'objeto' }, el('strong', {}, ch.assunto || ch.id),
+          el('span', { class: 'tag-chamado', title: 'Chamado em tratamento pela SENG (sem pontuação GUT)' }, 'CHAMADO')),
+        el('td', {}, el('span', { class: `badge ${statusChamadoCor(ch.status)}` }, statusChamadoNome(ch.status))),
+        el('td', { class: 'num' }, '—'),
+        el('td', { class: 'num sub', title: 'Prazo de triagem/atendimento (SLA)' },
+          sla.estado === 'vencido' ? `SLA −${Math.abs(sla.dias)}d` : `SLA ${sla.dias}d`),
+        el('td', { class: 'num' }, '—'),
+        el('td', { class: 'prof-cell' }, (ch.atendentes || []).length
+          ? el('span', {}, ch.atendentes.map(nomeProf).join(', '))
+          : el('span', { class: 'sub' }, '—')),
+        el('td', { class: 'sub' }, fmtDataHora(ch.atualizadoEm)));
+    });
+  }
+
   const tabela = el('div', { class: 'tabela-wrap' },
     el('table', { class: 'tabela' },
       el('thead', {}, el('tr', {},
@@ -119,7 +152,9 @@ export function viewDashboard(rerender) {
         user ? el('th', {}, 'Fiscal técnico') : null,
         el('th', {}, 'Atualização'),
       )),
-      el('tbody', {}, linhas.length ? linhas : el('tr', {}, el('td', { colspan: user ? 9 : 8, class: 'vazio' }, 'Nenhuma demanda corresponde aos filtros.'))),
+      el('tbody', {}, (linhas.length || linhasChamados.length)
+        ? [...linhas, ...linhasChamados]
+        : el('tr', {}, el('td', { colspan: user ? 9 : 8, class: 'vazio' }, 'Nenhuma demanda corresponde aos filtros.'))),
     ));
 
   // ---- painel de carga dos profissionais (somente autenticado) ---------------------
@@ -184,7 +219,7 @@ export function viewDashboard(rerender) {
     // soterrado pela fila, que cresce com o histórico.
     painelProfs,
     el('section', { class: 'card' },
-      el('h2', {}, 'Fila de demandas ', el('span', { class: 'sub' }, `${ordenadas.length} de ${todas.length}`)),
+      el('h2', {}, 'Fila de demandas ', el('span', { class: 'sub' }, `${ordenadas.length} de ${todas.length}${linhasChamados.length ? ` · ${linhasChamados.length} chamado${linhasChamados.length === 1 ? '' : 's'}` : ''}`)),
       chips, tabela,
       el('p', { class: 'nota' }, '* prioridade com fator de ajuste deliberado pelo CODIR. Clique em uma linha para ver os detalhes.')),
   );

@@ -103,7 +103,7 @@ A **consulta à fila** e o **relatório em PDF** são **públicos** — não exi
 
 ## 5. Fluxo 2 — Consultar a fila (painel público)
 
-O **Painel** lista todas as demandas de obras e serviços, com campus, objeto, status, índice GUT, prioridade e data de atualização. *(Os chamados em triagem não aparecem na fila pública — só as demandas.)*
+O **Painel** lista todas as demandas de obras e serviços, com campus, objeto, status, índice GUT, prioridade e data de atualização. *(Sem login, a fila mostra só as demandas; **autenticado**, você também vê os **chamados ativos** da sua unidade na mesma tabela, marcados com a etiqueta CHAMADO e ordenados pelo prazo.)*
 
 @fig campus-fila
 
@@ -153,7 +153,7 @@ Depois de aberto, acompanhe a evolução a qualquer momento.
 
 1. Abra o menu **Chamados**. Você vê apenas os chamados da(s) sua(s) unidade(s).
 2. Use os filtros (**situação**, **categoria**, **busca**) para localizar; a faixa de **SLA** mostra rapidamente o que está no prazo, vencendo ou vencido.
-3. Clique no chamado para abrir os detalhes: **status** (selo colorido), **prazo (SLA)**, **descrição**, **histórico** e o fio de **comentários** com a Engenharia.
+3. Clique no chamado para abrir os detalhes: **status** (selo colorido), **prazo (SLA)**, **descrição** e a **linha do tempo** — comentários com a Engenharia, anexos e eventos, em ordem cronológica.
 4. **Anexos:** no cartão **Anexos**, clique em **+ Adicionar anexo** para enviar **imagens ou PDF** (até 10 MB cada) — fotos do local, plantas, orçamentos. As miniaturas abrem em nova aba. Você pode anexar enquanto o chamado está **aberto / em triagem / em diligência**.
 5. **Comentários:** use o campo de comentário para se comunicar com a SENG sobre o chamado; tudo fica registrado.
 

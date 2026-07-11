@@ -7,10 +7,10 @@ import { prioridade, pontosArt11, faixaValorLabel, cargaProfissionais, fiscaisDe
 import { store } from '../store.js';
 import { can, podeAvaliar, podeExcluir, podeComplementar, podeDeliberarCodir, transicoesPermitidas, travada, ehReversaoStatus, podeEditarDados, ehCampusDe } from '../auth.js';
 import { notificar } from '../notificacoes.js';
+import { renderAnexosCard } from '../anexos.js';
+import { renderLinhaTempo } from '../timeline.js';
 
 const nomeDe = (lista, id, campoNome = 'nome') => (lista.find(x => (x.id ?? x.v) === id) || {})[campoNome] ?? (lista.find(x => x.id === id) || {}).t ?? '—';
-
-let obsEdit = null; // comentário (campo:id) em edição inline nas Observações
 
 export function viewDemanda(rerender, id) {
   const s = store();
@@ -388,78 +388,33 @@ export function viewDemanda(rerender, id) {
       linha('Equipe de planejamento', (interna.equipePlanejamento || []).map(nomeProf).join(', ') || '—'));
   }
 
-  // ---------- observações: dois históricos de comentários (públicos) -----------------
-  let cartaoObs = null;
-  {
-    const ehCampusDono = ehCampusDe(user, d.campus);
-    const podeAddInt = !!(user && can(user, 'avaliar') && !excluida);                  // eng/chefe/admin
-    const podeAddExt = !!(user && (ehCampusDono || can(user, 'codir')) && !excluida);  // campus-dono/codir/admin
-
-    // compat: formato antigo (string única) vira uma entrada legada (sem autor/exclusão)
-    const exibirDe = (arr, legado) => Array.isArray(arr) ? arr
-      : (legado ? [{ id: 'legado', autor: '(registro anterior)', autorUid: null, ts: d.atualizadoEm || d.criadoEm, texto: legado, legado: true }] : []);
-    const baseDe = (arr, legado) => Array.isArray(arr) ? arr.slice()
-      : (legado ? [{ id: 'leg' + (d.criadoEm || Date.now()), autor: '(registro anterior)', autorUid: null, ts: d.atualizadoEm || d.criadoEm, texto: legado }] : []);
-
-    const podeEditar = (c) => !!(user && !c.legado && user.uid && user.uid === c.autorUid);
-    const podeExcluirInt = (c) => !!(user && !c.legado && (user.uid === c.autorUid || can(user, 'excluir')));
-    const podeExcluirExt = (c) => !!(user && !c.legado && (user.uid === c.autorUid || can(user, 'codir') || ehCampusDono));
-    const novoId = () => 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-    const salvar = (campo2, arr, evento) => s.atualizarDemanda(d.id, { [campo2]: arr }, evento);
-
-    const bloco = (titulo, campo2, legado, podeAdd, podeExcluir) => {
-      const lista = exibirDe(d[campo2], legado);
-      const filhos = [el('p', { class: 'obs-titulo' }, titulo)];
-      if (lista.length) {
-        filhos.push(el('ul', { class: 'obs-lista' }, lista.map(c => {
-          if (obsEdit === campo2 + ':' + c.id) {
-            const tae = el('textarea', { rows: 3, maxlength: 4000 }); tae.value = c.texto;
-            return el('li', { class: 'obs-item' }, tae, el('div', { class: 'obs-acoes' },
-              el('button', { class: 'btn primario sm', onclick: async () => {
-                const t = tae.value.trim(); if (!t) { toast('Comentário vazio.', 'erro'); return; }
-                const arr = baseDe(d[campo2], legado).map(x => x.id === c.id ? { ...x, texto: t, editadoEm: Date.now() } : x);
-                obsEdit = null; await salvar(campo2, arr, `Comentário editado — ${titulo}`); toast('Comentário atualizado.');
-              } }, 'Salvar'),
-              el('button', { class: 'btn ghost sm', onclick: () => { obsEdit = null; rerender(); } }, 'Cancelar')));
-          }
-          return el('li', { class: 'obs-item' },
-            el('div', { class: 'obs-meta' }, el('strong', {}, c.autor || '—'),
-              ` · ${fmtDataHora(c.ts)}`, c.editadoEm ? ' · (editado)' : ''),
-            el('div', { class: 'obs-texto' }, c.texto),
-            (podeEditar(c) || podeExcluir(c)) ? el('div', { class: 'obs-acoes' },
-              podeEditar(c) ? el('button', { class: 'btn ghost sm', onclick: () => { obsEdit = campo2 + ':' + c.id; rerender(); } }, 'Editar') : null,
-              podeExcluir(c) ? el('button', { class: 'btn ghost sm perigo', onclick: async () => {
-                const ok = await confirmar('Excluir comentário?', 'A ação fica registrada no histórico.', { ok: 'Excluir', perigo: true });
-                if (!ok) return;
-                const arr = baseDe(d[campo2], legado).filter(x => x.id !== c.id);
-                await salvar(campo2, arr, `Comentário excluído — ${titulo}`); toast('Comentário excluído.');
-              } }, 'Excluir') : null) : null);
-        })));
-      } else {
-        filhos.push(el('p', { class: 'obs-vazio' }, 'Sem observações.'));
-      }
-      if (podeAdd) {
-        const tan = el('textarea', { rows: 3, maxlength: 4000, placeholder: 'Escreva um comentário…' });
-        filhos.push(el('div', { class: 'obs-add' }, tan, el('button', { class: 'btn ghost sm', onclick: async () => {
-          const t = tan.value.trim(); if (!t) { toast('Comentário vazio.', 'erro'); return; }
-          const arr = [...baseDe(d[campo2], legado), { id: novoId(), autor: user.nome, autorUid: user.uid, ts: Date.now(), texto: t }];
-          await salvar(campo2, arr, `Comentário adicionado — ${titulo}`); await notificar(s, 'comentario', d, interna); toast('Comentário adicionado.');
-        } }, 'Adicionar comentário')));
-      }
-      return el('div', { class: 'obs-bloco' }, filhos);
-    };
-
-    const temInt = exibirDe(d.obsInterna, interna.obsEngenharia).length || podeAddInt;
-    const temExt = exibirDe(d.obsExterna, d.obsSolicitante).length || podeAddExt;
-    if (temInt || temExt) {
-      const filhosObs = [el('h2', {}, 'Observações'),
-        el('p', { class: 'sub' }, 'Comentários públicos, com autor e data/hora. Edição e exclusão conforme o perfil.')];
-      if (temInt) filhosObs.push(bloco('Observação da Engenharia (interna)', 'obsInterna', interna.obsEngenharia, podeAddInt, podeExcluirInt));
-      if (temExt) filhosObs.push(bloco('Observação do solicitante / CODIR', 'obsExterna', d.obsSolicitante, podeAddExt, podeExcluirExt));
-      cartaoObs = el('section', { class: 'card' }, filhosObs);
-    }
+  // ---------- anexos (componente unificado com os chamados) ---------------------------
+  const ehCampusDono = ehCampusDe(user, d.campus);
+  let cartaoAnexos = null;
+  if (user && !excluida) {
+    const podeAnexar = can(user, 'avaliar') || ehCampusDono; // Eng/Chefe/Admin + campus dono
+    cartaoAnexos = renderAnexosCard({
+      lista: () => ((s.getDemanda(d.id) || d).anexos || []),
+      podeAnexar,
+      upload: (f2, onP) => s.uploadAnexoDemanda(d.id, d.campus, f2, onP),
+      uploadThumb: typeof s.uploadThumbDemanda === 'function' ? (blob, base) => s.uploadThumbDemanda(d.id, d.campus, blob, base) : null,
+      removerStorage: (p) => s.removerAnexoChamado(p),
+      salvar: (anexos2, evento) => s.atualizarDemanda(d.id, { anexos: anexos2 }, evento),
+      aoMudar: () => notificar(s, 'comentario', d, interna),
+    });
   }
 
+  // ---------- linha do tempo (fio único de comentários + anexos + eventos) -----------
+  const podeComentar = !!(user && !excluida && (can(user, 'avaliar') || can(user, 'codir') || ehCampusDono));
+  const linhaTempo = renderLinhaTempo({
+    doc: d, user, rerender,
+    extras: { obsEngenharia: interna.obsEngenharia },
+    anexos: (d.anexos || []),
+    podeComentar,
+    podeModerar: !!(user && can(user, 'excluir')),
+    salvar: async (comentarios2, evento) => { await s.atualizarDemanda(d.id, { comentarios: comentarios2 }, evento); },
+    aoComentar: () => notificar(s, 'comentario', d, interna),
+  });
   // ---------- arquivo morto (demanda excluída): resgate ------------------------------
   let cartaoArquivo = null;
   if (excluida && user && can(user, 'excluir')) {
@@ -475,21 +430,11 @@ export function viewDemanda(rerender, id) {
       } }, 'Resgatar demanda'));
   }
 
-  // ---------- histórico --------------------------------------------------------------
-  const hist = el('section', { class: 'card' },
-    el('h2', {}, 'Histórico'),
-    el('ol', { class: 'timeline' },
-      [...(d.historico || [])].sort((a, b) => b.ts - a.ts).map(h =>
-        el('li', {},
-          el('span', { class: 'tl-quando' }, fmtDataHora(h.ts)),
-          el('span', { class: 'tl-acao' }, h.acao),
-          user ? el('span', { class: 'tl-quem' }, h.user) : null))));
-
   return frag(
     el('a', { class: 'voltar', href: '#/' }, '← Voltar ao painel'),
     el('div', { class: 'detalhe-grid' },
-      el('div', { class: 'col' }, dados, cartaoEditarDados, hist),
-      el('div', { class: 'col' }, cartaoArquivo, cartaoPontuacao, cartaoCodir, cartaoAvaliacao, cartaoGestao, cartaoEquipe, cartaoObs)));
+      el('div', { class: 'col' }, dados, cartaoEditarDados, linhaTempo),
+      el('div', { class: 'col' }, cartaoArquivo, cartaoPontuacao, cartaoCodir, cartaoAvaliacao, cartaoGestao, cartaoEquipe, cartaoAnexos)));
 }
 
 const linha = (rotulo, valor) => valor == null ? null : el('div', { class: 'linha-info' },

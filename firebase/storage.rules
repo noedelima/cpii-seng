@@ -39,6 +39,14 @@ service firebase.storage {
                             && tipoOk();
       allow delete:         if isSeng() || isCampusDe(campus);
     }
+    // anexos de demandas (unificação dos workflows): demandas/{campus}/{demandaId}/{arquivo}
+    match /demandas/{campus}/{demandaId}/{arquivo} {
+      allow read:           if isInterno() || isCampusDe(campus);
+      allow create, update: if (isSeng() || isCampusDe(campus))
+                            && request.resource.size < 10 * 1024 * 1024
+                            && tipoOk();
+      allow delete:         if isSeng() || isCampusDe(campus);
+    }
     // Tudo o mais: negado.
     match /{allPaths=**} { allow read, write: if false; }
   }

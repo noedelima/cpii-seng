@@ -137,6 +137,13 @@ class DemoProvider {
     return { path: `demo/${chamadoId}/thumb_${Date.now()}`, url };
   }
   async removerAnexoChamado() { /* demo: nada a remover no storage */ }
+  // Demandas (unificação): no modo demo, mesmos mecanismos dos chamados.
+  async uploadAnexoDemanda(demandaId, campus, file, onProgress) {
+    return this.uploadAnexoChamado(demandaId, campus, file, onProgress);
+  }
+  async uploadThumbDemanda(demandaId, campus, blob) {
+    return this.uploadThumbChamado(demandaId, campus, blob);
+  }
   async criarDemanda(d) {
     const ano = this.db.params.anoPlano;
     const seq = Math.max(0, ...this.db.demandas.filter(x => x.ano === ano && x.campus === d.campus).map(x => x.seq || 0)) + 1;

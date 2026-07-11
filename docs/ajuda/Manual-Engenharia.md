@@ -132,14 +132,14 @@ O cálculo segue o modelo de priorização da Seção (art. 5º, II):
 
 Clique em uma linha do painel para abrir o detalhe. A página é dividida em duas colunas:
 
-- **Esquerda:** dados da solicitação e **histórico** completo.
-- **Direita:** **Priorização**, **Avaliação técnica**, **Gestão**, **Alocação** e **Observações** — esta última um **histórico de comentários públicos** (fio interno da Engenharia e fio externo do solicitante/CODIR).
+- **Esquerda:** dados da solicitação e a **Linha do tempo** — comentários, anexos e eventos em ordem cronológica.
+- **Direita:** **Priorização**, **Avaliação técnica**, **Gestão**, **Alocação** e **Anexos**.
 
 @fig eng-demanda
 
 > **Editar dados da solicitação.** Enquanto a demanda **não foi submetida ao CODIR** (status Recebido, Em análise ou Em diligência), o cartão **“Editar dados da solicitação”** permite corrigir localização, tipo, situação do projeto, valor, prazo, processo SUAP, objeto, descrição, especialidades e o sinalizador emergencial. A edição é aberta a **Engenharia, Chefia, Administração e CODIR** (qualquer demanda) e ao **Campus** (apenas as da própria unidade). Ao entrar em **“Aguardando aprovação do CODIR”**, os dados **congelam para todos**; para corrigir, **reverta o status** (Fluxo 5) e a edição reabre. A **unidade (campus) não é editável** (compõe o identificador). Cada alteração registra no **histórico** e no **log de auditoria** **exatamente quais campos** mudaram — ex.: *“Dados da solicitação editados — campos: Processo SUAP, Valor estimado, Prazo estimado”*.
 
-> **Observações (comentários públicos).** Cada demanda tem dois fios de comentários — o **da Engenharia (interna)** e o **do solicitante / CODIR (externa)** — **visíveis a todos**, inclusive no painel público, em modo leitura. Cada comentário registra **autor e data/hora**. Quem pode **escrever**: no fio interno, Engenharia/Chefia/Administração; no externo, o Campus (da própria unidade), o CODIR e a Administração. O **autor pode editar** o próprio comentário (fica marcado *(editado)*) e **excluí-lo**; além do autor, podem excluir — no interno, a Chefia/Administração; no externo, o CODIR/Solicitante/Administração. Toda ação fica no log de auditoria.
+> **Linha do tempo (comentários, anexos e eventos).** Cada demanda tem um **fio único de comentários**, mesclado aos **anexos** e aos **eventos de status** em ordem cronológica. Os comentários são **visíveis a todos**: no painel público a autoria aparece pela **origem/perfil** (Campus, Engenharia, CODIR); autenticados veem também o **nome** e a data/hora. Podem **escrever**: Engenharia/Chefia/Administração, o CODIR e o Campus (da própria unidade). O **autor pode editar** o próprio comentário (fica marcado *(editado)*) e **excluí-lo**; a Chefia/Administração também pode excluir. Registros dos fios antigos permanecem visíveis, somente leitura. Toda ação fica no histórico e no log de auditoria.
 
 ---
 
