@@ -88,7 +88,7 @@ F['fluxo-chamado'] = () => {
     caixa(168, 352, 170, 52, 'Consultoria/laudo', 'aloca responsáveis'),
     caixa(358, 352, 124, 52, 'Encaminhado', 'outro setor'),
     caixa(502, 352, 150, 52, 'Não enquadrado', 'improcedente etc.'),
-    caixa(28, 444, 150, 52, 'Fila de obras', 'GUT → CODIR → fila', true),
+    caixa(20, 444, 140, 52, 'Fila de obras', 'GUT → CODIR → fila', true),
     caixa(168, 444, 170, 52, 'Em atendimento', 'conta na carga'),
     caixa(183, 536, 140, 52, 'Resolvido', 'orientação ou NT'),
     seta('M150 84 V160'),
@@ -100,7 +100,7 @@ F['fluxo-chamado'] = () => {
     seta('M150 308 V330 H253 V348'),
     seta('M150 308 V330 H420 V348'),
     seta('M150 308 V330 H577 V348'),
-    seta('M88 404 V420 H103 V440'),
+    seta('M88 404 V440'),
     seta('M253 404 V440'),
     seta('M253 496 V532'));
   return ajudaFig({
