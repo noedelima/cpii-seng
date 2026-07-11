@@ -8,7 +8,7 @@ export const APP = {
   orgao: 'Colégio Pedro II',
   setor: 'Seção de Engenharia — SENG/DECOF',
   portaria: 'Portaria nº 7503/REITORIA/CPII, de 24/11/2025',
-  versao: '1.13.2',
+  versao: '1.14.0',
 };
 
 // --- Parâmetros ajustáveis pelo Administrador (defaults) ---------------------

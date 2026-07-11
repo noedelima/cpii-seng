@@ -66,6 +66,8 @@ O sistema substitui o antigo levantamento anual (Formulário + Excel + Power BI)
 
 **Do chamado ao atendimento (caminho principal)**
 
+@fig fluxo-chamado
+
 **Abrir chamado → Em triagem →** *desfecho*:
 
 - **Obra** → a SENG converte o chamado em **Demanda**, que segue o fluxo **Recebido → Análise → CODIR → Na fila → Em atendimento → Concluído**.

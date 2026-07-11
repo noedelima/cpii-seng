@@ -324,6 +324,10 @@ Em **Administração**, o cartão **Parâmetros do sistema** controla o cálculo
 
 O **Chamado** é a **porta de entrada única** da Engenharia (unifica a antiga “Nova solicitação”). O campus abre um chamado; a SENG **triam** e define o **desfecho** — inclusive **converter em Demanda** de obra, com a classificação preenchida aqui, na triagem.
 
+@fig fluxo-chamado
+
+> O mesmo fluxo, em notação BPMN editável (Bizagi Modeler), está em `docs/fluxo-chamados.bpmn` no repositório.
+
 **Onde fica:** menu **Chamados**. A SENG vê **todos** os chamados; o campus vê só os da própria unidade.
 
 ### Painel de chamados

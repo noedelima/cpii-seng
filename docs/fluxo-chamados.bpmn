@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="defs_fluxo_chamados" targetNamespace="http://cpii.seng/chamados" exporter="cpii-seng" exporterVersion="1.13.2">
+<bpmn:collaboration id="colab1"><bpmn:participant id="pool1" name="SENG Demandas — Tratamento de chamados (Portaria 7503/2025)" processRef="proc1"/></bpmn:collaboration>
+<bpmn:process id="proc1" isExecutable="false">
+<bpmn:laneSet id="ls1">
+<bpmn:lane id="lane_campus" name="Campus (solicitante)"><bpmn:flowNodeRef>se1</bpmn:flowNodeRef><bpmn:flowNodeRef>t_abrir</bpmn:flowNodeRef><bpmn:flowNodeRef>t_resp</bpmn:flowNodeRef></bpmn:lane>
+<bpmn:lane id="lane_seng" name="SENG / DECOF"><bpmn:flowNodeRef>t_triar</bpmn:flowNodeRef><bpmn:flowNodeRef>g1</bpmn:flowNodeRef><bpmn:flowNodeRef>t_dilig</bpmn:flowNodeRef><bpmn:flowNodeRef>g2</bpmn:flowNodeRef><bpmn:flowNodeRef>t_conv</bpmn:flowNodeRef><bpmn:flowNodeRef>call1</bpmn:flowNodeRef><bpmn:flowNodeRef>ee_obra</bpmn:flowNodeRef><bpmn:flowNodeRef>t_aloc</bpmn:flowNodeRef><bpmn:flowNodeRef>t_atend</bpmn:flowNodeRef><bpmn:flowNodeRef>t_nt</bpmn:flowNodeRef><bpmn:flowNodeRef>ee_res</bpmn:flowNodeRef><bpmn:flowNodeRef>t_enc</bpmn:flowNodeRef><bpmn:flowNodeRef>ee_enc</bpmn:flowNodeRef><bpmn:flowNodeRef>ee_ne</bpmn:flowNodeRef></bpmn:lane>
+</bpmn:laneSet>
+<bpmn:startEvent id="se1" name="Necessidade identificada"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+<bpmn:userTask id="t_abrir" name="Abrir chamado&#10;(categoria, urgência, local,&#10;descrição, anexos)"><bpmn:incoming>f1</bpmn:incoming><bpmn:outgoing>f2</bpmn:outgoing></bpmn:userTask>
+<bpmn:userTask id="t_resp" name="Responder diligência&#10;(complementa e devolve)"><bpmn:incoming>f5</bpmn:incoming><bpmn:outgoing>f6</bpmn:outgoing></bpmn:userTask>
+<bpmn:userTask id="t_triar" name="Triar chamado&#10;(análise da solicitação)"><bpmn:incoming>f2</bpmn:incoming><bpmn:incoming>f6</bpmn:incoming><bpmn:outgoing>f3</bpmn:outgoing></bpmn:userTask>
+<bpmn:exclusiveGateway id="g1" name="Precisa de&#10;complemento?"><bpmn:incoming>f3</bpmn:incoming><bpmn:outgoing>f4</bpmn:outgoing><bpmn:outgoing>f7</bpmn:outgoing></bpmn:exclusiveGateway>
+<bpmn:userTask id="t_dilig" name="Solicitar diligência&#10;(SLA pausa)"><bpmn:incoming>f4</bpmn:incoming><bpmn:outgoing>f5</bpmn:outgoing></bpmn:userTask>
+<bpmn:exclusiveGateway id="g2" name="Desfecho da&#10;triagem?"><bpmn:incoming>f7</bpmn:incoming><bpmn:outgoing>f8</bpmn:outgoing><bpmn:outgoing>f11</bpmn:outgoing><bpmn:outgoing>f15</bpmn:outgoing><bpmn:outgoing>f17</bpmn:outgoing></bpmn:exclusiveGateway>
+<bpmn:userTask id="t_conv" name="Classificar e converter&#10;em demanda de obra"><bpmn:incoming>f8</bpmn:incoming><bpmn:outgoing>f9</bpmn:outgoing></bpmn:userTask>
+<bpmn:callActivity id="call1" name="Fluxo de demandas&#10;(GUT, CODIR, fila,&#10;atendimento)"><bpmn:incoming>f9</bpmn:incoming><bpmn:outgoing>f10</bpmn:outgoing></bpmn:callActivity>
+<bpmn:endEvent id="ee_obra" name="Chamado: obra"><bpmn:incoming>f10</bpmn:incoming></bpmn:endEvent>
+<bpmn:userTask id="t_aloc" name="Alocar responsáveis&#10;pelo atendimento"><bpmn:incoming>f11</bpmn:incoming><bpmn:outgoing>f12</bpmn:outgoing></bpmn:userTask>
+<bpmn:userTask id="t_atend" name="Atender&#10;(consultoria ou laudo)"><bpmn:incoming>f12</bpmn:incoming><bpmn:outgoing>f13</bpmn:outgoing></bpmn:userTask>
+<bpmn:userTask id="t_nt" name="Registrar orientação /&#10;minuta de Nota Técnica"><bpmn:incoming>f13</bpmn:incoming><bpmn:outgoing>f14</bpmn:outgoing></bpmn:userTask>
+<bpmn:endEvent id="ee_res" name="Resolvido"><bpmn:incoming>f14</bpmn:incoming></bpmn:endEvent>
+<bpmn:userTask id="t_enc" name="Encaminhar a outro setor&#10;(manutenção, DTI, adm.)"><bpmn:incoming>f15</bpmn:incoming><bpmn:outgoing>f16</bpmn:outgoing></bpmn:userTask>
+<bpmn:endEvent id="ee_enc" name="Encaminhado"><bpmn:incoming>f16</bpmn:incoming></bpmn:endEvent>
+<bpmn:endEvent id="ee_ne" name="Não enquadrado&#10;(improcedente, duplicado,&#10;cancelado)"><bpmn:incoming>f17</bpmn:incoming></bpmn:endEvent>
+<bpmn:sequenceFlow id="f1" sourceRef="se1" targetRef="t_abrir"/>
+<bpmn:sequenceFlow id="f2" sourceRef="t_abrir" targetRef="t_triar"/>
+<bpmn:sequenceFlow id="f3" sourceRef="t_triar" targetRef="g1"/>
+<bpmn:sequenceFlow id="f4" name="sim" sourceRef="g1" targetRef="t_dilig"/>
+<bpmn:sequenceFlow id="f5" sourceRef="t_dilig" targetRef="t_resp"/>
+<bpmn:sequenceFlow id="f6" sourceRef="t_resp" targetRef="t_triar"/>
+<bpmn:sequenceFlow id="f7" name="não" sourceRef="g1" targetRef="g2"/>
+<bpmn:sequenceFlow id="f8" name="obra" sourceRef="g2" targetRef="t_conv"/>
+<bpmn:sequenceFlow id="f9" sourceRef="t_conv" targetRef="call1"/>
+<bpmn:sequenceFlow id="f10" sourceRef="call1" targetRef="ee_obra"/>
+<bpmn:sequenceFlow id="f11" name="consultoria / laudo" sourceRef="g2" targetRef="t_aloc"/>
+<bpmn:sequenceFlow id="f12" sourceRef="t_aloc" targetRef="t_atend"/>
+<bpmn:sequenceFlow id="f13" sourceRef="t_atend" targetRef="t_nt"/>
+<bpmn:sequenceFlow id="f14" sourceRef="t_nt" targetRef="ee_res"/>
+<bpmn:sequenceFlow id="f15" name="encaminhado" sourceRef="g2" targetRef="t_enc"/>
+<bpmn:sequenceFlow id="f16" sourceRef="t_enc" targetRef="ee_enc"/>
+<bpmn:sequenceFlow id="f17" name="não enquadrado" sourceRef="g2" targetRef="ee_ne"/>
+<bpmn:textAnnotation id="an1"><bpmn:text>O prazo (SLA) é definido pela categoria e pausa enquanto o chamado está em diligência.</bpmn:text></bpmn:textAnnotation>
+<bpmn:association id="assoc_an1" sourceRef="g1" targetRef="an1"/>
+<bpmn:textAnnotation id="an2"><bpmn:text>Notificações automáticas: autor, responsáveis alocados, disciplina e campus, conforme o evento.</bpmn:text></bpmn:textAnnotation>
+<bpmn:association id="assoc_an2" sourceRef="t_triar" targetRef="an2"/>
+<bpmn:textAnnotation id="an3"><bpmn:text>Responsáveis contam na carga do profissional (contagem à parte dos pontos do art. 12).</bpmn:text></bpmn:textAnnotation>
+<bpmn:association id="assoc_an3" sourceRef="t_aloc" targetRef="an3"/>
+</bpmn:process>
+<bpmndi:BPMNDiagram id="dia1"><bpmndi:BPMNPlane id="plane1" bpmnElement="colab1">
+<bpmndi:BPMNShape id="sh_pool1" bpmnElement="pool1" isHorizontal="true"><dc:Bounds x="40" y="60" width="1500" height="700"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="sh_lane_campus" bpmnElement="lane_campus" isHorizontal="true"><dc:Bounds x="70" y="60" width="1470" height="160"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="sh_lane_seng" bpmnElement="lane_seng" isHorizontal="true"><dc:Bounds x="70" y="220" width="1470" height="540"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="sh_se1" bpmnElement="se1"><dc:Bounds x="100" y="122" width="36" height="36"/><bpmndi:BPMNLabel><dc:Bounds x="70" y="162" width="96" height="28"/></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="sh_t_abrir" bpmnElement="t_abrir"><dc:Bounds x="180" y="105" width="140" height="70"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="sh_t_resp" bpmnElement="t_resp"><dc:Bounds x="560" y="105" width="140" height="70"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="sh_t_triar" bpmnElement="t_triar"><dc:Bounds x="400" y="330" width="140" height="70"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="sh_g1" bpmnElement="g1"><dc:Bounds x="600" y="340" width="50" height="50"/><bpmndi:BPMNLabel><dc:Bounds x="570" y="394" width="110" height="28"/></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="sh_t_dilig" bpmnElement="t_dilig"><dc:Bounds x="560" y="460" width="140" height="70"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="sh_g2" bpmnElement="g2"><dc:Bounds x="740" y="340" width="50" height="50"/><bpmndi:BPMNLabel><dc:Bounds x="710" y="394" width="110" height="28"/></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="sh_t_conv" bpmnElement="t_conv"><dc:Bounds x="860" y="220" width="140" height="70"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="sh_call1" bpmnElement="call1"><dc:Bounds x="1060" y="220" width="140" height="70"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="sh_ee_obra" bpmnElement="ee_obra"><dc:Bounds x="1260" y="237" width="36" height="36"/><bpmndi:BPMNLabel><dc:Bounds x="1230" y="277" width="96" height="28"/></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="sh_t_aloc" bpmnElement="t_aloc"><dc:Bounds x="860" y="380" width="140" height="70"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="sh_t_atend" bpmnElement="t_atend"><dc:Bounds x="1060" y="380" width="140" height="70"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="sh_t_nt" bpmnElement="t_nt"><dc:Bounds x="1260" y="380" width="140" height="70"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="sh_ee_res" bpmnElement="ee_res"><dc:Bounds x="1460" y="397" width="36" height="36"/><bpmndi:BPMNLabel><dc:Bounds x="1430" y="437" width="96" height="28"/></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="sh_t_enc" bpmnElement="t_enc"><dc:Bounds x="860" y="540" width="140" height="70"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="sh_ee_enc" bpmnElement="ee_enc"><dc:Bounds x="1060" y="557" width="36" height="36"/><bpmndi:BPMNLabel><dc:Bounds x="1030" y="597" width="96" height="28"/></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="sh_ee_ne" bpmnElement="ee_ne"><dc:Bounds x="748" y="660" width="36" height="36"/><bpmndi:BPMNLabel><dc:Bounds x="718" y="700" width="96" height="28"/></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="sh_an1" bpmnElement="an1"><dc:Bounds x="320" y="470" width="220" height="60"/></bpmndi:BPMNShape>
+<bpmndi:BPMNEdge id="ed_assoc_an1" bpmnElement="assoc_an1"><di:waypoint x="320" y="500.0"/><di:waypoint x="320" y="500.0"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNShape id="sh_an2" bpmnElement="an2"><dc:Bounds x="1200" y="100" width="260" height="60"/></bpmndi:BPMNShape>
+<bpmndi:BPMNEdge id="ed_assoc_an2" bpmnElement="assoc_an2"><di:waypoint x="1200" y="130.0"/><di:waypoint x="1200" y="130.0"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNShape id="sh_an3" bpmnElement="an3"><dc:Bounds x="860" y="660" width="240" height="60"/></bpmndi:BPMNShape>
+<bpmndi:BPMNEdge id="ed_assoc_an3" bpmnElement="assoc_an3"><di:waypoint x="860" y="690.0"/><di:waypoint x="860" y="690.0"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="ed_f1" bpmnElement="f1"><di:waypoint x="136" y="140.0"/><di:waypoint x="180" y="140.0"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="ed_f2" bpmnElement="f2"><di:waypoint x="250.0" y="175"/><di:waypoint x="250" y="365"/><di:waypoint x="400" y="365.0"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="ed_f3" bpmnElement="f3"><di:waypoint x="540" y="365.0"/><di:waypoint x="600" y="365.0"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="ed_f4" bpmnElement="f4"><di:waypoint x="625.0" y="390"/><di:waypoint x="625" y="495"/><di:waypoint x="560" y="495.0"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="ed_f5" bpmnElement="f5"><di:waypoint x="700" y="495.0"/><di:waypoint x="740" y="495"/><di:waypoint x="740" y="600"/><di:waypoint x="500" y="600"/><di:waypoint x="500" y="140"/><di:waypoint x="560" y="140.0"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="ed_f6" bpmnElement="f6"><di:waypoint x="630.0" y="175"/><di:waypoint x="630" y="190"/><di:waypoint x="470" y="190"/><di:waypoint x="470.0" y="330"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="ed_f7" bpmnElement="f7"><di:waypoint x="650" y="365.0"/><di:waypoint x="740" y="365.0"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="ed_f8" bpmnElement="f8"><di:waypoint x="765.0" y="340"/><di:waypoint x="765" y="255"/><di:waypoint x="860" y="255.0"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="ed_f9" bpmnElement="f9"><di:waypoint x="1000" y="255.0"/><di:waypoint x="1060" y="255.0"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="ed_f10" bpmnElement="f10"><di:waypoint x="1200" y="255.0"/><di:waypoint x="1260" y="255.0"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="ed_f11" bpmnElement="f11"><di:waypoint x="790" y="365.0"/><di:waypoint x="860" y="415.0"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="ed_f12" bpmnElement="f12"><di:waypoint x="1000" y="415.0"/><di:waypoint x="1060" y="415.0"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="ed_f13" bpmnElement="f13"><di:waypoint x="1200" y="415.0"/><di:waypoint x="1260" y="415.0"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="ed_f14" bpmnElement="f14"><di:waypoint x="1400" y="415.0"/><di:waypoint x="1460" y="415.0"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="ed_f15" bpmnElement="f15"><di:waypoint x="765.0" y="390"/><di:waypoint x="765" y="575"/><di:waypoint x="860" y="575.0"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="ed_f16" bpmnElement="f16"><di:waypoint x="1000" y="575.0"/><di:waypoint x="1060" y="575.0"/></bpmndi:BPMNEdge>
+<bpmndi:BPMNEdge id="ed_f17" bpmnElement="f17"><di:waypoint x="765.0" y="390"/><di:waypoint x="765" y="678"/><di:waypoint x="748" y="678.0"/></bpmndi:BPMNEdge>
+</bpmndi:BPMNPlane></bpmndi:BPMNDiagram>
+</bpmn:definitions>

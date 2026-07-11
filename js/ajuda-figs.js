@@ -46,11 +46,69 @@ function tabela(head, linhas) {
     el('tbody', {}, linhas.map(r => el('tr', {}, r.map(c => el('td', {}, c))))));
 }
 
+// ---- SVG (fluxogramas) — construção via createElementNS, sem innerHTML ------
+const SVGNS = 'http://www.w3.org/2000/svg';
+function sv(tag, attrs = {}, ...kids) {
+  const n = document.createElementNS(SVGNS, tag);
+  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, String(v));
+  for (const k of kids.flat(Infinity)) if (k != null) n.append(k.nodeType ? k : document.createTextNode(String(k)));
+  return n;
+}
+
 const F = {};
 export function figura(id) {
   const f = F[id];
   return f ? f() : el('p', { class: 'nota' }, `(reprodução “${id}” indisponível)`);
 }
+
+// ============================================================================
+// FLUXOGRAMA — ciclo do chamado (usado nos manuais Campus e Engenharia).
+// Espelha docs/fluxo-chamados.bpmn (editável no Bizagi Modeler).
+// ============================================================================
+F['fluxo-chamado'] = () => {
+  const caixa = (x, y, w, h, titulo, sub, destaque) => sv('g', {},
+    sv('rect', { x, y, width: w, height: h, rx: 8, fill: 'var(--card)', stroke: destaque ? 'var(--acento)' : 'var(--borda-forte)', 'stroke-width': destaque ? 1.5 : 1 }),
+    sv('text', { x: x + w / 2, y: y + (sub ? 21 : h / 2 + 4), 'text-anchor': 'middle', fill: 'var(--texto)', 'font-size': 13, 'font-weight': 600 }, titulo),
+    sub ? sv('text', { x: x + w / 2, y: y + 38, 'text-anchor': 'middle', fill: 'var(--texto-2)', 'font-size': 11 }, sub) : null);
+  const seta = (d) => sv('path', { d, fill: 'none', stroke: 'var(--texto-2)', 'stroke-width': 1.2, 'marker-end': 'url(#af-seta)' });
+  const raia = (y, h, rotulo) => sv('g', {},
+    sv('rect', { x: 8, y, width: 664, height: h, rx: 10, fill: 'none', stroke: 'var(--borda)', 'stroke-dasharray': '5 4' }),
+    sv('text', { x: 20, y: y + 18, fill: 'var(--texto-2)', 'font-size': 11, 'font-weight': 600, 'letter-spacing': '.06em' }, rotulo));
+  const svg = sv('svg', { viewBox: '0 0 680 640', width: '100%', role: 'img', 'aria-label': 'Fluxo do chamado, da abertura à conclusão' },
+    sv('defs', {}, sv('marker', { id: 'af-seta', viewBox: '0 0 10 10', refX: 8, refY: 5, markerWidth: 6, markerHeight: 6, orient: 'auto-start-reverse' },
+      sv('path', { d: 'M2 1L8 5L2 9', fill: 'none', stroke: 'var(--texto-2)', 'stroke-width': 1.5, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }))),
+    raia(8, 116, 'CAMPUS'),
+    raia(132, 500, 'SENG / DECOF'),
+    caixa(60, 32, 180, 52, 'Abrir chamado', 'categoria, urgência, anexos'),
+    caixa(430, 32, 190, 52, 'Responder diligência', 'complementa e devolve'),
+    caixa(60, 164, 180, 52, 'Triagem do chamado', 'notifica envolvidos'),
+    caixa(430, 164, 190, 52, 'Solicitar diligência', 'prazo (SLA) pausa'),
+    caixa(60, 256, 180, 52, 'Decisão da triagem', 'desfecho com parecer'),
+    caixa(28, 352, 120, 52, 'Obra', 'cria demanda', true),
+    caixa(168, 352, 170, 52, 'Consultoria/laudo', 'aloca responsáveis'),
+    caixa(358, 352, 124, 52, 'Encaminhado', 'outro setor'),
+    caixa(502, 352, 150, 52, 'Não enquadrado', 'improcedente etc.'),
+    caixa(28, 444, 150, 52, 'Fila de obras', 'GUT → CODIR → fila', true),
+    caixa(168, 444, 170, 52, 'Em atendimento', 'conta na carga'),
+    caixa(183, 536, 140, 52, 'Resolvido', 'orientação ou NT'),
+    seta('M150 84 V160'),
+    seta('M240 182 H426'),
+    seta('M560 164 V88'),
+    seta('M490 84 V140 H170 V160'),
+    seta('M150 216 V252'),
+    seta('M150 308 V330 H88 V348'),
+    seta('M150 308 V330 H253 V348'),
+    seta('M150 308 V330 H420 V348'),
+    seta('M150 308 V330 H577 V348'),
+    seta('M88 404 V420 H103 V440'),
+    seta('M253 404 V440'),
+    seta('M253 496 V532'));
+  return ajudaFig({
+    titulo: 'Ciclo do chamado — da abertura à conclusão',
+    legenda: 'Abertura pelo campus → triagem (diligência opcional, com o SLA pausado) → desfecho: obra (vira demanda e segue GUT → CODIR → fila), consultoria/laudo (atendimento → resolvido), encaminhado ou não enquadrado.',
+    corpo: el('div', { style: 'padding:6px' }, svg),
+  });
+};
 
 // ============================================================================
 // COMPARTILHADA
