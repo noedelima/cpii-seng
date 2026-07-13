@@ -25,6 +25,7 @@ export function viewChamadosHub(rerender) {
       aplicarFiltrosExternos({
         status: p.get('status') || '', campus: p.get('campus') || '',
         tipo: p.get('tipo') || '', esp: p.get('esp') || '', busca: p.get('busca') || '',
+        fase: p.get('fase') || '',
       });
     }
     history.replaceState(null, '', location.pathname + location.search + '#/chamados');

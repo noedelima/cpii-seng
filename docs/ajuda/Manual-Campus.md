@@ -68,6 +68,8 @@ O sistema é o **canal único e on-line** para o campus solicitar e acompanhar o
 
 @fig fluxo-chamado
 
+Na página do chamado, a **trilha de etapas** no topo (Aberto → Triagem → Atendimento → Resolvido) mostra onde ele está; quando vira demanda de obra, a trilha continua no dossiê da demanda vinculada — do planejamento da contratação ao recebimento.
+
 **Abrir chamado → Em triagem →** *desfecho*:
 
 - **Obra** → a SENG converte o chamado em **Demanda**, que segue o fluxo **Recebido → Análise → CODIR → Na fila → Em atendimento → Concluído**.

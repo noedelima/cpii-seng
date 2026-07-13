@@ -74,6 +74,21 @@ Caminho principal:
 
 Estados laterais: **Em diligência**, **Suspenso**, **Cancelado**, **Não enquadrado (Art. 18)**.
 
+### Fases do atendimento (ciclo da contratação)
+
+Dentro de **Em atendimento**, a demanda percorre as **fases do ciclo da contratação**, exibidas no **stepper** (a trilha de etapas no topo da página) e como etiqueta na fila:
+
+**Planejamento → Licitação → Execução → Recebimento**
+
+- **Planejamento da contratação** — o cartão **Fase atual** traz o **checklist de artefatos** (integrantes indicados, Portaria, ETP, Matriz de Riscos, Pesquisa de Preços, TR/Projeto Básico, Lista de Verificação e envio pelo Processo SUAP). Cada item marcado registra data e responsável no histórico.
+- **Licitação** — registre o **resultado do certame**: com **êxito**, a demanda avança à execução; **deserto** ou **fracassado**, ela **retorna ao planejamento** para ajuste dos artefatos (com registro no histórico).
+- **Execução** — contrato em andamento, acompanhado pelos fiscais alocados.
+- **Recebimento** — recebimento provisório/definitivo do objeto; ao final, a Chefia **conclui a demanda**.
+
+Demandas em atendimento **anteriores à classificação** aparecem “sem fase definida” até a equipe defini-la no cartão **Fase atual**. No ciclo **projeto → obra**, registre também a **origem do projeto** (interno ou contratado) — projeto interno pontua pela alocação (art. 11).
+
+> **Suspensão com motivo.** Ao suspender uma demanda, o sistema pede o **motivo** (dotação orçamentária, pendência técnica ou outro) e uma observação. A suspensão **não encerra o ciclo**: o motivo fica visível no topo da página e, resolvida a pendência, a Chefia retorna a demanda ao fluxo — o retorno também fica registrado.
+
 Regras de transição (resumo):
 
 - **Engenharia** move entre: Em análise, Em diligência e Aguardando aprovação do CODIR.
@@ -130,10 +145,10 @@ O cálculo segue o modelo de priorização da Seção (art. 5º, II):
 
 ## 6. Fluxo 2 — Abrir e ler uma demanda
 
-Clique em uma linha do painel para abrir o detalhe. A página é dividida em duas colunas:
+Clique em uma linha do painel para abrir o detalhe. No topo, o **stepper** mostra o ciclo completo — da origem (chamado, quando houver) até o recebimento — com a etapa atual destacada. A página é dividida em duas colunas:
 
-- **Esquerda:** dados da solicitação e a **Linha do tempo** — comentários, anexos e eventos em ordem cronológica.
-- **Direita:** **Priorização**, **Avaliação técnica**, **Gestão**, **Alocação** e **Anexos**.
+- **Esquerda:** dados da solicitação e a **Linha do tempo** — comentários, anexos e eventos em ordem cronológica. Em demandas originadas de chamado, a linha do tempo **incorpora o histórico do chamado de origem** (eventos prefixados) e o topo traz o vínculo `origem: CH…`.
+- **Direita:** **Fase atual** (em atendimento), **Priorização**, **Avaliação técnica**, **Gestão**, **Alocação** e **Anexos**.
 
 @fig eng-demanda
 
@@ -216,10 +231,10 @@ Quando a demanda entra em **Em atendimento** (ou é **Concluída**), o sistema *
 **Passo a passo**
 
 1. Abra uma demanda (preferencialmente **Na fila** ou **Em atendimento**).
-2. No cartão **Gestão**, seção **Alocação**, marque (em listas de **seleção múltipla**):
+2. No cartão **Gestão**, seção **Alocação**, cada grupo usa o mesmo padrão: **selecione o profissional na lista e clique em Incluir**; os incluídos aparecem logo abaixo, cada um com o botão **✕** para remover. A lista de seleção mostra **apenas quem ainda não foi incluído**.
    - **Fiscais técnicos titulares** — **um ou mais**. Use mais de um quando a fiscalização for **compartilhada** (p. ex., o titular pediu exoneração e a fiscalização ficou a cargo de dois servidores) ou em obras **multidisciplinares**, com fiscais de especialidades diferentes.
    - **Fiscais técnicos substitutos** — zero, um ou mais.
-   - **Equipe de planejamento** (art. 13), marcando os integrantes.
+   - **Equipe de planejamento** (art. 13), incluindo os integrantes.
 3. Cada nome mostra a **especialidade** e a **carga atual** (ex.: `Civil (3/6)`). **Cada fiscal alocado (titular ou substituto) pontua** pelo art. 11.
 4. Um mesmo profissional **não pode** ser titular e substituto na mesma demanda.
 5. Se a alocação **exceder o limite de 6 pontos** (art. 12), o sistema **avisa** e pede confirmação (serviço emergencial pode exceder, §2º).
@@ -339,13 +354,15 @@ O **Chamado** é a **porta de entrada única** da Engenharia. O campus abre um c
 
 @fig ch-painel
 
-### Triagem (cartão “Triagem”)
+### Ação do momento (cartão contextual)
 
-1. **Iniciar triagem** (Aberto → Em triagem).
-2. **Solicitar diligência**: escreva o que falta; o chamado vai a **Em diligência**, o campus é avisado e o **SLA pausa**.
+A página do chamado também ganhou o **stepper** (Aberto → Triagem → Atendimento → Resolvido) e o cartão **Ação do momento**, que mostra **somente os próximos passos válidos** para o status atual:
+
+1. **Aberto** → **Iniciar triagem**.
+2. **Em triagem** → **Desfecho da triagem** (abaixo) e, se faltar informação, **Solicitar diligência**: escreva o que falta; o chamado vai a **Em diligência**, o campus é avisado e o **SLA pausa**.
 3. **Desfecho** — escolha e aplique:
    - **Obra (vira Demanda)** — abre o bloco de **classificação** (tipo de demanda, projeto existe, tombado, prazo, valor, Processo SUAP e **especialidades**, já pré-marcadas pela disciplina da categoria). Ao confirmar, cria-se a **Demanda** (status Recebido) vinculada ao chamado, que segue o fluxo **GUT → CODIR → fila**. O chamado passa a **“Encaminhado à fila de Obras”**, com link para a demanda.
-   - **Consultoria** / **Laudo** — o chamado vai a **Em atendimento**; conclua depois em **“Concluir o atendimento”** (registra a orientação/NT e marca **Resolvido**; o campus é avisado).
+   - **Consultoria** / **Laudo** — selecione os **responsáveis pelo atendimento** (lista de seleção + Incluir); o chamado vai a **Em atendimento**. Nesse status, a Ação do momento oferece **Concluir o atendimento** (registra a orientação/NT e marca **Resolvido**; o campus é avisado), o ajuste dos **responsáveis** e — se a orientação concluir pela necessidade de contratação — **Converter em demanda de obra** (disponível também com o chamado **Resolvido**), levando o histórico para o dossiê da demanda.
    - **Encaminhar a outro setor** — selecione o setor e registre a orientação (status **Encaminhado**).
    - **Improcedente** / **Duplicado** — encerra com o motivo.
 

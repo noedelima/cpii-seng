@@ -8,7 +8,7 @@ export const APP = {
   orgao: 'Colégio Pedro II',
   setor: 'Seção de Engenharia — SENG/DECOF',
   portaria: 'Portaria nº 7503/REITORIA/CPII, de 24/11/2025',
-  versao: '1.16.2',
+  versao: '1.17.0',
 };
 
 // --- Parâmetros ajustáveis pelo Administrador (defaults) ---------------------
@@ -81,6 +81,54 @@ export const TRANSICOES = {
 
 // Status que travam exclusão e alteração de classificação (exigência funcional)
 export const STATUS_TRAVADOS = ['atendimento', 'concluido'];
+
+// --- Workflow v2: fases do atendimento (BPMN “Atendimento de Chamados v2”) ----
+// Sub-status de “Em atendimento” para demandas que seguem o ciclo da contratação.
+// `fase: null` = demanda anterior à classificação (exibida como hoje).
+export const FASES_DEMANDA = [
+  { id: 'planejamento', nome: 'Planejamento da contratação', curto: 'Planejamento' },
+  { id: 'licitacao',    nome: 'Licitação',                   curto: 'Licitação' },
+  { id: 'execucao',     nome: 'Execução',                    curto: 'Execução' },
+  { id: 'recebimento',  nome: 'Recebimento',                 curto: 'Recebimento' },
+];
+export const faseNome  = (id) => (FASES_DEMANDA.find(f => f.id === id) || {}).nome || id || '—';
+export const faseCurta = (id) => (FASES_DEMANDA.find(f => f.id === id) || {}).curto || id || '—';
+
+// Checklist de artefatos da fase de planejamento — fluxo da fase preparatória
+// (Lei nº 14.133/2021: ETP → riscos ∥ preços → TR/PB → lista de verificação).
+export const ARTEFATOS_PLANEJAMENTO = [
+  { id: 'indicacao',        nome: 'Integrantes técnicos indicados' },
+  { id: 'portaria',         nome: 'Portaria da equipe publicada' },
+  { id: 'etp',              nome: 'Estudo Técnico Preliminar (ETP)' },
+  { id: 'matrizRiscos',     nome: 'Mapa / Matriz de Riscos' },
+  { id: 'pesquisaPrecos',   nome: 'Pesquisa de Preços' },
+  { id: 'trpb',             nome: 'Termo de Referência / Projeto Básico' },
+  { id: 'listaVerificacao', nome: 'Lista de Verificação (AGU)' },
+  { id: 'envioSuap',        nome: 'Processo SUAP instruído e encaminhado' },
+];
+
+// Suspensão estruturada — a suspensão nunca é fim de ciclo: registra o motivo
+// e a demanda retorna manualmente (Chefia) quando a pendência se resolve.
+export const MOTIVOS_SUSPENSAO = [
+  { id: 'dotacao', nome: 'Aguardando dotação orçamentária' },
+  { id: 'tecnico', nome: 'Pendência técnica' },
+  { id: 'outro',   nome: 'Outro motivo' },
+];
+export const motivoSuspensaoNome = (id) => (MOTIVOS_SUSPENSAO.find(m => m.id === id) || {}).nome || id || '—';
+
+// Resultado do certame (fase licitação). Deserto/fracassado devolve a demanda
+// à fase de planejamento (ajuste dos artefatos), com registro no histórico.
+export const RESULTADOS_CERTAME = [
+  { id: 'exito',      nome: 'Êxito — contrato assinado' },
+  { id: 'deserto',    nome: 'Deserto — sem licitantes' },
+  { id: 'fracassado', nome: 'Fracassado — propostas desclassificadas' },
+];
+
+// Origem do projeto no ciclo projeto → obra (art. 11: elaboração interna pontua).
+export const PROJETO_ORIGEM = [
+  { id: 'interno',    nome: 'Interno (SENG)' },
+  { id: 'contratado', nome: 'Contratado' },
+];
 
 // Reversões de status — disponíveis SOMENTE para Chefe/Admin (statusTotal), para
 // desfazer um “Em atendimento” indevido ou reabrir uma conclusão acidental.

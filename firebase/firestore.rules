@@ -54,7 +54,17 @@ service cloud.firestore {
           && (!('obsExterna' in d) || (d.obsExterna is list && d.obsExterna.size() <= 300))
           && (!('comentarios' in d) || (d.comentarios is list && d.comentarios.size() <= 300))
           && (!('anexos' in d) || (d.anexos is list && d.anexos.size() <= 20))
-          && (!('etapa' in d) || d.etapa == null || d.etapa in ['projeto','obra']);
+          && (!('etapa' in d) || d.etapa == null || d.etapa in ['projeto','obra'])
+          // Workflow v2 (BPMN Atendimento de Chamados v2): fase do atendimento,
+          // checklist de artefatos, suspensão estruturada, certame e origem do projeto.
+          && (!('fase' in d) || d.fase == null || d.fase in ['planejamento','licitacao','execucao','recebimento'])
+          && (!('artefatos' in d) || d.artefatos == null || d.artefatos is map)
+          && (!('suspensao' in d) || d.suspensao == null
+              || (d.suspensao is map && d.suspensao.get('motivo','') in ['dotacao','tecnico','outro']))
+          && (!('certame' in d) || d.certame == null
+              || (d.certame is map && d.certame.get('resultado', null) in [null,'exito','deserto','fracassado']))
+          && (!('projetoOrigem' in d) || d.projetoOrigem == null || d.projetoOrigem in ['interno','contratado'])
+          && (!('chamadoOrigem' in d) || d.chamadoOrigem == null || (d.chamadoOrigem is string && d.chamadoOrigem.size() <= 24));
     }
     // Deliberação do CODIR: muda somente codirAprovado/ajuste/status/historico/atualizadoEm,
     // com transição de status restrita a codir→fila (aprovação posiciona na fila).
@@ -138,6 +148,13 @@ service cloud.firestore {
         // Linha do tempo unificada: fio único de comentários + anexos — Eng, CODIR e campus dono.
         || ( (isEng() || isCodir() || isCampusDe(resource.data.campus))
              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['comentarios','anexos','historico','atualizadoEm']) )
+        // Workflow v2: durante o atendimento, a equipe técnica (Eng/Chefe/Admin)
+        // atualiza fase, checklist de artefatos, certame e origem do projeto —
+        // sem tocar status, classificação ou deliberação (imutáveis pela trava).
+        || ( isEng()
+             && resource.data.status == 'atendimento'
+             && request.resource.data.diff(resource.data).affectedKeys()
+                  .hasOnly(['fase','artefatos','certame','projetoOrigem','historico','atualizadoEm']) )
       );
 
       // Exclusão: chefe/admin e nunca em atendimento/concluído

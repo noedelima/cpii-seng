@@ -2,17 +2,17 @@
 // Dashboard público — resumo clicável, filtros, fila e exportação PDF efêmera
 // =============================================================================
 import { el, frag, fmtNum, fmtDataHora, badgeStatus, select, toast, debounce } from '../ui.js';
-import { STATUS, CAMPI, TIPOS_ATIVIDADE, ESPECIALIDADES, STATUS_ORDEM, DIAS_ARQUIVO_MORTO, DIAS_NOTIFICACAO, campusNome, statusNome, statusChamadoNome, statusChamadoCor, slaChamado, categoriaChamado } from '../config.js';
+import { STATUS, CAMPI, TIPOS_ATIVIDADE, ESPECIALIDADES, STATUS_ORDEM, DIAS_ARQUIVO_MORTO, DIAS_NOTIFICACAO, campusNome, statusNome, statusChamadoNome, statusChamadoCor, slaChamado, categoriaChamado, FASES_DEMANDA, faseCurta } from '../config.js';
 import { prioridade, pontosArt11, ordenarFila, cargaProfissionais, fiscaisDe } from '../calc.js';
 import { store } from '../store.js';
 import { can } from '../auth.js';
 
 // Estado dos filtros (persiste durante a sessão de navegação)
-const filtros = { busca: '', campus: '', status: '', tipo: '', esp: '', minhas: false };
+const filtros = { busca: '', campus: '', status: '', tipo: '', esp: '', fase: '', minhas: false };
 
 // Aplica filtros vindos de links externos (ex.: gráficos do Início — #/chamados?status=fila)
 export function aplicarFiltrosExternos(obj = {}) {
-  Object.assign(filtros, { busca: '', campus: '', status: '', tipo: '', esp: '', minhas: false }, obj);
+  Object.assign(filtros, { busca: '', campus: '', status: '', tipo: '', esp: '', fase: '', minhas: false }, obj);
 }
 let purgaFeita = false; // limpeza do arquivo morto roda uma vez por sessão (Chefe/Admin)
 let purgaNotifFeita = false; // limpeza do próprio inbox de notificações, 1x por sessão
@@ -32,6 +32,7 @@ export function viewDashboard(rerender) {
     (!filtros.status || d.status === filtros.status) &&
     (!filtros.tipo || d.aval?.tipoAtividade === filtros.tipo) &&
     (!filtros.esp || (d.especialidades || []).includes(filtros.esp)) &&
+    (!filtros.fase || (filtros.fase === 'sem-fase' ? (d.status === 'atendimento' && !d.fase) : d.fase === filtros.fase)) &&
     (!txt || `${d.id} ${d.objeto} ${d.descricao} ${campusNome(d.campus)}`.toLowerCase().includes(txt))
   );
   // Profissional vinculado ao usuário pelo e-mail de login
@@ -76,14 +77,17 @@ export function viewDashboard(rerender) {
   selTipoF.addEventListener('change', () => { filtros.tipo = selTipoF.value; rerender(); });
   const selEsp = select(ESPECIALIDADES, { value: filtros.esp, placeholder: 'Todas as especialidades', 'aria-label': 'Filtrar por especialidade' });
   selEsp.addEventListener('change', () => { filtros.esp = selEsp.value; rerender(); });
+  const selFase = select([...FASES_DEMANDA.map(f => ({ id: f.id, nome: f.curto })), { id: 'sem-fase', nome: 'Sem fase definida' }],
+    { value: filtros.fase, placeholder: 'Todas as fases', 'aria-label': 'Filtrar por fase do atendimento' });
+  selFase.addEventListener('change', () => { filtros.fase = selFase.value; rerender(); });
 
   const chips = el('div', { class: 'filtros' },
-    inBusca, selCampus, selStatus, selTipoF, selEsp,
+    inBusca, selCampus, selStatus, selTipoF, selEsp, selFase,
     meuProf ? el('label', { class: 'chip-check' },
       el('input', { type: 'checkbox', ...(filtros.minhas ? { checked: true } : {}), onchange: (e) => { filtros.minhas = e.target.checked; rerender(); } }),
       ' Minhas atribuições') : null,
-    (filtros.busca || filtros.campus || filtros.status || filtros.tipo || filtros.esp || filtros.minhas)
-      ? el('button', { class: 'btn ghost sm', onclick: () => { Object.assign(filtros, { busca: '', campus: '', status: '', tipo: '', esp: '', minhas: false }); rerender(); } }, 'Limpar filtros')
+    (filtros.busca || filtros.campus || filtros.status || filtros.tipo || filtros.esp || filtros.fase || filtros.minhas)
+      ? el('button', { class: 'btn ghost sm', onclick: () => { Object.assign(filtros, { busca: '', campus: '', status: '', tipo: '', esp: '', fase: '', minhas: false }); rerender(); } }, 'Limpar filtros')
       : null,
   );
 
@@ -101,7 +105,8 @@ export function viewDashboard(rerender) {
       el('td', {}, campusNome(d.campus)),
       el('td', { class: 'objeto' }, el('strong', {}, d.objeto || '—'),
         d.emergencial || d.aval?.especial ? el('span', { class: 'tag-emergencial', title: 'Serviço emergencial (art. 11, §5º)' }, 'EMERGENCIAL') : null),
-      el('td', {}, badgeStatus(d.status)),
+      el('td', {}, badgeStatus(d.status),
+        d.status === 'atendimento' && d.fase ? el('span', { class: 'fase-badge' }, faseCurta(d.fase)) : null),
       el('td', { class: 'num' }, pr.gut == null ? '—' : String(pr.gut)),
       el('td', { class: 'num', title: d.ajuste?.valor ? `Inclui ajuste de ${fmtNum(d.ajuste.valor)} (CODIR)` : '' },
         pr.final == null ? '—' : fmtNum(pr.final), d.ajuste?.valor ? el('span', { class: 'mark-ajuste' }, '*') : null),

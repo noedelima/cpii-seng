@@ -1,8 +1,10 @@
 // =============================================================================
 // Detalhe da demanda — consulta pública + tratamento (GUT, status, alocação)
 // =============================================================================
-import { el, frag, campo, select, toast, confirmar, badgeStatus, fmtMoeda, fmtNum, fmtDataHora, abreviarNome } from '../ui.js';
-import { campusNome, statusNome, TIPOS_DEMANDA, PROJETO_EXISTE, PRAZOS, TIPOS_ATIVIDADE, ESPECIALIDADES, ESCALA_G, ESCALA_U, ESCALA_T, precisaEtapaProjeto, DIAS_ARQUIVO_MORTO } from '../config.js';
+import { el, frag, campo, select, toast, confirmar, badgeStatus, fmtMoeda, fmtNum, fmtData, fmtDataHora, abreviarNome } from '../ui.js';
+import { campusNome, statusNome, TIPOS_DEMANDA, PROJETO_EXISTE, PRAZOS, TIPOS_ATIVIDADE, ESPECIALIDADES, ESCALA_G, ESCALA_U, ESCALA_T, precisaEtapaProjeto, DIAS_ARQUIVO_MORTO, FASES_DEMANDA, faseNome, faseCurta, ARTEFATOS_PLANEJAMENTO, MOTIVOS_SUSPENSAO, motivoSuspensaoNome, PROJETO_ORIGEM } from '../config.js';
+import { selecaoPessoas } from '../alocacao.js';
+import { renderStepper } from '../stepper.js';
 import { prioridade, pontosArt11, faixaValorLabel, cargaProfissionais, fiscaisDe } from '../calc.js';
 import { store } from '../store.js';
 import { can, podeAvaliar, podeExcluir, podeComplementar, podeDeliberarCodir, transicoesPermitidas, travada, ehReversaoStatus, podeEditarDados, ehCampusDe } from '../auth.js';
@@ -30,13 +32,19 @@ export function viewDemanda(rerender, id) {
   const bloqueada = travada(d);
   const excluida = d.status === 'excluido';
 
+  // ---------- stepper do ciclo completo (workflow v2) ------------------------
+  const stepper = excluida ? null : stepperDemanda(d, user);
+
   // ---------- coluna 1: dados da solicitação --------------------------------
   const dados = el('section', { class: 'card' },
     el('div', { class: 'detalhe-topo' },
       el('div', {},
         user ? el('h1', { class: 'mono' }, d.id) : null, // referência interna (BD) — só autenticado
         el('h2', { class: 'detalhe-objeto' }, d.objeto || '—')),
-      badgeStatus(d.status)),
+      el('div', { class: 'detalhe-badges' },
+        badgeStatus(d.status),
+        (d.status === 'atendimento' && d.fase) ? el('span', { class: 'fase-badge' }, faseCurta(d.fase)) : null,
+        (user && d.chamadoOrigem) ? el('a', { class: 'fase-badge', href: `#/chamado/${d.chamadoOrigem}`, title: 'Abrir o chamado de origem' }, `origem: ${d.chamadoOrigem}`) : null)),
     linha('Campus', campusNome(d.campus)),
     linha('Localização', d.local || '—'),
     linha('Tipo de demanda', nomeDe(TIPOS_DEMANDA, d.tipoDemanda)),
@@ -47,6 +55,8 @@ export function viewDemanda(rerender, id) {
     linha('Valor estimado', fmtMoeda(d.valorEstimado)),
     linha('Prazo estimado', d.prazoEstimado ? nomeDe(PRAZOS, d.prazoEstimado) : '—'),
     linha('Processo SUAP', d.processoSuap || '—'),
+    (d.status === 'atendimento' && d.fase) ? linha('Fase do atendimento', faseNome(d.fase)) : null,
+    d.projetoOrigem ? linha('Origem do projeto', nomeDe(PROJETO_ORIGEM, d.projetoOrigem)) : null,
     linha('Emergencial (solicitado)', d.emergencial ? 'Sim — art. 11, §5º' : 'Não'),
     linha('Registrada em', fmtDataHora(d.criadoEm) + (d.solicitante?.nome && user ? ` por ${d.solicitante.nome}` : '')),
     el('div', { class: 'detalhe-desc' }, el('h3', {}, 'Descrição'), el('p', {}, d.descricao || '—')),
@@ -276,11 +286,27 @@ export function viewDemanda(rerender, id) {
             const okMesmo = await confirmar('Iniciar sem aprovação do CODIR?', 'Esta demanda ainda não está marcada como aprovada pelo CODIR. Iniciar o atendimento mesmo assim (ex.: emergência — art. 9º)?', { ok: 'Iniciar mesmo assim', perigo: true });
             if (!okMesmo) return;
           }
-          if (['cancelado', 'suspenso', 'nao-enquadrado'].includes(st)) {
+          // Suspensão estruturada (workflow v2): registra o motivo — a suspensão
+          // nunca é fim de ciclo; o retorno reposiciona a demanda no fluxo.
+          if (st === 'suspenso') {
+            const susp = await pedirSuspensao();
+            if (!susp) return;
+            await s.atualizarDemanda(d.id, { status: 'suspenso', suspensao: { ...susp, desde: Date.now() } },
+              `Demanda suspensa — ${motivoSuspensaoNome(susp.motivo)}${susp.obs ? ': ' + susp.obs : ''}`);
+            toast('Demanda suspensa — motivo registrado.');
+            return;
+          }
+          if (['cancelado', 'nao-enquadrado'].includes(st)) {
             const okConf = await confirmar(`Confirmar “${statusNome(st)}”?`, 'A alteração ficará registrada no histórico da demanda.', { ok: 'Confirmar', perigo: st === 'cancelado' });
             if (!okConf) return;
           }
-          await s.atualizarDemanda(d.id, { status: st }, `Status alterado para “${statusNome(st)}”`);
+          const patchSt = { status: st };
+          let eventoSt = `Status alterado para “${statusNome(st)}”`;
+          if (d.status === 'suspenso' && d.suspensao) {
+            patchSt.suspensao = null;
+            eventoSt = `Retorno de suspensão (${motivoSuspensaoNome(d.suspensao.motivo)}) — status “${statusNome(st)}”`;
+          }
+          await s.atualizarDemanda(d.id, patchSt, eventoSt);
           const tipoN = { diligencia: 'diligencia', codir: 'codir', fila: 'fila', concluido: 'concluido' }[st];
           if (tipoN) await notificar(s, tipoN, d, interna);
           toast(`Status: ${statusNome(st)}.`);
@@ -293,25 +319,18 @@ export function viewDemanda(rerender, id) {
       const ativos = profissionais.filter(p => p.ativo !== false);
       const { titulares: titAtuais, substitutos: subAtuais } = fiscaisDe(interna);
       const rotuloFiscal = (p) => abreviarNome(p.nome) + ` — ${p.area} (${carga[p.id].regular}/${params.limitePontos})`;
-      const mkFiscalChecks = (atuais) => ativos.map(p => {
-        const c = el('input', { type: 'checkbox', value: p.id, ...(atuais.includes(p.id) ? { checked: true } : {}) });
-        return el('label', { class: 'chip-check' }, c, ' ' + rotuloFiscal(p));
-      });
-      const titChecks = mkFiscalChecks(titAtuais);
-      const subChecks = mkFiscalChecks(subAtuais);
-      const eqChecks = ativos.map(p => {
-        const c = el('input', { type: 'checkbox', value: p.id, ...((interna.equipePlanejamento || []).includes(p.id) ? { checked: true } : {}) });
-        return el('label', { class: 'chip-check' }, c, ' ' + abreviarNome(p.nome));
-      });
+      const selTit = selecaoPessoas({ itens: ativos, atuais: titAtuais, rotulo: rotuloFiscal, vazio: 'Nenhum fiscal titular incluído.' });
+      const selSub = selecaoPessoas({ itens: ativos, atuais: subAtuais, rotulo: rotuloFiscal, vazio: 'Nenhum fiscal substituto incluído.' });
+      const selEq  = selecaoPessoas({ itens: ativos, atuais: interna.equipePlanejamento || [], rotulo: (p) => abreviarNome(p.nome), vazio: 'Nenhum integrante incluído.' });
       filhos.push(el('h3', {}, 'Alocação ', el('span', { class: 'sub' }, '(visível somente autenticado)')));
       filhos.push(el('div', { class: 'form-grid' },
-        campo('Fiscais técnicos titulares', el('div', { class: 'chips chips-pessoas' }, titChecks), 'Um ou mais. Cada fiscal pontua pelo art. 11.'),
-        campo('Fiscais técnicos substitutos', el('div', { class: 'chips chips-pessoas' }, subChecks)),
-        campo('Integrantes técnicos — equipe de planejamento (art. 13)', el('div', { class: 'chips chips-pessoas' }, eqChecks)),
+        campo('Fiscais técnicos titulares', selTit.node, 'Um ou mais. Cada fiscal pontua pelo art. 11.'),
+        campo('Fiscais técnicos substitutos', selSub.node),
+        campo('Integrantes técnicos — equipe de planejamento (art. 13)', selEq.node),
         el('button', { class: 'btn primario', onclick: async () => {
-          const tit = titChecks.map(l => l.querySelector('input')).filter(c => c.checked).map(c => c.value);
-          const sub = subChecks.map(l => l.querySelector('input')).filter(c => c.checked).map(c => c.value);
-          const equipe = eqChecks.map(l => l.querySelector('input')).filter(c => c.checked).map(c => c.value);
+          const tit = selTit.get();
+          const sub = selSub.get();
+          const equipe = selEq.get();
           const ambos = tit.filter(pid => sub.includes(pid));
           if (ambos.length) { toast('Um profissional não pode ser titular e substituto na mesma demanda.', 'erro'); return; }
           // Aviso de limite do art. 12 (não bloqueia emergencial — art. 12 §2º)
@@ -388,6 +407,10 @@ export function viewDemanda(rerender, id) {
       linha('Equipe de planejamento', (interna.equipePlanejamento || []).map(nomeProf).join(', ') || '—'));
   }
 
+  // ---------- fase atual do atendimento (workflow v2) -------------------------------
+  const cartaoFase = (user && can(user, 'avaliar') && d.status === 'atendimento' && !excluida)
+    ? cartaoFaseAtual(d, s, user, interna) : null;
+
   // ---------- anexos (componente unificado com os chamados) ---------------------------
   const ehCampusDono = ehCampusDe(user, d.campus);
   let cartaoAnexos = null;
@@ -406,8 +429,18 @@ export function viewDemanda(rerender, id) {
 
   // ---------- linha do tempo (fio único de comentários + anexos + eventos) -----------
   const podeComentar = !!(user && !excluida && (can(user, 'avaliar') || can(user, 'codir') || ehCampusDono));
+  // Dossiê autocontido: o histórico do chamado de origem entra na linha do tempo
+  // (somente leitura, eventos prefixados) — nada se perde na conversão.
+  let docTempo = d;
+  if (user && d.chamadoOrigem && typeof s.getChamado === 'function') {
+    const cOrig = s.getChamado(d.chamadoOrigem);
+    if (cOrig) {
+      const histCh = (cOrig.historico || []).map(h => ({ ...h, acao: `[chamado ${cOrig.id}] ${h.acao}` }));
+      docTempo = { ...d, historico: [...(d.historico || []), ...histCh] };
+    }
+  }
   const linhaTempo = renderLinhaTempo({
-    doc: d, user, rerender,
+    doc: docTempo, user, rerender,
     extras: { obsEngenharia: interna.obsEngenharia },
     anexos: (d.anexos || []),
     podeComentar,
@@ -432,9 +465,196 @@ export function viewDemanda(rerender, id) {
 
   return frag(
     el('a', { class: 'voltar', href: '#/chamados' }, '← Voltar aos chamados'),
+    stepper,
     el('div', { class: 'detalhe-grid' },
       el('div', { class: 'col' }, dados, cartaoEditarDados, linhaTempo),
-      el('div', { class: 'col' }, cartaoArquivo, cartaoPontuacao, cartaoCodir, cartaoAvaliacao, cartaoGestao, cartaoEquipe, cartaoAnexos)));
+      el('div', { class: 'col' }, cartaoArquivo, cartaoFase, cartaoPontuacao, cartaoCodir, cartaoAvaliacao, cartaoGestao, cartaoEquipe, cartaoAnexos)));
+}
+
+// ----------------------------------------------------------------------------
+// Stepper do ciclo completo da demanda (workflow v2 — BPMN Atendimento v2):
+// [Chamado] → Recebida → Análise (GUT) → CODIR → Fila → Planejamento →
+// Licitação → Execução → Recebimento. “Concluído” = tudo feito.
+// ----------------------------------------------------------------------------
+function stepperDemanda(d, user) {
+  const temChamado = !!(user && d.chamadoOrigem);
+  const rotulos = [
+    ...(temChamado ? ['Chamado'] : []),
+    'Recebida', 'Análise (GUT)', 'CODIR', 'Fila',
+    ...FASES_DEMANDA.map(f => f.curto),
+  ];
+  const off = temChamado ? 1 : 0;
+  const idxFase = FASES_DEMANDA.findIndex(f => f.id === d.fase);
+  let pos = null; // índice do passo ATUAL
+  if (d.status === 'recebido') pos = off;
+  else if (['analise', 'diligencia'].includes(d.status)) pos = off + 1;
+  else if (d.status === 'codir') pos = off + 2;
+  else if (d.status === 'fila') pos = off + 3;
+  else if (d.status === 'atendimento') pos = off + 4 + Math.max(0, idxFase);
+  else if (d.status === 'concluido') pos = rotulos.length; // tudo feito
+
+  let passos;
+  if (pos != null) {
+    passos = rotulos.map((r, i) => ({ rotulo: r, estado: i < pos ? 'feito' : i === pos ? 'atual' : 'pendente' }));
+  } else {
+    // Suspensa/cancelada/não enquadrada: mostra o progresso conhecido, sem “atual”.
+    const aval = d.aval || {};
+    const feitos = new Set();
+    if (temChamado) feitos.add(0);
+    feitos.add(off);
+    if (aval.g != null) feitos.add(off + 1);
+    if (d.codirAprovado) { feitos.add(off + 2); feitos.add(off + 3); }
+    if (idxFase >= 0) for (let i = 0; i < idxFase; i++) feitos.add(off + 4 + i);
+    passos = rotulos.map((r, i) => ({ rotulo: r, estado: feitos.has(i) ? 'feito' : 'pendente' }));
+  }
+
+  let aviso = null;
+  if (d.status === 'suspenso') {
+    const sp = d.suspensao || {};
+    aviso = `Suspensa — ${motivoSuspensaoNome(sp.motivo)}${sp.desde ? ` · desde ${fmtData(sp.desde)}` : ''}${sp.obs ? ` · ${sp.obs}` : ''}. A demanda retorna ao fluxo quando a pendência se resolve.`;
+  } else if (['cancelado', 'nao-enquadrado'].includes(d.status)) {
+    aviso = `Encerrada como “${statusNome(d.status)}”.`;
+  }
+  const nota = (d.status === 'atendimento' && idxFase < 0)
+    ? 'Fase do atendimento ainda não classificada — defina no cartão “Fase atual”.'
+    : (d.etapa === 'projeto' ? 'Ciclo de projeto: concluído o projeto, a demanda reentra no CODIR como obra.' : null);
+  return renderStepper(passos, { aviso, nota });
+}
+
+// ----------------------------------------------------------------------------
+// Modal de suspensão estruturada: motivo (enum) + observação opcional.
+// ----------------------------------------------------------------------------
+function pedirSuspensao() {
+  return new Promise((resolve) => {
+    const selMotivo = select(MOTIVOS_SUSPENSAO, { placeholder: 'Selecione o motivo…' });
+    const inObs = el('input', { type: 'text', maxlength: 300, placeholder: 'Observação (opcional)' });
+    const close = (v) => { wrap.remove(); resolve(v); };
+    const wrap = el('div', { class: 'modal-wrap', onclick: (e) => e.target === wrap && close(null) },
+      el('div', { class: 'modal', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Suspender demanda' },
+        el('h3', {}, 'Suspender demanda'),
+        el('p', {}, 'A suspensão registra o motivo e preserva o ciclo — a demanda retorna ao fluxo quando a pendência se resolver.'),
+        campo('Motivo *', selMotivo),
+        campo('Observação', inObs),
+        el('div', { class: 'modal-acoes' },
+          el('button', { class: 'btn ghost', onclick: () => close(null) }, 'Cancelar'),
+          el('button', { class: 'btn primario', onclick: () => {
+            if (!selMotivo.value) { toast('Selecione o motivo da suspensão.', 'erro'); return; }
+            close({ motivo: selMotivo.value, obs: inObs.value.trim() });
+          } }, 'Suspender'))));
+    document.body.append(wrap);
+    selMotivo.focus();
+  });
+}
+
+// ----------------------------------------------------------------------------
+// Cartão “Fase atual” — a ação do momento no atendimento (workflow v2):
+// planejamento (checklist de artefatos) → licitação (resultado do certame) →
+// execução → recebimento. Certame deserto/fracassado devolve ao planejamento.
+// ----------------------------------------------------------------------------
+function cartaoFaseAtual(d, s, user, interna) {
+  const salvar = async (patch, evento) => {
+    try { await s.atualizarDemanda(d.id, patch, evento); toast('Atualizado.'); }
+    catch (err) { toast(err.message || 'Falha ao atualizar.', 'erro'); }
+  };
+  const filhos = [];
+
+  // Origem do projeto (ciclo projeto → obra — art. 11: elaboração interna pontua)
+  const blocoProjetoOrigem = () => {
+    if (!['projeto', 'projeto-obra'].includes(d.tipoDemanda) && d.etapa !== 'projeto') return null;
+    const selPO = select(PROJETO_ORIGEM, { value: d.projetoOrigem || '', placeholder: 'Definir…' });
+    selPO.onchange = () => selPO.value && salvar({ projetoOrigem: selPO.value },
+      `Origem do projeto definida: ${(PROJETO_ORIGEM.find(o => o.id === selPO.value) || {}).nome}`);
+    return campo('Origem do projeto', selPO, 'Projeto elaborado internamente pontua pela alocação (art. 11).');
+  };
+
+  if (!d.fase) {
+    filhos.push(el('h2', {}, 'Fase atual'));
+    filhos.push(el('p', { class: 'sub' }, 'Atendimento ainda sem fase classificada. Defina a fase para acompanhar o ciclo da contratação (planejamento → licitação → execução → recebimento).'));
+    filhos.push(el('div', { class: 'chips' }, FASES_DEMANDA.map(f =>
+      el('button', { class: 'btn ghost sm', onclick: () => salvar({ fase: f.id }, `Fase do atendimento definida: ${f.nome}`) }, f.curto))));
+    filhos.push(blocoProjetoOrigem());
+    return el('section', { class: 'card acao-momento' }, filhos);
+  }
+
+  if (d.fase === 'planejamento') {
+    const arte = d.artefatos || {};
+    const feitos = ARTEFATOS_PLANEJAMENTO.filter(a => arte[a.id]?.feito).length;
+    filhos.push(el('h2', {}, `Fase atual — ${faseNome('planejamento')}`,
+      el('span', { class: 'fase-progresso' }, `${feitos} de ${ARTEFATOS_PLANEJAMENTO.length} itens`)));
+    filhos.push(el('ul', { class: 'chk-artefatos' }, ARTEFATOS_PLANEJAMENTO.map(a => {
+      const info = arte[a.id] || {};
+      const ck = el('input', { type: 'checkbox', ...(info.feito ? { checked: true } : {}), 'aria-label': a.nome });
+      ck.onchange = () => salvar({ artefatos: { ...arte, [a.id]: ck.checked ? { feito: true, em: Date.now(), por: user.nome } : { feito: false } } },
+        `Artefato “${a.nome}” ${ck.checked ? 'concluído' : 'reaberto'}`);
+      return el('li', { class: `chk-item ${info.feito ? 'chk-feito' : ''}` }, ck,
+        el('span', { class: 'chk-rotulo' }, a.nome),
+        info.feito && info.em ? el('span', { class: 'chk-meta' }, fmtData(info.em)) : null);
+    })));
+    filhos.push(blocoProjetoOrigem());
+    filhos.push(el('div', { class: 'form-acoes' }, el('button', { class: 'btn primario', onclick: async () => {
+      const pend = ARTEFATOS_PLANEJAMENTO.length - ARTEFATOS_PLANEJAMENTO.filter(a => (d.artefatos || {})[a.id]?.feito).length;
+      const ok = await confirmar('Concluir o planejamento?',
+        pend ? `Ainda há ${pend} item(ns) do checklist em aberto. Avançar mesmo assim para a fase de licitação?`
+             : 'Os artefatos estão completos. A demanda avança para a fase de licitação.',
+        { ok: 'Avançar para licitação', perigo: !!pend });
+      if (!ok) return;
+      await salvar({ fase: 'licitacao', certame: { ...(d.certame || {}), enviadoEm: Date.now(), resultado: null } },
+        'Planejamento concluído — fase de licitação');
+    } }, 'Concluir fase → licitação')));
+  }
+
+  if (d.fase === 'licitacao') {
+    const ct = d.certame || {};
+    filhos.push(el('h2', {}, `Fase atual — ${faseNome('licitacao')}`));
+    filhos.push(el('p', { class: 'sub' }, ct.enviadoEm ? `Processo encaminhado à licitação em ${fmtData(ct.enviadoEm)}. Registre o resultado do certame:` : 'Registre o resultado do certame:'));
+    filhos.push(el('div', { class: 'chips' },
+      el('button', { class: 'btn primario sm', onclick: async () => {
+        const ok = await confirmar('Certame com êxito?', 'Contrato assinado — a demanda avança para a fase de execução.', { ok: 'Confirmar êxito' });
+        if (!ok) return;
+        await salvar({ fase: 'execucao', certame: { ...ct, resultado: 'exito', contratoEm: Date.now() } },
+          'Certame com êxito — contrato assinado; iniciada a execução');
+      } }, 'Êxito — contrato assinado'),
+      el('button', { class: 'btn ghost sm', onclick: async () => {
+        const ok = await confirmar('Certame deserto?', 'Sem licitantes — a demanda retorna ao planejamento para ajuste dos artefatos, com registro no histórico.', { ok: 'Registrar e retornar', perigo: true });
+        if (!ok) return;
+        await salvar({ fase: 'planejamento', certame: { ...ct, resultado: 'deserto' } },
+          'Certame deserto — retorna ao planejamento para ajuste dos artefatos');
+      } }, 'Deserto'),
+      el('button', { class: 'btn ghost sm', onclick: async () => {
+        const ok = await confirmar('Certame fracassado?', 'Propostas desclassificadas — a demanda retorna ao planejamento para ajuste dos artefatos, com registro no histórico.', { ok: 'Registrar e retornar', perigo: true });
+        if (!ok) return;
+        await salvar({ fase: 'planejamento', certame: { ...ct, resultado: 'fracassado' } },
+          'Certame fracassado — retorna ao planejamento para ajuste dos artefatos');
+      } }, 'Fracassado')));
+  }
+
+  if (d.fase === 'execucao') {
+    const ct = d.certame || {};
+    filhos.push(el('h2', {}, `Fase atual — ${faseNome('execucao')}`));
+    filhos.push(el('p', { class: 'sub' }, `Contrato em execução${ct.contratoEm ? ` desde ${fmtData(ct.contratoEm)}` : ''}. Acompanhamento pelos fiscais alocados; registros na linha do tempo.`));
+    filhos.push(el('div', { class: 'form-acoes' }, el('button', { class: 'btn primario', onclick: async () => {
+      const ok = await confirmar('Concluir a execução?', 'A demanda avança para a fase de recebimento do objeto.', { ok: 'Avançar para recebimento' });
+      if (!ok) return;
+      await salvar({ fase: 'recebimento' }, 'Execução concluída — fase de recebimento');
+    } }, 'Concluir fase → recebimento')));
+  }
+
+  if (d.fase === 'recebimento') {
+    filhos.push(el('h2', {}, `Fase atual — ${faseNome('recebimento')}`));
+    filhos.push(el('p', { class: 'sub' }, 'Recebimento provisório e definitivo do objeto (termos de recebimento). Após o recebimento definitivo, conclua a demanda.'));
+    if (can(user, 'statusBasico') || can(user, 'statusTotal')) {
+      filhos.push(el('div', { class: 'form-acoes' }, el('button', { class: 'btn primario', onclick: async () => {
+        const ok = await confirmar('Concluir a demanda?', 'Recebimento definitivo registrado — a demanda será marcada como Concluída.', { ok: 'Concluir demanda' });
+        if (!ok) return;
+        await salvar({ status: 'concluido' }, 'Recebimento definitivo — demanda concluída');
+        await notificar(s, 'concluido', d, interna);
+      } }, 'Receber e concluir a demanda')));
+    } else {
+      filhos.push(el('p', { class: 'nota' }, 'A conclusão da demanda (recebimento definitivo) é registrada pela Chefia.'));
+    }
+  }
+
+  return el('section', { class: 'card acao-momento' }, filhos);
 }
 
 const linha = (rotulo, valor) => valor == null ? null : el('div', { class: 'linha-info' },

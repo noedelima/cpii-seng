@@ -59,6 +59,8 @@ Caminho principal da demanda:
 
 O CODIR atua a partir do status **“Aguardando aprovação do CODIR”** (após a análise GUT). Também é possível rever o ajuste enquanto a demanda está **Na fila** ou **Suspensa**. Demandas **Em atendimento** ou **Concluídas** ficam **travadas** (não aceitam aprovação nem ajuste).
 
+> **Trilha de etapas (stepper).** No topo da página da demanda, a trilha mostra o ciclo completo — chamado de origem (quando houver), análise GUT, deliberação do CODIR, fila e as fases do atendimento (planejamento → licitação → execução → recebimento) — com a etapa atual destacada. É leitura rápida do contexto antes de deliberar.
+
 > **Origem por chamado.** As demandas chegam ao CODIR a partir da **triagem de um chamado**: quando a SENG classifica um chamado como **obra**, ele é convertido em demanda (status Recebido), avaliado (GUT) e então enviado para a sua aprovação. Para o CODIR, o fluxo de deliberação é o mesmo — muda apenas a **porta de entrada** (o chamado unificou a antiga “Nova solicitação”).
 
 > **Projeto + Obra.** Uma demanda que exigia projeto e obra **volta ao CODIR como obra** (com projeto existente) quando a etapa de projeto é concluída — reaprove e reposicione na fila normalmente, conferindo o GUT e o valor reavaliados para a obra.

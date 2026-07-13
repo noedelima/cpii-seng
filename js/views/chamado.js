@@ -1,6 +1,8 @@
 // =============================================================================
-// Detalhe / triagem de chamado. SENG triam (desfecho); campus dono complementa,
-// comenta e responde diligências. Desfecho "obra" converte o chamado em Demanda.
+// Dossiê do chamado — autocontido: stepper do ciclo, linha do tempo central e
+// cartão contextual "Ação do momento" (somente os próximos passos válidos).
+// SENG triam (desfecho); campus dono complementa, comenta e responde
+// diligências. Desfecho/conversão "obra" transforma o chamado em Demanda.
 // =============================================================================
 import { el, frag, campo, select, toast, confirmar, fmtDataHora, fmtData } from '../ui.js';
 import { renderAnexosCard } from '../anexos.js';
@@ -12,6 +14,8 @@ import {
 } from '../config.js';
 import { store } from '../store.js';
 import { can, ehCampusDe } from '../auth.js';
+import { selecaoPessoas } from '../alocacao.js';
+import { renderStepper } from '../stepper.js';
 import { notificar, notificarChamado } from '../notificacoes.js';
 import { thumbDePdf } from '../pdf-thumb.js';
 
@@ -127,57 +131,65 @@ export function viewChamado(rerender, id) {
     aoComentar: () => notificarChamado(s, 'chamado-comentario', c),
   });
 
-  // ------------------------------------------------------------------ triagem
-  const triagem = ehSeng ? renderTriagem(c, s, user, terminal, acao, rerender) : null;
+  // ------------------------------------ ação do momento (SENG — contextual)
+  const acaoMomento = ehSeng ? renderAcaoMomento(c, s, user, terminal, acao, rerender) : null;
 
   // ----------------------------------------------- responder diligência (campus)
   const respostaCampus = (ehDono && c.status === 'diligencia') ? renderRespostaCampus(c, s, user, acao) : null;
 
-  return frag(topo, dados, cartaoDemanda, cartaoResolucao, anexos, triagem, respostaCampus, linhaTempo);
+  // ------------------------------------------------------ pessoas (SENG)
+  let cartaoPessoas = null;
+  if (ehSeng) {
+    const profs = s.listProfissionais() || [];
+    const nomes = (c.atendentes || []).map(pid => (profs.find(p => p.id === pid) || {}).nome || '—');
+    cartaoPessoas = el('section', { class: 'card' },
+      el('h2', {}, 'Pessoas'),
+      el('div', { class: 'meta-grid' },
+        linhaMeta('Solicitante', `${c.autor?.nome || '—'} (${campusNome(c.campus)})`),
+        linhaMeta('Responsáveis pelo atendimento', nomes.length ? nomes.join(', ') : '—')));
+  }
+
+  // ---------------------------------------------------- stepper do ciclo
+  const stepper = stepperChamado(c);
+
+  return frag(topo, stepper,
+    el('div', { class: 'detalhe-grid' },
+      el('div', { class: 'col' }, dados, linhaTempo),
+      el('div', { class: 'col' }, respostaCampus, acaoMomento, cartaoDemanda, cartaoResolucao, cartaoPessoas, anexos)));
 }
 
 // ----------------------------------------------------------------------------
-// Cartão de triagem (SENG): status rápido + desfecho + resolução.
+// Stepper do chamado: Aberto → Triagem → Atendimento → Resolvido.
+// Ramo alternativo (obra) e encerramentos aparecem como aviso/nota.
 // ----------------------------------------------------------------------------
-function renderTriagem(c, s, user, terminal, acao, rerender) {
-  const secao = el('section', { class: 'card triagem' }, el('h2', {}, 'Triagem'));
+function stepperChamado(c) {
+  const rotulos = ['Aberto', 'Triagem', 'Atendimento', 'Resolvido'];
+  let pos = null;
+  if (c.status === 'aberto') pos = 0;
+  else if (['triagem', 'diligencia'].includes(c.status)) pos = 1;
+  else if (c.status === 'atendimento') pos = 2;
+  else if (c.status === 'resolvido') pos = rotulos.length; // tudo feito
 
-  if (terminal) {
-    secao.append(el('p', { class: 'sub' }, `Chamado encerrado (${statusChamadoNome(c.status)}). `,
-      c.status === 'obra' ? 'O andamento segue na demanda vinculada.' : 'Reabertura, se necessária, pela Chefia.'));
-    return secao;
+  let passos, aviso = null, nota = null;
+  if (pos != null) {
+    passos = rotulos.map((r, i) => ({ rotulo: r, estado: i < pos ? 'feito' : i === pos ? 'atual' : 'pendente' }));
+    if (c.status === 'diligencia') nota = 'Em diligência — aguardando complemento do campus para retomar a triagem.';
+    else nota = 'Ramo alternativo: triagem “Obra” converte o chamado em demanda vinculada (fila de Obras).';
+  } else {
+    const feitos = new Set([0, 1]); // aberto + triagem concluídos nos desfechos
+    passos = rotulos.map((r, i) => ({ rotulo: r, estado: feitos.has(i) ? 'feito' : 'pendente' }));
+    aviso = c.status === 'obra'
+      ? 'Convertido em demanda de obra — o ciclo segue no dossiê da demanda vinculada.'
+      : `Encerrado como “${statusChamadoNome(c.status)}”.`;
   }
+  return renderStepper(passos, { aviso, nota });
+}
 
-  // Profissionais ativos — alocação do atendimento (consultoria/laudo).
-  const profs = (s.listProfissionais() || []).filter(p => p.ativo !== false);
-  const chipProf = (p, marcado) => el('label', { class: 'chip-check' },
-    el('input', { type: 'checkbox', value: p.id, ...(marcado ? { checked: true } : {}) }), ` ${p.nome} (${p.area})`);
-
-  // Ações rápidas de status
-  const rapidas = el('div', { class: 'triagem-acoes' });
-  if (c.status === 'aberto') {
-    rapidas.append(el('button', { class: 'btn', onclick: () => acao({ status: 'triagem' }, 'Triagem iniciada', 'chamado-atualizado') }, 'Iniciar triagem'));
-  }
-
-  // Diligência (pedir complemento ao campus)
-  const inDilig = el('textarea', { rows: 2, maxlength: 1500, placeholder: 'O que falta esclarecer? (será enviado ao campus)' });
-  const btnDilig = el('button', { class: 'btn', onclick: async () => {
-    const txt = inDilig.value.trim();
-    if (!txt) { toast('Escreva o que precisa ser complementado.', 'erro'); return; }
-    const obs = [...(c.comentarios || []), comentario(user, txt, 'Diligência')];
-    await acao({ status: 'diligencia', comentarios: obs }, 'Diligência solicitada ao campus', 'chamado-diligencia');
-    inDilig.value = '';
-  } }, 'Solicitar diligência');
-
-  // Desfecho da triagem
-  const selDesf = select(DESFECHO_CHAMADO, { placeholder: 'Selecione o desfecho…' });
-  const selSetor = select(SETORES_ENCAMINHAMENTO.map(x => ({ id: x, nome: x })), { placeholder: 'Setor de destino…' });
-  const wrapSetor = campo('Setor de destino', selSetor);
-  wrapSetor.style.display = 'none';
-  const inParecer = el('textarea', { rows: 3, maxlength: 4000, placeholder: 'Parecer / orientação (registrado no chamado e enviado ao campus quando resolver).' });
-
-  // Classificação da demanda — preenchida ao converter em OBRA. Unifica a antiga
-  // "Nova solicitação": a demanda nasce classificada aqui, na triagem.
+// ----------------------------------------------------------------------------
+// Campos de classificação da demanda (conversão em obra) — reutilizados na
+// triagem e na escalada consultoria → contratação (atendimento/resolvido).
+// ----------------------------------------------------------------------------
+function camposObra(c) {
   const disc = (categoriaChamado(c.categoria) || {}).disciplina;
   const espPre = espDaDisciplina(disc);
   const selTipo = select(TIPOS_DEMANDA.filter(t => !t.oculto), { value: 'obra', placeholder: null });
@@ -188,75 +200,186 @@ function renderTriagem(c, s, user, terminal, acao, rerender) {
   const inSuap = el('input', { type: 'text', maxlength: 25, placeholder: 'Ex.: 23040.001234/2026-11 (se houver)' });
   const espChecks = ESPECIALIDADES.map(e2 => el('label', { class: 'chip-check' },
     el('input', { type: 'checkbox', value: e2, ...(espPre.includes(e2) ? { checked: true } : {}) }), ' ' + e2));
-  const wrapObra = el('div', { class: 'obra-campos' },
+  const node = el('div', { class: 'obra-campos' },
     el('div', { class: 'form-linha' }, campo('Tipo de demanda *', selTipo), campo('Projeto já existe? *', selProjeto)),
     el('div', { class: 'form-linha' }, campo('Imóvel tombado?', selTombado), campo('Previsão de prazo', selPrazo)),
     el('div', { class: 'form-linha' }, campo('Valor estimado (R$)', inValor), campo('Processo SUAP', inSuap)),
     campo('Especialidades envolvidas *', el('div', { class: 'chips' }, espChecks)));
-  wrapObra.style.display = 'none';
-  const lerObra = () => ({
+  const ler = () => ({
     tipoDemanda: selTipo.value, projetoExiste: selProjeto.value, tombado: selTombado.value,
     prazoEstimado: selPrazo.value || null, valorEstimado: inValor.value || null, processoSuap: inSuap.value.trim(),
     especialidades: espChecks.map(l => l.querySelector('input')).filter(x => x.checked).map(x => x.value),
   });
+  return { node, ler };
+}
 
-  // Responsáveis pelo atendimento — obrigatório para consultoria/laudo.
-  const atendChecks = profs.map(p => chipProf(p, false));
-  const wrapAtend = campo('Responsáveis pelo atendimento *',
-    el('div', { class: 'chips' }, atendChecks.length ? atendChecks : [el('span', { class: 'sub' }, 'Nenhum profissional ativo cadastrado — cadastre em Profissionais.')]),
-    'Contabilizados na carga do profissional e notificados das alterações do chamado.');
-  wrapAtend.style.display = 'none';
-  const lerAtend = () => atendChecks.map(l => l.querySelector('input')).filter(x => x.checked).map(x => x.value);
+// ----------------------------------------------------------------------------
+// Ação do momento (SENG): mostra somente os próximos passos válidos do fluxo.
+// ----------------------------------------------------------------------------
+function renderAcaoMomento(c, s, user, terminal, acao, rerender) {
+  const secao = el('section', { class: 'card acao-momento' }, el('h2', {}, 'Ação do momento'));
+  const profs = (s.listProfissionais() || []).filter(p => p.ativo !== false);
+  const rotProf = (p) => `${p.nome} (${p.area})`;
 
-  selDesf.onchange = () => {
-    wrapSetor.style.display = selDesf.value === 'encaminhado' ? '' : 'none';
-    wrapObra.style.display = selDesf.value === 'obra' ? '' : 'none';
-    wrapAtend.style.display = (selDesf.value === 'consultoria' || selDesf.value === 'laudo') ? '' : 'none';
-  };
+  // Encerrados (obra/encaminhado/improcedente/duplicado/cancelado): sem ações.
+  // “Resolvido” ainda permite a escalada para contratação (converter em demanda).
+  if (terminal && c.status !== 'resolvido') {
+    secao.append(el('p', { class: 'sub' }, `Chamado encerrado (${statusChamadoNome(c.status)}). `,
+      c.status === 'obra' ? 'O andamento segue na demanda vinculada.' : 'Reabertura, se necessária, pela Chefia.'));
+    return secao;
+  }
 
-  const btnDesf = el('button', { class: 'btn primario', onclick: () => aplicarDesfecho(c, s, user, { desfecho: selDesf.value, setor: selSetor.value, parecer: inParecer.value.trim(), obra: lerObra(), atendentes: lerAtend() }, acao) }, 'Aplicar desfecho');
+  // ---------------- aberto: iniciar a triagem -------------------------------
+  if (c.status === 'aberto') {
+    secao.append(
+      el('p', { class: 'sub' }, 'Chamado recém-aberto. Inicie a triagem para classificar e decidir a destinação.'),
+      el('div', { class: 'form-acoes' },
+        el('button', { class: 'btn primario', onclick: () => acao({ status: 'triagem' }, 'Triagem iniciada', 'chamado-atualizado') }, 'Iniciar triagem')));
+    return secao;
+  }
 
-  // Resolver (consultoria/laudo em atendimento → resolvido)
-  const resolver = c.status === 'atendimento' ? el('div', { class: 'triagem-bloco' },
-    el('h3', { class: 'sub-titulo' }, 'Concluir o atendimento'),
-    campo('Orientação / referência da Nota Técnica', el('textarea', { rows: 3, maxlength: 4000, placeholder: 'Resumo da orientação ou nº da NT emitida.', id: 'ch-resolucao-txt' })),
-    el('button', { class: 'btn primario', onclick: async (ev) => {
-      const txt = ev.target.closest('.triagem-bloco').querySelector('#ch-resolucao-txt').value.trim();
-      if (!txt) { toast('Descreva a orientação/desfecho.', 'erro'); return; }
-      await acao({ status: 'resolvido', resolucao: { texto: txt } }, 'Chamado resolvido (consultoria/laudo)', 'chamado-resolvido');
-    } }, 'Marcar como resolvido')) : null;
+  // ---------------- diligência: aguardando o campus --------------------------
+  if (c.status === 'diligencia') {
+    secao.append(
+      el('p', { class: 'sub' }, 'Diligência em curso — aguardando complemento do campus. Ao responder, o chamado retorna à triagem automaticamente.'),
+      el('div', { class: 'form-acoes' },
+        el('button', { class: 'btn ghost sm', onclick: () => acao({ status: 'triagem' }, 'Triagem retomada pela SENG', 'chamado-atualizado') }, 'Retomar triagem agora')));
+    return secao;
+  }
 
-  // Em atendimento: edição dos responsáveis (realocação).
-  const alocacao = c.status === 'atendimento' ? (() => {
-    const marcados = new Set(c.atendentes || []);
-    const checks = profs.map(p => chipProf(p, marcados.has(p.id)));
-    return el('div', { class: 'triagem-bloco' },
-      el('h3', { class: 'sub-titulo' }, 'Responsáveis pelo atendimento'),
-      el('div', { class: 'chips' }, checks),
+  // ---------------- triagem: desfecho + diligência ----------------------------
+  if (c.status === 'triagem') {
+    const selDesf = select(DESFECHO_CHAMADO, { placeholder: 'Selecione o desfecho…' });
+    const selSetor = select(SETORES_ENCAMINHAMENTO.map(x => ({ id: x, nome: x })), { placeholder: 'Setor de destino…' });
+    const wrapSetor = campo('Setor de destino', selSetor);
+    wrapSetor.style.display = 'none';
+    const inParecer = el('textarea', { rows: 3, maxlength: 4000, placeholder: 'Parecer / orientação (registrado no chamado e enviado ao campus quando resolver).' });
+    const obra = camposObra(c);
+    obra.node.style.display = 'none';
+
+    const selAtend = selecaoPessoas({ itens: profs, rotulo: rotProf, vazio: 'Nenhum responsável incluído.' });
+    const wrapAtend = campo('Responsáveis pelo atendimento *',
+      profs.length ? selAtend.node : el('span', { class: 'sub' }, 'Nenhum profissional ativo cadastrado — cadastre em Profissionais.'),
+      'Contabilizados na carga do profissional e notificados das alterações do chamado.');
+    wrapAtend.style.display = 'none';
+
+    selDesf.onchange = () => {
+      wrapSetor.style.display = selDesf.value === 'encaminhado' ? '' : 'none';
+      obra.node.style.display = selDesf.value === 'obra' ? '' : 'none';
+      wrapAtend.style.display = (selDesf.value === 'consultoria' || selDesf.value === 'laudo') ? '' : 'none';
+    };
+
+    const btnDesf = el('button', { class: 'btn primario', onclick: () => aplicarDesfecho(c, s, user,
+      { desfecho: selDesf.value, setor: selSetor.value, parecer: inParecer.value.trim(), obra: obra.ler(), atendentes: selAtend.get() }, acao) }, 'Aplicar desfecho');
+
+    const inDilig = el('textarea', { rows: 2, maxlength: 1500, placeholder: 'O que falta esclarecer? (será enviado ao campus)' });
+    const btnDilig = el('button', { class: 'btn', onclick: async () => {
+      const txt = inDilig.value.trim();
+      if (!txt) { toast('Escreva o que precisa ser complementado.', 'erro'); return; }
+      const obs = [...(c.comentarios || []), comentario(user, txt, 'Diligência')];
+      await acao({ status: 'diligencia', comentarios: obs }, 'Diligência solicitada ao campus', 'chamado-diligencia');
+      inDilig.value = '';
+    } }, 'Solicitar diligência');
+
+    secao.append(
+      el('div', { class: 'triagem-bloco' },
+        el('h3', { class: 'sub-titulo' }, 'Desfecho da triagem'),
+        campo('Decisão da triagem', selDesf,
+          'Obra → cria a demanda (classifique abaixo). Consultoria/Laudo → atendimento pela SENG. Encaminhado → outro setor.'),
+        wrapSetor,
+        obra.node,
+        wrapAtend,
+        campo('Parecer / orientação', inParecer),
+        el('div', { class: 'form-acoes' }, btnDesf)),
+      el('details', { class: 'triagem-bloco' },
+        el('summary', { class: 'sub-titulo' }, 'Precisa de mais informações? Solicitar diligência'),
+        campo('Mensagem ao campus', inDilig), el('div', { class: 'form-acoes' }, btnDilig)));
+    return secao;
+  }
+
+  // ---------------- atendimento: concluir / realocar / escalar ----------------
+  if (c.status === 'atendimento') {
+    const inResol = el('textarea', { rows: 3, maxlength: 4000, placeholder: 'Resumo da orientação ou nº da NT emitida.' });
+    const blocoResolver = el('div', { class: 'triagem-bloco' },
+      el('h3', { class: 'sub-titulo' }, 'Concluir o atendimento'),
+      campo('Orientação / referência da Nota Técnica', inResol),
+      el('div', { class: 'form-acoes' }, el('button', { class: 'btn primario', onclick: async () => {
+        const txt = inResol.value.trim();
+        if (!txt) { toast('Descreva a orientação/desfecho.', 'erro'); return; }
+        await acao({ status: 'resolvido', resolucao: { texto: txt } }, 'Chamado resolvido (consultoria/laudo)', 'chamado-resolvido');
+      } }, 'Marcar como resolvido')));
+
+    const selRealoc = selecaoPessoas({ itens: profs, atuais: c.atendentes || [], rotulo: rotProf, vazio: 'Nenhum responsável incluído.' });
+    const blocoRealoc = el('details', { class: 'triagem-bloco' },
+      el('summary', { class: 'sub-titulo' }, 'Responsáveis pelo atendimento'),
+      selRealoc.node,
       el('div', { class: 'form-acoes' }, el('button', { class: 'btn', onclick: async () => {
-        const pids = checks.map(l => l.querySelector('input')).filter(x => x.checked).map(x => x.value);
+        const pids = selRealoc.get();
         if (!pids.length) { toast('Mantenha ao menos um responsável.', 'erro'); return; }
         await acao({ atendentes: pids }, 'Responsáveis pelo atendimento atualizados', 'chamado-atendimento');
       } }, 'Salvar responsáveis')));
-  })() : null;
 
+    secao.append(
+      el('p', { class: 'sub' }, 'Consultoria/laudo em atendimento. Conclua com a orientação, ajuste os responsáveis ou — se o caso exigir contratação — converta em demanda de obra.'),
+      blocoResolver,
+      blocoRealoc,
+      blocoConversao(c, s, user));
+    return secao;
+  }
+
+  // ---------------- resolvido: escalada p/ contratação ainda possível ----------
   secao.append(
-    rapidas,
-    el('div', { class: 'triagem-bloco' },
-      el('h3', { class: 'sub-titulo' }, 'Diligência'),
-      campo('Mensagem ao campus', inDilig), el('div', { class: 'form-acoes' }, btnDilig)),
-    el('div', { class: 'triagem-bloco' },
-      el('h3', { class: 'sub-titulo' }, 'Desfecho'),
-      campo('Decisão da triagem', selDesf,
-        'Obra → cria a demanda (classifique abaixo). Consultoria/Laudo → atendimento pela SENG. Encaminhado → outro setor.'),
-      wrapSetor,
-      wrapObra,
-      wrapAtend,
-      campo('Parecer / orientação', inParecer),
-      el('div', { class: 'form-acoes' }, btnDesf)),
-    ...(alocacao ? [alocacao] : []),
-    ...(resolver ? [resolver] : []));
+    el('p', { class: 'sub' }, 'Chamado resolvido. Se a orientação técnica concluir pela necessidade de contratação, converta em demanda de obra — o histórico segue no dossiê da demanda.'),
+    blocoConversao(c, s, user));
   return secao;
+}
+
+// Bloco recolhível "Converter em demanda de obra" (gate “Exige contratação?”).
+function blocoConversao(c, s, user) {
+  const obra = camposObra(c);
+  return el('details', { class: 'triagem-bloco' },
+    el('summary', { class: 'sub-titulo' }, 'Converter em demanda de obra'),
+    el('p', { class: 'sub' }, 'O chamado passa a “Encaminhado à fila de Obras” e nasce uma demanda vinculada, que entra no fluxo de priorização (GUT/CODIR).'),
+    obra.node,
+    el('div', { class: 'form-acoes' }, el('button', { class: 'btn primario', onclick: () =>
+      converterEmDemanda(c, s, user, { obra: obra.ler(), parecer: c.resolucao?.texto || '' }) }, 'Converter em demanda')));
+}
+
+// ----------------------------------------------------------------------------
+// Conversão chamado → demanda (triagem “obra” ou escalada em atendimento/
+// resolvido). A demanda nasce classificada e vinculada (chamadoOrigem).
+// ----------------------------------------------------------------------------
+async function converterEmDemanda(c, s, user, { obra = {}, parecer = '' }) {
+  const esp = (obra.especialidades && obra.especialidades.length)
+    ? obra.especialidades : espDaDisciplina((categoriaChamado(c.categoria) || {}).disciplina);
+  if (!esp.length) { toast('Selecione ao menos uma especialidade.', 'erro'); return; }
+  const ok = await confirmar('Converter em demanda de obra',
+    `O chamado ${c.id} passará a "Encaminhado à fila de Obras" e será criada uma nova demanda vinculada, com a classificação informada, que entra no fluxo de priorização (GUT/CODIR). Confirmar?`,
+    { ok: 'Converter em demanda' });
+  if (!ok) return;
+  try {
+    const tipoDemanda = obra.tipoDemanda || 'obra';
+    const projetoExiste = obra.projetoExiste || 'nao';
+    const did = await s.criarDemanda({
+      campus: c.campus, local: c.local || '', tipoDemanda, projetoExiste,
+      etapa: precisaEtapaProjeto({ tipoDemanda, projetoExiste }) ? 'projeto' : null,
+      tombado: obra.tombado || 'ns', prazoEstimado: obra.prazoEstimado || null,
+      valorEstimado: obra.valorEstimado ? Number(obra.valorEstimado) : null,
+      processoSuap: obra.processoSuap || '',
+      objeto: (c.assunto || 'Demanda de obra').slice(0, 120),
+      descricao: `${c.descricao || ''}${parecer ? '\n\nParecer da triagem: ' + parecer : ''}\n\n[Originado do chamado ${c.id}]`,
+      emergencial: c.urgencia === 'emergencial', especialidades: esp, status: 'recebido',
+      chamadoOrigem: c.id,
+      solicitante: { nome: c.autor?.nome || user.nome, email: c.autor?.email || '' },
+      historico: [{ ts: Date.now(), user: user.nome, acao: `Solicitação registrada (originada do chamado ${c.id})` }],
+    });
+    await s.atualizarChamado(c.id, { status: 'obra', desfecho: 'obra', demandaId: did, resolucao: parecer ? { texto: parecer } : null },
+      `Convertido na demanda ${did} (fila de Obras)`);
+    await notificar(s, 'nova', { id: did, objeto: c.assunto, especialidades: esp });
+    await notificarChamado(s, 'chamado-desfecho', c);
+    toast(`Demanda ${did} criada a partir do chamado.`);
+    location.hash = `#/demanda/${did}`;
+  } catch (err) { toast(err.message || 'Falha ao converter.', 'erro'); }
 }
 
 async function aplicarDesfecho(c, s, user, { desfecho, setor, parecer, obra = {}, atendentes = [] }, acao) {
@@ -264,35 +387,7 @@ async function aplicarDesfecho(c, s, user, { desfecho, setor, parecer, obra = {}
   const def = DESFECHO_CHAMADO.find(d => d.id === desfecho);
 
   if (desfecho === 'obra') {
-    const esp = (obra.especialidades && obra.especialidades.length)
-      ? obra.especialidades : espDaDisciplina((categoriaChamado(c.categoria) || {}).disciplina);
-    if (!esp.length) { toast('Selecione ao menos uma especialidade.', 'erro'); return; }
-    const ok = await confirmar('Converter em demanda de obra',
-      `O chamado ${c.id} passará a "Encaminhado à fila de Obras" e será criada uma nova demanda vinculada, com a classificação informada, que entra no fluxo de priorização (GUT/CODIR). Confirmar?`,
-      { ok: 'Converter em demanda' });
-    if (!ok) return;
-    try {
-      const tipoDemanda = obra.tipoDemanda || 'obra';
-      const projetoExiste = obra.projetoExiste || 'nao';
-      const did = await s.criarDemanda({
-        campus: c.campus, local: c.local || '', tipoDemanda, projetoExiste,
-        etapa: precisaEtapaProjeto({ tipoDemanda, projetoExiste }) ? 'projeto' : null,
-        tombado: obra.tombado || 'ns', prazoEstimado: obra.prazoEstimado || null,
-        valorEstimado: obra.valorEstimado ? Number(obra.valorEstimado) : null,
-        processoSuap: obra.processoSuap || '',
-        objeto: (c.assunto || 'Demanda de obra').slice(0, 120),
-        descricao: `${c.descricao || ''}${parecer ? '\n\nParecer da triagem: ' + parecer : ''}\n\n[Originado do chamado ${c.id}]`,
-        emergencial: c.urgencia === 'emergencial', especialidades: esp, status: 'recebido',
-        solicitante: { nome: c.autor?.nome || user.nome, email: c.autor?.email || '' },
-        historico: [{ ts: Date.now(), user: user.nome, acao: `Solicitação registrada (originada do chamado ${c.id})` }],
-      });
-      await s.atualizarChamado(c.id, { status: 'obra', desfecho: 'obra', demandaId: did, resolucao: parecer ? { texto: parecer } : null },
-        `Convertido na demanda ${did} (fila de Obras)`);
-      await notificar(s, 'nova', { id: did, objeto: c.assunto, especialidades: esp });
-      await notificarChamado(s, 'chamado-desfecho', c);
-      toast(`Demanda ${did} criada a partir do chamado.`);
-      location.hash = `#/demanda/${did}`;
-    } catch (err) { toast(err.message || 'Falha ao converter.', 'erro'); }
+    await converterEmDemanda(c, s, user, { obra, parecer });
     return;
   }
 
@@ -339,4 +434,3 @@ function comentario(user, texto, tag) {
   return { id: 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
     ts: Date.now(), autor: user.nome, autorUid: user.uid, role: user.role, texto, ...(tag ? { tag } : {}) };
 }
-

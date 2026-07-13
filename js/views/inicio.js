@@ -5,7 +5,7 @@
 // de chamados vêm do doc público config/transparencia (só contagens).
 // =============================================================================
 import { el, frag, fmtNum } from '../ui.js';
-import { APP, CAMPI, ESPECIALIDADES, TIPOS_ATIVIDADE, campusNome } from '../config.js';
+import { APP, CAMPI, ESPECIALIDADES, FASES_DEMANDA, campusNome } from '../config.js';
 import { ordenarFila, prioridade, cargaProfissionais } from '../calc.js';
 import { store } from '../store.js';
 import { can } from '../auth.js';
@@ -72,18 +72,18 @@ export function viewInicio() {
     .map(st => ({ rotulo: ROTULO_CURTO[st], valor: n(st), onClick: irPara('status=' + st) })).filter(x => x.valor > 0);
   const gStatus = card('Demandas por status', barrasH(stDados, { rotuloW: 108, aria: 'Demandas por status' }));
 
-  // Em atendimento, por atividade da SENG (fiscalização/elaboração/planejamento + chamados)
+  // Em atendimento, por fase do ciclo da contratação (workflow v2) + chamados
   const emAtd = todas.filter(d => d.status === 'atendimento');
-  const atvDados = TIPOS_ATIVIDADE.map(ta => ({
-    rotulo: ta.nome.replace('Fiscalização de', 'Fisc.').replace('Elaboração de', 'Elab.').replace('Equipe de ', ''),
-    valor: emAtd.filter(d => d.aval?.tipoAtividade === ta.id).length,
-    onClick: irPara('status=atendimento&tipo=' + ta.id),
+  const atvDados = FASES_DEMANDA.map(f => ({
+    rotulo: f.curto,
+    valor: emAtd.filter(d => d.fase === f.id).length,
+    onClick: irPara('status=atendimento&fase=' + f.id),
   })).filter(x => x.valor > 0);
+  const semFase = emAtd.filter(d => !d.fase).length;
+  if (semFase) atvDados.push({ rotulo: 'Sem fase definida', valor: semFase, onClick: irPara('status=atendimento&fase=sem-fase') });
   if (t && t.emAtendimento) atvDados.push({ rotulo: 'Chamados (consult./laudo)', valor: t.emAtendimento, onClick: irPara('tipo=chamado') });
-  const semAval = emAtd.filter(d => !d.aval?.tipoAtividade).length;
-  if (semAval) atvDados.push({ rotulo: 'Sem classificação', valor: semAval, onClick: irPara('status=atendimento') });
-  const gAtv = card('Em atendimento, por atividade', atvDados.length
-    ? barrasH(atvDados, { rotuloW: 128, aria: 'Itens em atendimento por atividade da SENG' })
+  const gAtv = card('Em atendimento, por fase', atvDados.length
+    ? barrasH(atvDados, { rotuloW: 128, aria: 'Itens em atendimento por fase do ciclo da contratação' })
     : el('p', { class: 'sub' }, 'Nada em atendimento no momento.'));
 
   const ativas = todas.filter(d => !['concluido', 'cancelado', 'nao-enquadrado'].includes(d.status));
