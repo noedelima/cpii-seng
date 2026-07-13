@@ -38,8 +38,8 @@ function renderHeader() {
   const rota = (location.hash || '#/').split('?')[0];
   const navlink = (href, txt) => el('a', { href, class: `nav-link ${rota === href ? 'ativo' : ''}` }, txt);
 
+  // "Início" não aparece no menu: a marca (logo) à esquerda já leva para lá.
   const nav = el('nav', { class: 'nav', 'aria-label': 'Navegação principal' },
-    navlink('#/', 'Início'),
     navlink('#/chamados', 'Chamados'),
     user && can(user, 'verInterno') ? navlink('#/profissionais', 'Profissionais') : null,
     user && (can(user, 'usuarios') || can(user, 'params')) ? navlink('#/admin', 'Administração') : null,

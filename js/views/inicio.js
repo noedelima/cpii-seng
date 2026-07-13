@@ -153,8 +153,8 @@ export function viewInicio() {
         el('div', { class: 'inicio-fila-cab' },
           el('h2', {}, 'Carga da equipe'),
           el('div', { class: 'carga-refs' },
-            refSpan('Chamados no setor', totCh, params.refChamadosSetor),
-            refSpan('Planejamentos no setor', totPl, params.refPlanejSetor))),
+            refSpan('Chamados em atendimento', totCh, params.refChamadosSetor),
+            refSpan('Planejamentos em andamento', totPl, params.refPlanejSetor))),
         el('div', { class: 'prof-grid' }, cards));
     }
   }
