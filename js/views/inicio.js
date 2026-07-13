@@ -5,7 +5,7 @@
 // de chamados vêm do doc público config/transparencia (só contagens).
 // =============================================================================
 import { el, frag, fmtNum } from '../ui.js';
-import { APP, CAMPI, ESPECIALIDADES, statusNome, campusNome } from '../config.js';
+import { APP, CAMPI, ESPECIALIDADES, campusNome } from '../config.js';
 import { ordenarFila, prioridade, cargaProfissionais } from '../calc.js';
 import { store } from '../store.js';
 import { can } from '../auth.js';
@@ -66,9 +66,10 @@ export function viewInicio() {
     linhasMensais([sAbertas, sConcl], { aria: 'Demandas abertas e concluídas por mês, últimos 12 meses' }),
     legenda([sAbertas, sConcl]));
 
-  const stDados = ['atendimento', 'fila', 'codir', 'analise', 'recebido', 'diligencia', 'suspenso', 'concluido']
-    .map(st => ({ rotulo: statusNome(st), valor: n(st) })).filter(x => x.valor > 0);
-  const gStatus = card('Demandas por status', barrasH(stDados, { rotuloW: 118, aria: 'Demandas por status' }));
+  const ROTULO_CURTO = { atendimento: 'Em atendimento', fila: 'Na fila', codir: 'No CODIR', analise: 'Em análise', recebido: 'Recebidas', diligencia: 'Em diligência', suspenso: 'Suspensas', concluido: 'Concluídas' };
+  const stDados = Object.keys(ROTULO_CURTO)
+    .map(st => ({ rotulo: ROTULO_CURTO[st], valor: n(st) })).filter(x => x.valor > 0);
+  const gStatus = card('Demandas por status', barrasH(stDados, { rotuloW: 108, aria: 'Demandas por status' }));
 
   const ativas = todas.filter(d => !['concluido', 'cancelado', 'nao-enquadrado'].includes(d.status));
   const porCampus = CAMPI.map(cp => ({ rotulo: cp.nome, valor: ativas.filter(d => d.campus === cp.id).length }))
