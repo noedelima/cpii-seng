@@ -1,4 +1,4 @@
-# Manual Operacional da Engenharia — Sistema de Gestão de Demandas SENG
+# Manual Operacional da Engenharia — Portal da Engenharia · Colégio Pedro II
 
 **Colégio Pedro II · Seção de Engenharia — SENG/DECOF**
 **Portaria nº 7503/REITORIA/CPII, de 24/11/2025**
@@ -15,7 +15,7 @@ Guia operacional completo para a equipe da Seção de Engenharia (perfis **Engen
 2. Perfis e permissões
 3. Ciclo de vida da demanda (status e transições)
 4. Como a prioridade é calculada
-5. Fluxo 1 — Acessar e triar (painel interno)
+5. Fluxo 1 — Acessar e triar (fila e triagem)
 6. Fluxo 2 — Abrir e ler uma demanda
 7. Fluxo 3 — Avaliação técnica (GUT)
 8. Fluxo 4 — Tramitar status, diligência e encaminhamento ao CODIR
@@ -105,7 +105,7 @@ O cálculo segue o modelo de priorização da Seção (art. 5º, II):
 
 ---
 
-## 5. Fluxo 1 — Acessar e triar (painel interno)
+## 5. Fluxo 1 — Acessar e triar (fila e triagem)
 
 **Passo a passo**
 
@@ -113,7 +113,7 @@ O cálculo segue o modelo de priorização da Seção (art. 5º, II):
 
 @fig login
 
-2. No **Painel**, autenticado, a tabela ganha a coluna **Fiscal técnico** e o filtro **“Minhas atribuições”**; o cartão **Carga da equipe** aparece **logo acima da fila**, para ficar sempre visível independentemente do tamanho da lista.
+2. Na aba **Chamados** (recorte **Fila e atendimento**), autenticado, a tabela ganha a coluna **Fiscal técnico** e o filtro **“Minhas atribuições”**. O cartão **Carga da equipe** fica na página **Início**.
 3. Para triar, filtre por **status “Recebido”** (ou por especialidade) e abra as demandas pendentes.
 
 @fig eng-painel
@@ -122,7 +122,7 @@ O cálculo segue o modelo de priorização da Seção (art. 5º, II):
 
 > **Exportações:** o **Baixar PDF da fila** exporta **o que estiver filtrado na tela** — demandas e chamados em atendimento (use o filtro de tipo **Chamado** para uma lista só de chamados, ou o status **Em atendimento** para o bloco completo). Além dele, o painel interno tem **Baixar Excel** (.xlsx com todas as colunas — classificação, escores, alocação e observações), disponível apenas para Engenharia, Chefe e Administrador.
 
-> **Ordenação do Painel.** A lista é organizada por **status**, na sequência operacional — **Em atendimento → Recebido → Em análise → Em diligência → Aguardando CODIR → Na fila → Suspenso → Concluído → Não enquadrado → Cancelado → Excluído** —, com a **prioridade** ordenando dentro de cada status. Assim o que está em andamento aparece primeiro; encerradas e excluídas ficam no fim. *(O status **Excluído** — arquivo morto — só aparece para Chefe/Admin.)*
+> **Ordenação da fila.** A lista é organizada por **status**, na sequência operacional — **Em atendimento → Recebido → Em análise → Em diligência → Aguardando CODIR → Na fila → Suspenso → Concluído → Não enquadrado → Cancelado → Excluído** —, com a **prioridade** ordenando dentro de cada status. Assim o que está em andamento aparece primeiro; encerradas e excluídas ficam no fim. *(O status **Excluído** — arquivo morto — só aparece para Chefe/Admin.)*
 
 > **Notificações (sino do cabeçalho).** O ícone de **sino**, ao lado do seu nome, traz um **contador** de avisos não lidos e abre a sua **área pessoal de notificações** — uma lista em que **cada linha é um link** direto para a demanda. A Engenharia é avisada quando: uma **nova demanda** é cadastrada nas **suas disciplinas**; há **diligência** (devolução/resposta) ou **novo comentário** em demandas em que você está **envolvido** (fiscalização/planejamento) — ou, se ainda não há equipe alocada, nas demandas das **suas disciplinas**; e quando qualquer demanda é **concluída**. Abrir a notificação a marca como lida; há também **“marcar todas como lidas”**. Você nunca é notificado das suas próprias ações. Os avisos já lidos são removidos automaticamente após 30 dias.
 
@@ -231,7 +231,7 @@ Quando a demanda entra em **Em atendimento** (ou é **Concluída**), o sistema *
 
 ## 11. Fluxo 7 — Carga da equipe (art. 12)
 
-No **Painel** autenticado, o cartão **Carga da equipe** consolida a pontuação de cada profissional.
+Na página **Início**, autenticado, o cartão **Carga da equipe** consolida a pontuação de cada profissional.
 
 @fig eng-carga
 
@@ -328,7 +328,7 @@ O **Chamado** é a **porta de entrada única** da Engenharia. O campus abre um c
 
 > O mesmo fluxo, em notação BPMN editável (Bizagi Modeler), está em `docs/fluxo-chamados.bpmn` no repositório.
 
-**Onde fica:** menu **Chamados** — focado no **cadastro e na triagem** (recorte padrão “Cadastro e triagem”). Após a triagem, os chamados **em atendimento** passam a aparecer também na **fila do Painel**, agrupados com as demandas do mesmo status, ordenados pelo prazo (SLA) e marcados com a etiqueta CHAMADO. A SENG vê **todos** os chamados; o campus vê só os da própria unidade.
+**Onde fica:** aba **Chamados**, recorte **Triagem de chamados**. Após a triagem, os chamados **em atendimento** passam a aparecer também no recorte **Fila e atendimento**, agrupados com as demandas do mesmo status, ordenados pelo prazo (SLA) e marcados com a etiqueta CHAMADO. A SENG vê **todos** os chamados; o campus vê só os da própria unidade.
 
 ### Painel de chamados
 
@@ -469,7 +469,7 @@ A edição congela na submissão ao CODIR. Se for indispensável, a Chefia pode 
 A carga só conta a partir de “Em atendimento” (art. 12). Reversões devolvem os pontos ao contador.
 
 **Excluí uma demanda por engano.**
-Ela está no **arquivo morto** por 30 dias (visível ao Chefe/Admin no fim do Painel, com status “Excluído”). Abra-a e use **Resgatar**.
+Ela está no **arquivo morto** por 30 dias (visível ao Chefe/Admin no fim da fila, com status “Excluído”). Abra-a e use **Resgatar**.
 
 **Um cadastrador de campus aparece com mais de uma unidade.**
 É esperado: cadastradores podem ser associados a vários campi (ex.: CREIR + Realengo I), em casos de gestão compartilhada.

@@ -437,6 +437,26 @@ html[data-tema="escuro"] .notif-tag { color: color-mix(in srgb, var(--st) 72%, #
 .anexo-meta-linha:last-of-type { border-bottom: 0; }
 .anexo-add { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 
+/* Início — Portal da Engenharia (transparência) */
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 16px; }
+.kpi-card { background: var(--card); border: 1px solid var(--borda); border-radius: var(--raio-sm); padding: 12px 14px; }
+.kpi-rotulo { font-size: .78rem; color: var(--texto-2); }
+.kpi-valor { font-size: 1.55rem; font-weight: 700; color: var(--texto); line-height: 1.25; }
+.kpi-valor.ok { color: var(--ok); }
+.graf-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.graf-card h2 { font-size: .95rem; margin-bottom: 10px; }
+.graf-legenda { display: flex; gap: 14px; font-size: .78rem; color: var(--texto-2); margin-top: 6px; }
+.graf-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: middle; margin-right: 4px; }
+.graf-donut { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.graf-donut-lista { display: flex; flex-direction: column; gap: 4px; font-size: .8rem; color: var(--texto-2); }
+.inicio-fila-cab { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+.inicio-fila-cab h2 { margin: 0; }
+
+/* Chamados — recortes da página unificada */
+.hub-barra { display: flex; gap: 8px; margin-bottom: 14px; }
+.hub-pill { font-size: .85rem; }
+.hub-on { background: var(--primario); color: var(--primario-texto); border-color: var(--primario); }
+
 /* Linha do tempo unificada (comentários + anexos + eventos) */
 .lt-lista { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
 .lt-item { border-left: 2px solid var(--borda); padding: 2px 0 2px 12px; }

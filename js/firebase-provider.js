@@ -4,7 +4,8 @@
 // Auth: e-mail/senha. Dados: Cloud Firestore (regras em firebase/firestore.rules).
 // =============================================================================
 import { api, apiLigada } from './api.js';
-import { CATEGORIAS_CHAMADO } from './config.js';
+import { CATEGORIAS_CHAMADO, STATUS_CHAMADO_ABERTO, slaChamado } from './config.js';
+import { calcularTransparencia } from './calc.js';
 
 const FB = 'https://www.gstatic.com/firebasejs/10.12.2';
 
@@ -68,6 +69,11 @@ export class FirebaseProvider {
       this._params = snap.exists() ? snap.data() : null;
       this._emit();
     });
+    // Transparência: agregados públicos de chamados (só contagens — ver Início).
+    fs.onSnapshot(fs.doc(this.db, 'config', 'transparencia'), (snap) => {
+      this._transparencia = snap.exists() ? snap.data() : null;
+      this._emit();
+    });
 
     await new Promise((resolve) => {
       auth.onAuthStateChanged(this.auth, async (u) => {
@@ -110,6 +116,7 @@ export class FirebaseProvider {
     if (['engenharia', 'chefe', 'codir', 'admin'].includes(rl)) {
       this._unsubPriv.push(fs.onSnapshot(fs.collection(this.db, 'chamados'), (snap) => {
         this._chamados = snap.docs.map(d => ({ id: d.id, ...d.data() })); this._emit();
+        this._talvezSincronizarTransparencia();
       }, () => {}));
     } else if (rl === 'campus') {
       const campi = (Array.isArray(this.user.campi) && this.user.campi.length) ? this.user.campi : (this.user.campus ? [this.user.campus] : []);
@@ -262,6 +269,18 @@ export class FirebaseProvider {
 
   // --- Chamados (intake da SENG) ------------------------------------------
   listChamados() { return this._chamados; }
+  getTransparencia() { return this._transparencia || null; }
+  // Publica os agregados públicos (config/transparencia) quando mudarem —
+  // auto-sincronizado por chefe/admin, no mesmo padrão do diretório.
+  async _talvezSincronizarTransparencia() {
+    if (!['chefe', 'admin'].includes(this.user?.role)) return;
+    const novo = calcularTransparencia(this._chamados, slaChamado, STATUS_CHAMADO_ABERTO);
+    const { atualizadoEm: _a, ...novoSem } = novo;
+    const { atualizadoEm: _b, ...atualSem } = this._transparencia || {};
+    if (JSON.stringify(novoSem) === JSON.stringify(atualSem)) return;
+    try { await this._F.setDoc(this._F.doc(this.db, 'config', 'transparencia'), novo); }
+    catch (e) { console.warn('transparencia', e); }
+  }
   getChamado(id) { return this._chamados.find(c => c.id === id) || null; }
   async criarChamado(c) {
     const ano = new Date().getFullYear();

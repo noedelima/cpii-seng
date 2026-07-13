@@ -6,7 +6,8 @@
 // A aplicação consome apenas a API do `store`, indiferente ao provedor.
 // Toda modificação gera entrada no LOG DE AUDITORIA (visível só ao administrador).
 // =============================================================================
-import { PARAMS_DEFAULT, CATEGORIAS_CHAMADO } from './config.js';
+import { PARAMS_DEFAULT, CATEGORIAS_CHAMADO, STATUS_CHAMADO_ABERTO, slaChamado } from './config.js';
+import { calcularTransparencia } from './calc.js';
 import { FIREBASE_CONFIG } from './firebase-config.js';
 import { seedDemo } from './seed.js';
 
@@ -265,6 +266,7 @@ class DemoProvider {
 
   // --- Profissionais ---
   listProfissionais() { return this.user ? this.db.profissionais : []; }
+  getTransparencia() { return calcularTransparencia(this.db.chamados || [], slaChamado, STATUS_CHAMADO_ABERTO); }
   async salvarProfissional(p) {
     if (p.email && this.db.profissionais.some(x => x.id !== p.id && (x.email || '').toLowerCase() === p.email.toLowerCase()))
       throw new Error('Já existe profissional com este e-mail.');

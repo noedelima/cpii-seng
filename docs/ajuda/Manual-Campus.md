@@ -1,4 +1,4 @@
-# Manual do Campus — Sistema de Gestão de Demandas SENG
+# Manual do Campus — Portal da Engenharia · Colégio Pedro II
 
 **Colégio Pedro II · Seção de Engenharia — SENG/DECOF**
 **Portaria nº 7503/REITORIA/CPII, de 24/11/2025**
@@ -17,7 +17,7 @@ Guia completo, passo a passo, para as unidades (campi) **abrirem e acompanharem 
 2. Antes de começar (pré-requisitos)
 3. Conceitos essenciais (papéis, fluxo e status)
 4. Fluxo 1 — Acessar o sistema
-5. Fluxo 2 — Consultar a fila (painel público)
+5. Fluxo 2 — Consultar a fila (aba Chamados)
 6. Fluxo 3 — Abrir um chamado (campo a campo)
 7. Fluxo 4 — Acompanhar um chamado (e anexar fotos)
 8. Fluxo 5 — Responder a uma diligência
@@ -90,7 +90,7 @@ A **consulta à fila** e o **relatório em PDF** são **públicos** — não exi
 1. Abra o endereço do sistema no navegador.
 2. Clique em **Entrar** (canto superior direito).
 3. Informe o seu **e-mail institucional** e a **senha**.
-4. Clique em **Entrar**. Você será levado ao Painel, já autenticado.
+4. Clique em **Entrar**. Você será levado ao **Início**, já autenticado.
 
 @fig login
 
@@ -101,9 +101,9 @@ A **consulta à fila** e o **relatório em PDF** são **públicos** — não exi
 
 ---
 
-## 5. Fluxo 2 — Consultar a fila (painel público)
+## 5. Fluxo 2 — Consultar a fila (aba Chamados)
 
-O **Painel** lista todas as demandas de obras e serviços, com campus, objeto, status, índice GUT, prioridade e data de atualização. *(Sem login, a fila mostra só as demandas; **autenticado**, você também vê os **chamados em atendimento** da sua unidade, agrupados com as demandas do mesmo status e marcados com a etiqueta CHAMADO. Chamados recém-abertos ou em triagem ficam no menu **Chamados** até a SENG concluir a triagem.)*
+A aba **Chamados** (recorte **Fila e atendimento**) lista todas as demandas de obras e serviços, com campus, objeto, status, índice GUT, prioridade e data de atualização. *(Sem login, a fila mostra só as demandas; **autenticado**, você também vê os **chamados em atendimento** da sua unidade, agrupados com as demandas do mesmo status e marcados com a etiqueta CHAMADO. Chamados recém-abertos ou em triagem ficam no menu **Chamados** até a SENG concluir a triagem.)*
 
 @fig campus-fila
 
@@ -122,7 +122,7 @@ Este é o fluxo mais importante para o campus. O formulário é **curto e direto
 **Passo a passo**
 
 1. Faça login (Fluxo 1).
-2. Abra o menu **Chamados** e clique em **+ Abrir chamado** (o mesmo botão aparece no Painel).
+2. Abra o menu **Chamados** e clique em **+ Abrir chamado** (o mesmo botão aparece no Início).
 3. Preencha os campos (os obrigatórios têm asterisco *):
 
 | Campo | Como preencher |
@@ -221,7 +221,7 @@ Tipicamente **não** são obras/serviços de engenharia e podem ser **encaminhad
 | **Aberto** | O chamado chegou e aguarda a triagem da SENG. | Acompanhar; anexar fotos. |
 | **Em triagem** | A SENG está analisando e classificando. | Acompanhar. |
 | **Em diligência** | A SENG precisa de um complemento. | **Responder** (Fluxo 5). O SLA pausa. |
-| **Em atendimento** | Consultoria/laudo em andamento pela SENG — aparece também na fila do Painel, junto às demandas em atendimento. | Acompanhar. |
+| **Em atendimento** | Consultoria/laudo em andamento pela SENG — aparece também na fila da aba Chamados, junto às demandas em atendimento. | Acompanhar. |
 | **Encaminhado à fila de Obras** | Virou **Demanda**; segue na fila pública (GUT/CODIR). | Acompanhar a **demanda** vinculada. |
 | **Encaminhado a outro setor** | Não é caso da SENG; foi direcionado (ex.: manutenção). | Seguir a orientação. |
 | **Resolvido** | Consultoria/laudo concluído (orientação/NT). | Ver a orientação; encerrar. |

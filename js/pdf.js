@@ -204,7 +204,7 @@ export async function gerarNotaTecnicaChamado({ chamado, assinante = {} }) {
   };
   const rodape = (pag, total) => {
     doc.setFontSize(7.5).setTextColor(120);
-    doc.text('Minuta gerada pelo SENG Demandas — revisar e numerar antes de assinar. Não armazenada pelo sistema.', M, H - 8);
+    doc.text('Minuta gerada pelo Portal da Engenharia — revisar e numerar antes de assinar. Não armazenada pelo sistema.', M, H - 8);
     doc.text(`Página ${pag} de ${total}`, W - M, H - 8, { align: 'right' });
   };
   cabecalho();

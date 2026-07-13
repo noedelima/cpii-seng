@@ -94,6 +94,34 @@ export function ordenarFila(demandas, params) {
 }
 
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Transparência — agregados PÚBLICOS de chamados (só contagens; sem assuntos
+// nem nomes). Publicados em config/transparencia pelo cliente interno.
+// ---------------------------------------------------------------------------
+export function calcularTransparencia(chamados, slaChamado, STATUS_ABERTO) {
+  const chs = chamados || [];
+  const anoAtual = new Date().getFullYear();
+  const ativos = chs.filter(c => STATUS_ABERTO.includes(c.status));
+  let prazo = 0, vencendo = 0, vencido = 0;
+  for (const c of ativos) {
+    const e = slaChamado(c).estado;
+    if (e === 'vencido') vencido++; else if (e === 'vencendo') vencendo++; else prazo++;
+  }
+  const duracoes = chs.map(c => {
+    const h = (c.historico || []).find(x => /desfecho|convertido|atendimento|resolvido/i.test(x.acao || ''));
+    return h && c.aberturaEm ? h.ts - c.aberturaEm : null;
+  }).filter(d => d != null && d >= 0);
+  return {
+    ativos: ativos.length,
+    emTriagem: chs.filter(c => ['aberto', 'triagem', 'diligencia'].includes(c.status)).length,
+    emAtendimento: chs.filter(c => c.status === 'atendimento').length,
+    resolvidosAno: chs.filter(c => c.status === 'resolvido' && new Date(c.atualizadoEm || 0).getFullYear() === anoAtual).length,
+    slaPrazo: prazo, slaVencendo: vencendo, slaVencido: vencido,
+    triagemMediaDias: duracoes.length ? Math.round(duracoes.reduce((a, b) => a + b, 0) / duracoes.length / 86400000) : null,
+    atualizadoEm: Date.now(),
+  };
+}
+
 // Carga de pontos por profissional (arts. 12 e 13)
 // Conta apenas demandas EM ATENDIMENTO. Emergenciais (art. 11 §5º) pontuam,
 // mas podem exceder o limite (art. 12 §2º) — sinalizadas à parte.

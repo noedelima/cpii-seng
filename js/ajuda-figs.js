@@ -31,10 +31,10 @@ const chips = (arr) => el('div', { class: 'rp-chips' }, arr.map(c => el('span', 
 const h = (t) => el('div', { class: 'rp-h' }, t);
 
 // Barra de topo do app (para figuras de menu/painel).
-function topbar(ativo = 'Painel', extra = []) {
-  const links = ['Painel', 'Chamados', ...extra, 'Ajuda'];
+function topbar(ativo = 'Início', extra = []) {
+  const links = ['Início', 'Chamados', ...extra, 'Ajuda'];
   return el('div', { class: 'rp-topbar' },
-    el('span', { class: 'rp-brand' }, 'SENG Demandas'),
+    el('span', { class: 'rp-brand' }, 'Portal da Engenharia'),
     el('span', { class: 'rp-links' }, links.map(l => el('span', { class: 'rp-link' + (l === ativo ? ' on' : '') }, l))),
     el('span', { class: 'rp-user' }, '\u{1F514}  Seu nome ▾'));
 }
@@ -118,7 +118,7 @@ F['login'] = () => ajudaFig({
   legenda: '① Entrar — use o e-mail institucional. A consulta à fila e o PDF são públicos; o login habilita as ações.',
   marcadores: [{ n: 1, top: '84%', left: '50%' }],
   corpo: el('div', { class: 'rp-centro' }, card(
-    h('SENG Demandas'),
+    h('Portal da Engenharia'),
     nota('Colégio Pedro II — Seção de Engenharia (SENG/DECOF)'),
     campo('E-mail institucional', 'nome@cp2.g12.br'),
     campo('Senha', '••••••••'),

@@ -1,4 +1,4 @@
-# Manual do CODIR — Sistema de Gestão de Demandas SENG
+# Manual do CODIR — Portal da Engenharia · Colégio Pedro II
 
 **Colégio Pedro II · Seção de Engenharia — SENG/DECOF**
 **Portaria nº 7503/REITORIA/CPII, de 24/11/2025**
@@ -86,7 +86,7 @@ A coluna **Pts** mostra os **pontos de complexidade** (art. 11) — o esforço e
 
 @fig login
 
-2. No **Painel**, veja a fila ordenada por prioridade, com **GUT**, **Prioridade** e **Pts**.
+2. Na aba **Chamados** (recorte **Fila e atendimento**), veja a fila ordenada por prioridade, com **GUT**, **Prioridade** e **Pts**.
 3. Use os **filtros** (campus, status, tipo de atividade, especialidade) ou a **busca**.
 4. Se desejar, clique em **Baixar PDF da fila** (relatório com timbre e data/hora).
 
@@ -170,7 +170,7 @@ Após salvar, confira o resultado no cartão **Priorização**:
 
 ## 11. Apêndice B — Transparência e auditoria
 
-- O **Painel** e o **PDF** são públicos (a fila e a posição de cada demanda são abertas; nomes de profissionais ficam ocultos na visão pública).
+- A fila e o **PDF** são públicos (a fila e a posição de cada demanda são abertas; nomes de profissionais ficam ocultos na visão pública).
 - O **histórico** de cada demanda registra cada aprovação e ajuste, com data e autor.
 - O **log de auditoria** (visível ao Administrador) guarda toda modificação de forma **imutável**.
 - A fila sinaliza com `*` as demandas com fator de ajuste do CODIR.

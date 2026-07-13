@@ -431,7 +431,7 @@ export function viewDemanda(rerender, id) {
   }
 
   return frag(
-    el('a', { class: 'voltar', href: '#/' }, '← Voltar ao painel'),
+    el('a', { class: 'voltar', href: '#/chamados' }, '← Voltar aos chamados'),
     el('div', { class: 'detalhe-grid' },
       el('div', { class: 'col' }, dados, cartaoEditarDados, linhaTempo),
       el('div', { class: 'col' }, cartaoArquivo, cartaoPontuacao, cartaoCodir, cartaoAvaliacao, cartaoGestao, cartaoEquipe, cartaoAnexos)));

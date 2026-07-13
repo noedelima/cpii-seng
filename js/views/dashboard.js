@@ -169,27 +169,7 @@ export function viewDashboard(rerender) {
         : el('tr', {}, el('td', { colspan: user ? 9 : 8, class: 'vazio' }, 'Nenhuma demanda corresponde aos filtros.'))),
     ));
 
-  // ---- painel de carga dos profissionais (somente autenticado) ---------------------
-  let painelProfs = null;
-  if (user && can(user, 'verInterno') && profissionais.length) {
-    const carga = cargaProfissionais(todas, internas, profissionais, params,
-      typeof s.listChamados === 'function' ? s.listChamados() : []);
-    const cards = profissionais.filter(p => p.ativo !== false || carga[p.id].total > 0).map(p => {
-      const c = carga[p.id];
-      return el('a', { class: 'prof-card', href: '#/profissionais', title: 'Ver detalhes em Profissionais' },
-        el('div', { class: 'prof-nome' }, p.nome, p.ativo === false ? el('span', { class: 'sub' }, ' (inativo)') : null),
-        el('div', { class: 'sub' }, `${p.cargo} · ${p.area}`),
-        el('div', { class: 'prof-pontos' },
-          el('span', { class: c.excedido ? 'excedido' : '' }, `${c.regular} / ${params.limitePontos} pts`),
-          c.emergencial ? el('span', { class: 'tag-emergencial' }, `+${c.emergencial} emerg.`) : null,
-          c.planejamento ? el('span', { class: 'sub' }, ` · ${c.planejamento} planej.`) : null,
-          (c.chamados || []).length ? el('span', { class: 'sub' }, ` · ${c.chamados.length} chamado${c.chamados.length === 1 ? '' : 's'}`) : null),
-        barra(c.regular, params.limitePontos));
-    });
-    painelProfs = el('section', { class: 'card' },
-      el('h2', {}, 'Carga da equipe ', el('span', { class: 'sub' }, `(limite de ${params.limitePontos} pontos — art. 12)`)),
-      el('div', { class: 'prof-grid' }, cards));
-  }
+  // A carga da equipe migrou para a página Início (Portal da Engenharia).
 
   // ---- botão PDF ---------------------------------------------------------------------
   const btnPdf = el('button', { class: 'btn primario', onclick: async () => {
@@ -227,9 +207,6 @@ export function viewDashboard(rerender) {
       el('div', { class: 'hero-acoes' },
         user && can(user, 'criar') ? el('a', { class: 'btn primario', href: '#/chamado-novo' }, '+ Abrir chamado') : null,
         btnPdf, btnXlsx)),
-    // Carga da equipe vem ANTES da fila: card de tamanho fixo não deve ficar
-    // soterrado pela fila, que cresce com o histórico.
-    painelProfs,
     el('section', { class: 'card' },
       el('h2', {}, 'Fila de demandas ', el('span', { class: 'sub' }, `${ordenadas.length} de ${todas.length}${linhasChamados.length ? ` · ${linhasChamados.length} chamado${linhasChamados.length === 1 ? '' : 's'}` : ''}`)),
       chips, tabela,
@@ -237,8 +214,3 @@ export function viewDashboard(rerender) {
   );
 }
 
-function barra(usados, limite) {
-  const pct = Math.min(100, (usados / limite) * 100);
-  return el('div', { class: 'pontos-barra' },
-    el('div', { class: `pontos-fill ${usados > limite ? 'cheia' : usados >= limite ? 'limite' : ''}`, style: `width:${pct}%` }));
-}

@@ -4,11 +4,11 @@
 // =============================================================================
 
 export const APP = {
-  nome: 'SENG Demandas',
+  nome: 'Portal da Engenharia',
   orgao: 'Colégio Pedro II',
   setor: 'Seção de Engenharia — SENG/DECOF',
   portaria: 'Portaria nº 7503/REITORIA/CPII, de 24/11/2025',
-  versao: '1.15.1',
+  versao: '1.16.0',
 };
 
 // --- Parâmetros ajustáveis pelo Administrador (defaults) ---------------------

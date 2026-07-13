@@ -6,7 +6,8 @@ import { APP } from './config.js';
 import { initStore, store } from './store.js';
 import { can } from './auth.js';
 import { EMBLEMA } from './logos.js';
-import { viewDashboard } from './views/dashboard.js';
+import { viewInicio } from './views/inicio.js';
+import { viewChamadosHub } from './views/chamados-hub.js';
 import { viewLogin } from './views/login.js';
 import { viewDemanda } from './views/demanda.js';
 import { viewProfissionais } from './views/profissionais.js';
@@ -14,7 +15,6 @@ import { viewAdmin } from './views/admin.js';
 import { viewConta } from './views/conta.js';
 import { viewAjuda } from './views/ajuda.js';
 import { viewNotificacoes } from './views/notificacoes.js';
-import { viewChamados } from './views/chamados.js';
 import { viewChamadoNovo } from './views/chamado-novo.js';
 import { viewChamado } from './views/chamado.js';
 
@@ -39,8 +39,8 @@ function renderHeader() {
   const navlink = (href, txt) => el('a', { href, class: `nav-link ${rota === href ? 'ativo' : ''}` }, txt);
 
   const nav = el('nav', { class: 'nav', 'aria-label': 'Navegação principal' },
-    navlink('#/', 'Painel'),
-    user ? navlink('#/chamados', 'Chamados') : null,
+    navlink('#/', 'Início'),
+    navlink('#/chamados', 'Chamados'),
     user && can(user, 'verInterno') ? navlink('#/profissionais', 'Profissionais') : null,
     user && (can(user, 'usuarios') || can(user, 'params')) ? navlink('#/admin', 'Administração') : null,
     navlink('#/ajuda', 'Ajuda'),
@@ -70,7 +70,7 @@ function renderHeader() {
         el('img', { src: EMBLEMA, alt: 'Brasão do Colégio Pedro II', width: 40, height: 33 }),
         el('div', { class: 'marca-texto' },
           el('strong', {}, APP.nome),
-          el('span', {}, APP.setor))),
+          el('span', {}, APP.orgao))),
       nav, acoes),
   ];
   if (s.mode === 'demo') {
@@ -83,7 +83,7 @@ function renderHeader() {
 
 // ---- Roteador --------------------------------------------------------------------
 const rotas = [
-  { re: /^#\/$/, view: viewDashboard },
+  { re: /^#\/$/, view: viewInicio },
   { re: /^#\/login$/, view: viewLogin },
   // Unificado: a Nova Solicitação deixou de existir como entrada própria — o
   // chamado é a única porta. Redireciona links/marcadores antigos.
@@ -94,7 +94,7 @@ const rotas = [
   { re: /^#\/conta$/, view: viewConta },
   { re: /^#\/ajuda$/, view: viewAjuda },
   { re: /^#\/notificacoes$/, view: viewNotificacoes },
-  { re: /^#\/chamados$/, view: viewChamados },
+  { re: /^#\/chamados$/, view: viewChamadosHub },
   { re: /^#\/chamado-novo$/, view: viewChamadoNovo },
   { re: /^#\/chamado\/([\w-]+)$/, view: viewChamado },
 ];
