@@ -127,7 +127,8 @@ export function viewDashboard(rerender) {
   let chamadosFila = [];
   const mostraChamados = user && typeof s.listChamados === 'function'
     && (!filtros.status || filtros.status === 'atendimento')
-    && (!filtros.tipo || filtros.tipo === 'chamado');
+    && (!filtros.tipo || filtros.tipo === 'chamado')
+    && !filtros.fase; // chamados não têm fase de contratação
   if (mostraChamados) {
     const busca = (filtros.busca || '').toLowerCase();
     chamadosFila = s.listChamados()
