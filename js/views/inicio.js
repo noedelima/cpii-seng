@@ -5,7 +5,7 @@
 // de chamados vêm do doc público config/transparencia (só contagens).
 // =============================================================================
 import { el, frag, fmtNum } from '../ui.js';
-import { APP, CAMPI, ESPECIALIDADES, campusNome } from '../config.js';
+import { APP, CAMPI, ESPECIALIDADES, TIPOS_ATIVIDADE, campusNome } from '../config.js';
 import { ordenarFila, prioridade, cargaProfissionais } from '../calc.js';
 import { store } from '../store.js';
 import { can } from '../auth.js';
@@ -29,14 +29,14 @@ export function viewInicio() {
   const totalSla = t ? (t.slaPrazo + t.slaVencendo + t.slaVencido) : 0;
   const pctPrazo = t && totalSla > 0 ? Math.round(100 * t.slaPrazo / totalSla) : null;
 
-  const kpi = (rot, val, ok) => el('div', { class: 'kpi-card' },
+  const kpi = (rot, val, ok, href) => el(href ? 'a' : 'div', { class: 'kpi-card', ...(href ? { href, title: 'Ver na lista' } : {}) },
     el('div', { class: 'kpi-rotulo' }, rot),
     el('div', { class: `kpi-valor${ok ? ' ok' : ''}` }, val == null ? '—' : String(val)));
   const kpis = el('div', { class: 'kpi-grid' },
-    kpi('Em atendimento', n('atendimento')),
-    kpi('Na fila', n('fila')),
-    kpi(`Concluídas em ${anoAtual}`, concluidasAno),
-    kpi('Chamados ativos', t ? t.ativos : null),
+    kpi('Em atendimento', n('atendimento'), false, '#/chamados?status=atendimento'),
+    kpi('Na fila', n('fila'), false, '#/chamados?status=fila'),
+    kpi(`Concluídas em ${anoAtual}`, concluidasAno, false, '#/chamados?status=concluido'),
+    kpi('Chamados ativos', t ? t.ativos : null, false, user ? '#/chamados?recorte=triagem' : null),
     kpi('Triagem no prazo', pctPrazo == null ? null : pctPrazo + '%', pctPrazo != null && pctPrazo >= 80),
     kpi('Triagem média', t && t.triagemMediaDias != null ? t.triagemMediaDias + 'd' : null));
 
@@ -66,17 +66,32 @@ export function viewInicio() {
     linhasMensais([sAbertas, sConcl], { aria: 'Demandas abertas e concluídas por mês, últimos 12 meses' }),
     legenda([sAbertas, sConcl]));
 
+  const irPara = (query) => () => { location.hash = '#/chamados?' + query; };
   const ROTULO_CURTO = { atendimento: 'Em atendimento', fila: 'Na fila', codir: 'No CODIR', analise: 'Em análise', recebido: 'Recebidas', diligencia: 'Em diligência', suspenso: 'Suspensas', concluido: 'Concluídas' };
   const stDados = Object.keys(ROTULO_CURTO)
-    .map(st => ({ rotulo: ROTULO_CURTO[st], valor: n(st) })).filter(x => x.valor > 0);
+    .map(st => ({ rotulo: ROTULO_CURTO[st], valor: n(st), onClick: irPara('status=' + st) })).filter(x => x.valor > 0);
   const gStatus = card('Demandas por status', barrasH(stDados, { rotuloW: 108, aria: 'Demandas por status' }));
 
+  // Em atendimento, por atividade da SENG (fiscalização/elaboração/planejamento + chamados)
+  const emAtd = todas.filter(d => d.status === 'atendimento');
+  const atvDados = TIPOS_ATIVIDADE.map(ta => ({
+    rotulo: ta.nome.replace('Fiscalização de', 'Fisc.').replace('Elaboração de', 'Elab.').replace('Equipe de ', ''),
+    valor: emAtd.filter(d => d.aval?.tipoAtividade === ta.id).length,
+    onClick: irPara('status=atendimento&tipo=' + ta.id),
+  })).filter(x => x.valor > 0);
+  if (t && t.emAtendimento) atvDados.push({ rotulo: 'Chamados (consult./laudo)', valor: t.emAtendimento, onClick: irPara('tipo=chamado') });
+  const semAval = emAtd.filter(d => !d.aval?.tipoAtividade).length;
+  if (semAval) atvDados.push({ rotulo: 'Sem classificação', valor: semAval, onClick: irPara('status=atendimento') });
+  const gAtv = card('Em atendimento, por atividade', atvDados.length
+    ? barrasH(atvDados, { rotuloW: 128, aria: 'Itens em atendimento por atividade da SENG' })
+    : el('p', { class: 'sub' }, 'Nada em atendimento no momento.'));
+
   const ativas = todas.filter(d => !['concluido', 'cancelado', 'nao-enquadrado'].includes(d.status));
-  const porCampus = CAMPI.map(cp => ({ rotulo: cp.nome, valor: ativas.filter(d => d.campus === cp.id).length }))
+  const porCampus = CAMPI.map(cp => ({ rotulo: cp.nome, valor: ativas.filter(d => d.campus === cp.id).length, onClick: irPara('campus=' + cp.id) }))
     .filter(x => x.valor > 0).sort((a, b) => b.valor - a.valor).slice(0, 6);
   const gCampus = card('Demandas ativas por campus', barrasH(porCampus, { rotuloW: 110, aria: 'Demandas ativas por campus, seis maiores' }));
 
-  const porEsp = ESPECIALIDADES.map(e2 => ({ rotulo: String(e2).replace('Engenharia ', ''), valor: ativas.filter(d => (d.especialidades || []).includes(e2)).length }))
+  const porEsp = ESPECIALIDADES.map(e2 => ({ rotulo: String(e2).replace('Engenharia ', ''), valor: ativas.filter(d => (d.especialidades || []).includes(e2)).length, onClick: irPara('esp=' + encodeURIComponent(e2)) }))
     .filter(x => x.valor > 0);
   const gEsp = card('Demandas ativas por especialidade', porEsp.length
     ? donut(porEsp, { aria: 'Demandas ativas por especialidade' })
@@ -84,9 +99,9 @@ export function viewInicio() {
 
   const gCh = card('Chamados por etapa',
     t ? barrasH([
-      { rotulo: 'Em triagem', valor: t.emTriagem },
-      { rotulo: 'Em atendimento', valor: t.emAtendimento },
-      { rotulo: `Resolvidos em ${anoAtual}`, valor: t.resolvidosAno },
+      { rotulo: 'Em triagem', valor: t.emTriagem, onClick: user ? irPara('recorte=triagem') : null },
+      { rotulo: 'Em atendimento', valor: t.emAtendimento, onClick: irPara('tipo=chamado') },
+      { rotulo: `Resolvidos em ${anoAtual}`, valor: t.resolvidosAno, onClick: user ? irPara('recorte=triagem') : null },
     ], { rotuloW: 128, aria: 'Chamados por etapa' })
       : el('p', { class: 'sub' }, 'Os totais de chamados são publicados pela Engenharia e aparecerão aqui em breve.'),
     el('p', { class: 'nota' }, 'Contagens agregadas — sem assuntos nem nomes.'));
@@ -124,16 +139,27 @@ export function viewInicio() {
           el('div', { class: 'prof-pontos' },
             el('span', { class: c2.excedido ? 'excedido' : '' }, `${c2.regular} / ${params.limitePontos} pts`),
             c2.emergencial ? el('span', { class: 'tag-emergencial' }, `+${c2.emergencial} emerg.`) : null,
-            c2.planejamento ? el('span', { class: 'sub' }, ` · ${c2.planejamento} planej.`) : null,
-            (c2.chamados || []).length ? el('span', { class: 'sub' }, ` · ${c2.chamados.length} chamado${c2.chamados.length === 1 ? '' : 's'}`) : null),
+            c2.planejamento ? el('span', { class: `sub${c2.planejamento > params.refPlanejProf ? ' ref-acima' : ''}`, title: c2.planejamento > params.refPlanejProf ? `Acima do limite de referência (${params.refPlanejProf})` : '' }, ` · ${c2.planejamento} planej.`) : null,
+            (c2.chamados || []).length ? el('span', { class: `sub${c2.chamados.length > params.refChamadosProf ? ' ref-acima' : ''}`, title: c2.chamados.length > params.refChamadosProf ? `Acima do limite de referência (${params.refChamadosProf})` : '' }, ` · ${c2.chamados.length} chamado${c2.chamados.length === 1 ? '' : 's'}`) : null),
           el('div', { class: 'pontos-barra' },
             el('div', { class: `pontos-fill ${c2.excedido ? 'cheia' : c2.regular >= params.limitePontos ? 'limite' : ''}`, style: `width:${Math.min(100, (c2.regular / params.limitePontos) * 100)}%` })));
       });
-      painelProfs = el('section', { class: 'card' }, el('h2', {}, 'Carga da equipe'), el('div', { class: 'prof-grid' }, cards));
+      // Referências setoriais (indicativas): total de chamados em atendimento e
+      // de participações em planejamento, comparados aos limites de referência.
+      const totCh = Object.values(carga).reduce((a, c2) => a + (c2.chamados || []).length, 0);
+      const totPl = Object.values(carga).reduce((a, c2) => a + (c2.planejamento || 0), 0);
+      const refSpan = (rot, val, ref) => el('span', { class: `sub${val > ref ? ' ref-acima' : ''}`, title: `Limite de referência: ${ref}` }, `${rot}: ${val}/${ref}`);
+      painelProfs = el('section', { class: 'card' },
+        el('div', { class: 'inicio-fila-cab' },
+          el('h2', {}, 'Carga da equipe'),
+          el('div', { class: 'carga-refs' },
+            refSpan('Chamados no setor', totCh, params.refChamadosSetor),
+            refSpan('Planejamentos no setor', totPl, params.refPlanejSetor))),
+        el('div', { class: 'prof-grid' }, cards));
     }
   }
 
   return frag(hero, kpis, painelProfs,
-    el('div', { class: 'graf-grid' }, gLinha, gStatus, gCh, gCampus, gEsp),
+    el('div', { class: 'graf-grid' }, gLinha, gStatus, gCh, gAtv, gCampus, gEsp),
     tblFila);
 }

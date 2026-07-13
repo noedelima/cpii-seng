@@ -11,7 +11,8 @@ function sv(tag, attrs = {}, ...kids) {
 }
 const CORES = ['var(--primario)', 'var(--acento)', 'var(--ouro-claro)', 'var(--oliva)', 'var(--borda-forte)', 'var(--texto-2)'];
 
-// Barras horizontais: dados = [{ rotulo, valor, cor? }]
+// Barras horizontais: dados = [{ rotulo, valor, cor?, onClick? }]
+// Com onClick, a linha inteira é clicável (leva à lista filtrada).
 export function barrasH(dados, { rotuloW = 92, larg = 320, alturaBarra = 13, gap = 7, aria = '' } = {}) {
   const max = Math.max(1, ...dados.map(d => d.valor));
   const h = dados.length * (alturaBarra + gap) + 4;
@@ -19,10 +20,16 @@ export function barrasH(dados, { rotuloW = 92, larg = 320, alturaBarra = 13, gap
   dados.forEach((d, i) => {
     const y = i * (alturaBarra + gap);
     const w = Math.max(2, Math.round((d.valor / max) * (larg - rotuloW - 34)));
-    svg.append(
+    const g = sv('g', d.onClick ? { class: 'graf-clique', role: 'link', tabindex: 0, 'aria-label': `${d.rotulo}: ${d.valor} — ver na lista` } : {},
+      sv('rect', { x: 0, y: y - 2, width: larg, height: alturaBarra + 4, fill: 'transparent' }),
       sv('text', { x: rotuloW - 6, y: y + alturaBarra - 3, 'text-anchor': 'end', 'font-size': 10, fill: 'var(--texto-2)' }, d.rotulo),
       sv('rect', { x: rotuloW, y, width: w, height: alturaBarra, rx: 2, fill: d.cor || CORES[i % CORES.length] }),
       sv('text', { x: rotuloW + w + 5, y: y + alturaBarra - 3, 'font-size': 10, fill: 'var(--texto)' }, d.valor));
+    if (d.onClick) {
+      g.addEventListener('click', d.onClick);
+      g.addEventListener('keydown', (e) => { if (e.key === 'Enter') d.onClick(); });
+    }
+    svg.append(g);
   });
   return svg;
 }
@@ -82,7 +89,8 @@ export function donut(dados, { raio = 44, espessura = 15, aria = '' } = {}) {
   const lista = document.createElement('div');
   lista.className = 'graf-donut-lista';
   dados.forEach((d, i) => {
-    const item = document.createElement('div');
+    const item = document.createElement(d.onClick ? 'button' : 'div');
+    if (d.onClick) { item.className = 'graf-item-clique'; item.type = 'button'; item.onclick = d.onClick; }
     const sw = document.createElement('span');
     sw.className = 'graf-swatch'; sw.style.background = CORES[i % CORES.length];
     item.append(sw, ` ${d.rotulo} — ${d.valor}`);

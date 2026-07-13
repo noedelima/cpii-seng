@@ -4,7 +4,7 @@
 // Auth: e-mail/senha. Dados: Cloud Firestore (regras em firebase/firestore.rules).
 // =============================================================================
 import { api, apiLigada } from './api.js';
-import { CATEGORIAS_CHAMADO, STATUS_CHAMADO_ABERTO, slaChamado } from './config.js';
+import { CATEGORIAS_CHAMADO, STATUS_CHAMADO_ABERTO, slaChamado, PARAMS_DEFAULT } from './config.js';
 import { calcularTransparencia } from './calc.js';
 
 const FB = 'https://www.gstatic.com/firebasejs/10.12.2';
@@ -495,10 +495,9 @@ export class FirebaseProvider {
   }
 
   getParams() {
-    return this._params || {
-      anoPlano: new Date().getFullYear() + 1, valorRef: 125451.15,
-      pesoGUT: 0.75, pesoPxC: 0.25, limitePontos: 6,
-    };
+    // Mescla com os defaults: parâmetros novos ganham valor padrão mesmo em
+    // docs de produção antigos (ex.: limites de referência).
+    return { ...PARAMS_DEFAULT, ...(this._params || {}) };
   }
   async setParams(p) {
     if (apiLigada()) return api.setParams(p);

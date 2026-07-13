@@ -35,7 +35,7 @@ function alternarTema() {
 function renderHeader() {
   const s = store();
   const user = s.user;
-  const rota = location.hash || '#/';
+  const rota = (location.hash || '#/').split('?')[0];
   const navlink = (href, txt) => el('a', { href, class: `nav-link ${rota === href ? 'ativo' : ''}` }, txt);
 
   const nav = el('nav', { class: 'nav', 'aria-label': 'Navegação principal' },
@@ -94,7 +94,7 @@ const rotas = [
   { re: /^#\/conta$/, view: viewConta },
   { re: /^#\/ajuda$/, view: viewAjuda },
   { re: /^#\/notificacoes$/, view: viewNotificacoes },
-  { re: /^#\/chamados$/, view: viewChamadosHub },
+  { re: /^#\/chamados(?:\?.*)?$/, view: viewChamadosHub },
   { re: /^#\/chamado-novo$/, view: viewChamadoNovo },
   { re: /^#\/chamado\/([\w-]+)$/, view: viewChamado },
 ];

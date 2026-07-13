@@ -9,6 +9,11 @@ import { can } from '../auth.js';
 
 // Estado dos filtros (persiste durante a sessão de navegação)
 const filtros = { busca: '', campus: '', status: '', tipo: '', esp: '', minhas: false };
+
+// Aplica filtros vindos de links externos (ex.: gráficos do Início — #/chamados?status=fila)
+export function aplicarFiltrosExternos(obj = {}) {
+  Object.assign(filtros, { busca: '', campus: '', status: '', tipo: '', esp: '', minhas: false }, obj);
+}
 let purgaFeita = false; // limpeza do arquivo morto roda uma vez por sessão (Chefe/Admin)
 let purgaNotifFeita = false; // limpeza do próprio inbox de notificações, 1x por sessão
 

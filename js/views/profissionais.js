@@ -44,8 +44,8 @@ export function viewProfissionais(rerender) {
       el('div', { class: 'prof-resumo' },
         stat('Titular', c.titular), stat('Substituto', c.substituto),
         stat('Total (art. 12)', c.total, c.excedido), stat('Emergencial', c.emergencial),
-        stat('Planejamento', c.planejamento), stat('Disponível', c.disponivel),
-        stat('Chamados', (c.chamados || []).length)),
+        stat('Planejamento', c.planejamento, c.planejamento > params.refPlanejProf), stat('Disponível', c.disponivel),
+        stat('Chamados', (c.chamados || []).length, (c.chamados || []).length > params.refChamadosProf)),
       el('div', { class: 'pontos-barra grande' },
         el('div', { class: `pontos-fill ${c.excedido ? 'cheia' : c.regular >= params.limitePontos ? 'limite' : ''}`, style: `width:${Math.min(100, (c.regular / params.limitePontos) * 100)}%` })),
       (det.length || detCh.length)

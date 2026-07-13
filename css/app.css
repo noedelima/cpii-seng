@@ -449,8 +449,17 @@ html[data-tema="escuro"] .notif-tag { color: color-mix(in srgb, var(--st) 72%, #
 .graf-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: middle; margin-right: 4px; }
 .graf-donut { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
 .graf-donut-lista { display: flex; flex-direction: column; gap: 4px; font-size: .8rem; color: var(--texto-2); }
-.inicio-fila-cab { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+.inicio-fila-cab { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
 .inicio-fila-cab h2 { margin: 0; }
+a.kpi-card { text-decoration: none; color: inherit; display: block; transition: border-color var(--transicao); }
+a.kpi-card:hover { border-color: var(--ouro); }
+.graf-clique { cursor: pointer; }
+.graf-clique:hover text { fill: var(--texto); }
+.graf-clique:focus-visible { outline: 2px solid var(--foco); }
+.graf-item-clique { background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; text-align: left; }
+.graf-item-clique:hover { color: var(--texto); }
+.carga-refs { display: flex; gap: 14px; flex-wrap: wrap; font-size: .8rem; }
+.ref-acima { color: var(--perigo); font-weight: 600; }
 
 /* Chamados — recortes da página unificada */
 .hub-barra { display: flex; gap: 8px; margin-bottom: 14px; }

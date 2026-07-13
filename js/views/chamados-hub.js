@@ -5,7 +5,7 @@
 // =============================================================================
 import { el, frag } from '../ui.js';
 import { store } from '../store.js';
-import { viewDashboard } from './dashboard.js';
+import { viewDashboard, aplicarFiltrosExternos } from './dashboard.js';
 import { viewChamados } from './chamados.js';
 
 let recorte = 'fila'; // persiste durante a sessão de navegação
@@ -13,6 +13,22 @@ let recorte = 'fila'; // persiste durante a sessão de navegação
 export function viewChamadosHub(rerender) {
   const s = store();
   const user = s.user;
+
+  // Filtros por URL (#/chamados?status=fila&campus=CCE…): aplica uma vez e
+  // normaliza o hash para não reaplicar a cada render.
+  const q = (location.hash.split('?')[1] || '');
+  if (q) {
+    const p = new URLSearchParams(q);
+    if (p.get('recorte') === 'triagem') recorte = 'triagem';
+    else {
+      recorte = 'fila';
+      aplicarFiltrosExternos({
+        status: p.get('status') || '', campus: p.get('campus') || '',
+        tipo: p.get('tipo') || '', esp: p.get('esp') || '', busca: p.get('busca') || '',
+      });
+    }
+    history.replaceState(null, '', location.pathname + location.search + '#/chamados');
+  }
   if (!user && recorte === 'triagem') recorte = 'fila';
 
   const pill = (id, txt) => el('button', {

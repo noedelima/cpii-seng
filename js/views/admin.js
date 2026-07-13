@@ -61,13 +61,18 @@ function secaoParams(s, params) {
   const inPesoGUT = el('input', { type: 'number', min: 0, max: 1, step: 0.05, value: params.pesoGUT });
   const inPesoPxC = el('input', { type: 'number', min: 0, max: 1, step: 0.05, value: params.pesoPxC });
   const inLimite = el('input', { type: 'number', min: 1, max: 20, value: params.limitePontos });
+  const inRefChProf = el('input', { type: 'number', min: 1, max: 50, value: params.refChamadosProf });
+  const inRefChSetor = el('input', { type: 'number', min: 1, max: 200, value: params.refChamadosSetor });
+  const inRefPlProf = el('input', { type: 'number', min: 1, max: 20, value: params.refPlanejProf });
+  const inRefPlSetor = el('input', { type: 'number', min: 1, max: 100, value: params.refPlanejSetor });
   return el('section', { class: 'card' },
     el('h2', {}, 'Parâmetros do sistema'),
     el('form', { class: 'form-grid', onsubmit: async (e) => {
       e.preventDefault();
       const pg = +inPesoGUT.value, pp = +inPesoPxC.value;
       if (Math.abs(pg + pp - 1) > 0.001) { toast('Os pesos devem somar 1,00.', 'erro'); return; }
-      await s.setParams({ anoPlano: +inAno.value, valorRef: +inValorRef.value, pesoGUT: pg, pesoPxC: pp, limitePontos: +inLimite.value });
+      await s.setParams({ anoPlano: +inAno.value, valorRef: +inValorRef.value, pesoGUT: pg, pesoPxC: pp, limitePontos: +inLimite.value,
+        refChamadosProf: +inRefChProf.value, refChamadosSetor: +inRefChSetor.value, refPlanejProf: +inRefPlProf.value, refPlanejSetor: +inRefPlSetor.value });
       toast('Parâmetros salvos. As prioridades são recalculadas automaticamente.');
     } },
       el('div', { class: 'form-linha' },
@@ -76,6 +81,13 @@ function secaoParams(s, params) {
       el('div', { class: 'form-linha' },
         campo('Peso do GUT', inPesoGUT), campo('Peso do Prazo×Custo', inPesoPxC)),
       campo('Limite de pontos por profissional (art. 12)', inLimite),
+      el('h3', { class: 'sub-titulo' }, 'Limites de referência ', el('span', { class: 'sub' }, '(indicativos — sinalizam, sem bloquear)')),
+      el('div', { class: 'form-linha' },
+        campo('Chamados em atendimento por profissional', inRefChProf),
+        campo('Chamados em atendimento no setor', inRefChSetor)),
+      el('div', { class: 'form-linha' },
+        campo('Equipes de planejamento por profissional', inRefPlProf),
+        campo('Equipes de planejamento no setor', inRefPlSetor)),
       el('button', { class: 'btn primario' }, 'Salvar parâmetros')));
 }
 

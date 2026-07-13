@@ -8,7 +8,7 @@ export const APP = {
   orgao: 'Colégio Pedro II',
   setor: 'Seção de Engenharia — SENG/DECOF',
   portaria: 'Portaria nº 7503/REITORIA/CPII, de 24/11/2025',
-  versao: '1.16.0',
+  versao: '1.16.1',
 };
 
 // --- Parâmetros ajustáveis pelo Administrador (defaults) ---------------------
@@ -19,6 +19,12 @@ export const PARAMS_DEFAULT = {
   pesoGUT: 0.75,
   pesoPxC: 0.25,
   limitePontos: 6, // art. 12
+  // Limites de REFERÊNCIA (indicativos — não bloqueiam): sinalizam quando a
+  // quantidade supera o valor de referência, por profissional e no setor.
+  refChamadosProf: 3,   // chamados em atendimento por profissional
+  refChamadosSetor: 10, // chamados em atendimento no setor
+  refPlanejProf: 2,     // participações em equipes de planejamento por profissional
+  refPlanejSetor: 8,    // participações em equipes de planejamento no setor
 };
 
 // --- Campi / unidades (siglas usadas no ID da demanda) -----------------------
