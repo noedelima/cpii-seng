@@ -5,7 +5,7 @@
 // de chamados vêm do doc público config/transparencia (só contagens).
 // =============================================================================
 import { el, frag, fmtNum } from '../ui.js';
-import { APP, CAMPI, ESPECIALIDADES, FASES_DEMANDA, campusNome } from '../config.js';
+import { CAMPI, ESPECIALIDADES, FASES_DEMANDA, campusNome } from '../config.js';
 import { ordenarFila, prioridade, cargaProfissionais } from '../calc.js';
 import { store } from '../store.js';
 import { can } from '../auth.js';
@@ -43,8 +43,8 @@ export function viewInicio() {
   // ---- hero -------------------------------------------------------------------
   const hero = el('section', { class: 'hero' },
     el('div', {},
-      el('h1', {}, 'Obras e serviços de engenharia, com transparência'),
-      el('p', { class: 'sub' }, `Acompanhamento público das demandas do Colégio Pedro II — ${APP.portaria}.`)),
+      el('h1', {}, 'Obras e serviços de engenharia'),
+      el('p', { class: 'sub' }, 'Acompanhamento das demandas do Colégio Pedro II.')),
     el('div', { class: 'hero-acoes' },
       el('a', { class: 'btn primario', href: user ? '#/chamado-novo' : '#/login' }, '+ Abrir chamado'),
       el('a', { class: 'btn ghost', href: '#/chamados' }, 'Ver chamados')));

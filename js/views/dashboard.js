@@ -86,9 +86,7 @@ export function viewDashboard(rerender) {
     meuProf ? el('label', { class: 'chip-check' },
       el('input', { type: 'checkbox', ...(filtros.minhas ? { checked: true } : {}), onchange: (e) => { filtros.minhas = e.target.checked; rerender(); } }),
       ' Minhas atribuições') : null,
-    (filtros.busca || filtros.campus || filtros.status || filtros.tipo || filtros.esp || filtros.fase || filtros.minhas)
-      ? el('button', { class: 'btn ghost sm', onclick: () => { Object.assign(filtros, { busca: '', campus: '', status: '', tipo: '', esp: '', fase: '', minhas: false }); rerender(); } }, 'Limpar filtros')
-      : null,
+    el('button', { class: 'btn ghost sm', onclick: () => { Object.assign(filtros, { busca: '', campus: '', status: '', tipo: '', esp: '', fase: '', minhas: false }); rerender(); } }, 'Limpar filtros'),
   );
 
   // ---- tabela ----------------------------------------------------------------------
@@ -213,7 +211,7 @@ export function viewDashboard(rerender) {
     el('section', { class: 'hero' },
       el('div', {},
         el('h1', {}, 'Demandas de Obras e Serviços de Engenharia'),
-        el('p', { class: 'sub' }, 'Acompanhamento público da fila de demandas — Portaria nº 7503/2025. ',
+        el('p', { class: 'sub' }, 'Acompanhamento público da fila de demandas. ',
           user ? null : 'A alocação de profissionais é exibida apenas para usuários autenticados.')),
       el('div', { class: 'hero-acoes' },
         user && can(user, 'criar') ? el('a', { class: 'btn primario', href: '#/chamado-novo' }, '+ Abrir chamado') : null,
