@@ -83,23 +83,25 @@ function renderHeader() {
 
 // ---- Roteador --------------------------------------------------------------------
 const rotas = [
-  { re: /^#\/$/, view: viewInicio },
-  { re: /^#\/login$/, view: viewLogin },
+  { re: /^#\/$/, view: viewInicio, titulo: null },
+  { re: /^#\/login$/, view: viewLogin, titulo: 'Entrar' },
   // Unificado: a Nova Solicitação deixou de existir como entrada própria — o
   // chamado é a única porta. Redireciona links/marcadores antigos.
-  { re: /^#\/nova$/, view: () => { location.hash = '#/chamado-novo'; return document.createDocumentFragment(); } },
-  { re: /^#\/demanda\/([\w-]+)$/, view: viewDemanda },
-  { re: /^#\/profissionais$/, view: viewProfissionais },
-  { re: /^#\/admin$/, view: viewAdmin },
-  { re: /^#\/conta$/, view: viewConta },
-  { re: /^#\/ajuda$/, view: viewAjuda },
-  { re: /^#\/notificacoes$/, view: viewNotificacoes },
-  { re: /^#\/chamados(?:\?.*)?$/, view: viewChamadosHub },
-  { re: /^#\/chamado-novo$/, view: viewChamadoNovo },
-  { re: /^#\/chamado\/([\w-]+)$/, view: viewChamado },
+  { re: /^#\/nova$/, view: () => { location.hash = '#/chamado-novo'; return document.createDocumentFragment(); }, titulo: null },
+  { re: /^#\/demanda\/([\w-]+)$/, view: viewDemanda, titulo: (m) => `Demanda ${m[1]}` },
+  { re: /^#\/profissionais$/, view: viewProfissionais, titulo: 'Profissionais' },
+  { re: /^#\/admin$/, view: viewAdmin, titulo: 'Administração' },
+  { re: /^#\/conta$/, view: viewConta, titulo: 'Minha conta' },
+  { re: /^#\/ajuda$/, view: viewAjuda, titulo: 'Ajuda' },
+  { re: /^#\/notificacoes$/, view: viewNotificacoes, titulo: 'Notificações' },
+  { re: /^#\/chamados(?:\?.*)?$/, view: viewChamadosHub, titulo: 'Chamados' },
+  { re: /^#\/chamado-novo$/, view: viewChamadoNovo, titulo: 'Abrir chamado' },
+  { re: /^#\/chamado\/([\w-]+)$/, view: viewChamado, titulo: (m) => `Chamado ${m[1]}` },
 ];
 
+const TITULO_BASE = `${APP.nome} — ${APP.orgao}`;
 let renderAgendado = false;
+let rotaAnterior = null; // rota (sem query) do último render — controla o scroll
 function render() {
   if (renderAgendado) return;
   renderAgendado = true;
@@ -114,12 +116,18 @@ function render() {
     main.replaceChildren();
     if (!rota) { location.hash = '#/'; return; }
     const m = hash.match(rota.re);
+    // Título da aba do navegador acompanha a rota (achável entre várias abas).
+    const t = typeof rota.titulo === 'function' ? rota.titulo(m) : rota.titulo;
+    document.title = t ? `${t} · ${TITULO_BASE}` : TITULO_BASE;
     try {
       main.append(rota.view(render, m[1]));
     } catch (e) {
       console.error(e);
       main.append(el('section', { class: 'card' }, el('h1', {}, 'Erro inesperado'), el('p', {}, String(e?.message || e))));
     }
+    // Navegar para outra página volta ao topo; rerenders da mesma rota preservam a rolagem.
+    const soRota = hash.split('?')[0];
+    if (soRota !== rotaAnterior) { rotaAnterior = soRota; window.scrollTo(0, 0); }
     main.focus({ preventScroll: true });
   });
 }

@@ -4,7 +4,7 @@
 // jsPDF + AutoTable carregados sob demanda (CDN) apenas ao clicar em "PDF".
 // =============================================================================
 import { TIMBRE_H, TIMBRE_RATIO } from './logos.js';
-import { campusNome, statusNome, TIPOS_ATIVIDADE, APP, statusChamadoNome, categoriaChamadoNome, slaChamado } from './config.js';
+import { campusNome, statusNome, TIPOS_ATIVIDADE, APP, statusChamadoNome, categoriaChamadoNome, slaChamado, faseCurta } from './config.js';
 import { pontosArt11, fiscaisDe } from './calc.js';
 
 let libs = null;
@@ -80,9 +80,12 @@ export async function gerarRelatorio({ demandas, chamados = [], params, filtros,
 
   const body = demandas.map((d, i) => {
     const pts = pontosArt11(d.aval, params.valorRef);
+    // Em atendimento, o status ganha a fase do ciclo da contratação (workflow v2).
+    const statusTxt = d.status === 'atendimento' && d.fase
+      ? `${statusNome(d.status)} — ${faseCurta(d.fase)}` : statusNome(d.status);
     const row = [
       String(i + 1), campusNome(d.campus), d.objeto || '—',
-      tipoAtvNome(d.aval?.tipoAtividade), statusNome(d.status),
+      tipoAtvNome(d.aval?.tipoAtividade), statusTxt,
       pts == null ? '—' : String(pts),
     ];
     if (autenticado) {

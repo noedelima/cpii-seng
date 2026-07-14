@@ -84,8 +84,8 @@ Dentro de **Em atendimento**, a demanda percorre as **fases do ciclo da contrata
 
 **Planejamento → Licitação → Execução → Recebimento**
 
-- **Planejamento da contratação** — o cartão **Fase atual** traz o **checklist de artefatos** (integrantes indicados, Portaria, ETP, Matriz de Riscos, Elaboração / Atualização de Orçamento, TR/Projeto Básico, Lista de Verificação e envio pelo Processo SUAP). Cada item marcado registra data e responsável no histórico.
-- **Licitação** — registre o **resultado do certame**: com **êxito**, a demanda avança à execução; **deserto** ou **fracassado**, ela **retorna ao planejamento** para ajuste dos artefatos (com registro no histórico).
+- **Planejamento da contratação** — fase preparatória da Lei nº 14.133/2021, **sempre a partir dos modelos da AGU**. O cartão **Fase atual** traz o **checklist de artefatos** (integrantes indicados, Portaria, ETP, Matriz de Riscos, Elaboração / Atualização de Orçamento, TR/Projeto Básico, Lista de Verificação e envio pelo Processo SUAP). Cada item marcado registra data e responsável no histórico. *(A Lista de Verificação da AGU é um item de controle adicional do checklist — o fluxograma resume o subprocesso até o TR/PB.)*
+- **Licitação** — registre o **resultado do certame**: com **êxito**, a demanda avança à execução; **deserto** ou **fracassado**, ela **retorna ao planejamento** para ajuste dos artefatos — o cartão sinaliza o retorno, o item **Processo SUAP** é **reaberto** (o processo precisa ser reencaminhado) e tudo fica no histórico.
 - **Execução** — contrato em andamento, acompanhado pelos fiscais alocados.
 - **Recebimento** — recebimento provisório/definitivo do objeto; ao final, a Chefia **conclui a demanda**.
 
@@ -96,6 +96,7 @@ Demandas em atendimento **anteriores à classificação** aparecem “sem fase d
 Regras de transição (resumo):
 
 - **Engenharia** move entre: Em análise, Em diligência e Aguardando aprovação do CODIR.
+- **CODIR** registra os desfechos da deliberação: **aprovar** (entra na fila), **aprovar aguardando dotação** (suspende com o motivo *Aguardando dotação orçamentária* — retorna à fila quando houver orçamento), **não aprovar** (devolve para reanálise ou encerra como Cancelado, com justificativa) e **desfazer a aprovação** de demanda ainda na fila.
 - **Chefia** tem o status total: pode levar à fila, iniciar atendimento, concluir, suspender e cancelar.
 - **Trava funcional**: demandas **Em atendimento** ou **Concluídas** **não** podem ter a classificação alterada nem ser excluídas (vale na interface e nas regras de segurança).
 - **Reversão (Chefe/Admin)**: para corrigir um lançamento indevido, a **Chefia/Administração** pode **reverter** uma demanda **Em atendimento** de volta para **Na fila**, **Aguardando aprovação do CODIR** ou **Em análise**, e **reabrir** uma demanda **Concluída** para **Em atendimento**. A ação pede **confirmação** e fica registrada no histórico; a reversão muda **apenas o status** (avaliação, ajuste e aprovação do CODIR são preservados). Engenharia, CODIR e Campus **não** dispõem dessas reversões.
@@ -103,7 +104,7 @@ Regras de transição (resumo):
 
 A tabela completa de transições por perfil está no **Apêndice B**.
 
-> **Projeto + Obra em etapas.** Demandas de **obra** cujo projeto **não existe ou é parcial** tramitam como **uma única demanda**, em duas etapas. Concluída a etapa de **projeto** (no cartão **Gestão**, botão *“Concluir etapa de projeto”*): se o projeto era **inexistente**, a demanda **retorna ao CODIR como obra** (com projeto existente) para repriorização; se era **parcial**, há a opção de **contratação unificada** (projeto + obra) ou separada. Reavalie o GUT e o valor da obra antes de reenviar ao CODIR.
+> **Projeto + Obra em etapas.** Demandas de **obra** cujo projeto **não existe ou é parcial** tramitam como **uma única demanda**, em duas etapas. Concluída a etapa de **projeto** (no cartão **Gestão**, botão *“Concluir projeto → obra ao CODIR”*): se o projeto era **inexistente**, a demanda **retorna ao CODIR como obra** (com projeto existente) para **repriorização** — a aprovação anterior é **zerada** (nova deliberação) e o ciclo de fases/artefatos do projeto é **arquivado e limpo** para o ciclo da obra; se era **parcial**, há a opção de **contratação unificada** (projeto + obra) ou separada. Demandas de **projeto puro** também dispõem do botão *“Reavaliar como obra (projeto pronto)”*, quando a orientação for contratar a obra em seguida. Reavalie o GUT e o valor da obra antes de reenviar ao CODIR.
 
 ---
 
@@ -139,7 +140,7 @@ O cálculo segue o modelo de priorização da Seção (art. 5º, II):
 
 > **Triagem recomendada:** comece pelas demandas **Recebidas** mais antigas; mova rapidamente para **Em análise**; abra **diligência** quando faltar informação.
 
-> **Exportações:** o **Baixar PDF da fila** exporta **o que estiver filtrado na tela** — demandas e chamados em atendimento (use o filtro de tipo **Chamado** para uma lista só de chamados, ou o status **Em atendimento** para o bloco completo). Além dele, o painel interno tem **Baixar Excel** (.xlsx com todas as colunas — classificação, escores, alocação e observações), disponível apenas para Engenharia, Chefe e Administrador.
+> **Exportações:** o **Baixar PDF da fila** exporta **o que estiver filtrado na tela** — demandas e chamados em atendimento (use o filtro de tipo **Chamado** para uma lista só de chamados, ou o status **Em atendimento** para o bloco completo); demandas em atendimento saem com a **fase do ciclo** junto ao status. Além dele, o painel interno tem **Baixar Excel** (.xlsx com todas as colunas — classificação, escores, **fase do atendimento**, alocação e observações), disponível apenas para Engenharia, Chefe e Administrador. Há também o filtro **de fase** (Planejamento/Licitação/Execução/Recebimento/Sem fase definida) na barra da fila.
 
 > **Ordenação da fila.** A lista é organizada por **status**, na sequência operacional — **Em atendimento → Recebido → Em análise → Em diligência → Aguardando CODIR → Na fila → Suspenso → Concluído → Não enquadrado → Cancelado → Excluído** —, com a **prioridade** ordenando dentro de cada status. Assim o que está em andamento aparece primeiro; encerradas e excluídas ficam no fim. *(O status **Excluído** — arquivo morto — só aparece para Chefe/Admin.)*
 
@@ -369,6 +370,7 @@ A página do chamado também ganhou o **stepper** (Aberto → Triagem → Atendi
    - **Consultoria** / **Laudo** — selecione os **responsáveis pelo atendimento** (lista de seleção + Incluir); o chamado vai a **Em atendimento**. Nesse status, a Ação do momento oferece **Concluir o atendimento** (registra a orientação/NT e marca **Resolvido**; o campus é avisado), o ajuste dos **responsáveis** e — se a orientação concluir pela necessidade de contratação — **Converter em demanda de obra** (disponível também com o chamado **Resolvido**), levando o histórico para o dossiê da demanda.
    - **Encaminhar a outro setor** — selecione o setor e registre a orientação (status **Encaminhado**).
    - **Improcedente** / **Duplicado** — encerra com o motivo.
+4. **Cancelar chamado** — nos status Aberto, Em triagem e Em diligência, o bloco recolhível **Cancelar chamado** encerra sem atendimento (ex.: aberto por engano, desistência do campus), com **motivo obrigatório** registrado no histórico e aviso ao campus.
 
 @fig ch-triagem
 
@@ -444,8 +446,8 @@ Nos desfechos **consultoria/laudo**, o cartão **Desfecho** traz **“Gerar Nota
 
 **Quem aplica cada transição**
 
-- **Engenharia** — triagem: Em análise, Em diligência e o encaminhamento ao CODIR (“Aguardando aprovação do CODIR”).
-- **CODIR** — aprova a demanda (de “Aguardando CODIR” para “Na fila”).
+- **Engenharia** — triagem: Em análise, Em diligência e o encaminhamento ao CODIR (“Aguardando aprovação do CODIR”). *(Fora desses status, os dados da solicitação ficam congelados também nas regras de segurança.)*
+- **CODIR** — desfechos da deliberação: “Aguardando CODIR” → **Na fila** (aprovada), → **Suspenso** (aprovada aguardando dotação), → **Em análise** (não aprovada — reanálise) ou → **Cancelado** (não aprovada — encerrada); e **Na fila** → “Aguardando CODIR” (aprovação desfeita).
 - **Chefe de Seção / Administrador** — **status total**, incluindo iniciar e encerrar o atendimento e as reversões abaixo.
 
 **Reversões — somente Chefe de Seção / Administrador** (para desfazer erros):
@@ -494,6 +496,9 @@ Ela está no **arquivo morto** por 30 dias (visível ao Chefe/Admin no fim da fi
 
 **Um cadastrador de campus aparece com mais de uma unidade.**
 É esperado: cadastradores podem ser associados a vários campi (ex.: CREIR + Realengo I), em casos de gestão compartilhada.
+
+**O histórico mostra “Pesquisa de Preços” em registros antigos.**
+É o comportamento esperado: o item do checklist foi **renomeado** para **“Elaboração / Atualização de Orçamento”**, mas os eventos do histórico são registros literais da época — permanecem com o texto com que foram gravados.
 
 ---
 

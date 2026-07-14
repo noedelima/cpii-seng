@@ -30,9 +30,10 @@ const badge = (t, cor) => el('span', { class: `badge ${cor}` }, t);
 const chips = (arr) => el('div', { class: 'rp-chips' }, arr.map(c => el('span', { class: 'rp-chip' + (c.on ? ' on' : '') }, c.t || c)));
 const h = (t) => el('div', { class: 'rp-h' }, t);
 
-// Barra de topo do app (para figuras de menu/painel).
-function topbar(ativo = 'Início', extra = []) {
-  const links = ['Início', 'Chamados', ...extra, 'Ajuda'];
+// Barra de topo do app (para figuras de menu/painel). Espelha o menu real:
+// sem o link "Início" (a marca leva ao início) — Chamados, [extras], Ajuda.
+function topbar(ativo = 'Chamados', extra = []) {
+  const links = ['Chamados', ...extra, 'Ajuda'];
   return el('div', { class: 'rp-topbar' },
     el('span', { class: 'rp-brand' }, 'Portal da Engenharia'),
     el('span', { class: 'rp-links' }, links.map(l => el('span', { class: 'rp-link' + (l === ativo ? ' on' : '') }, l))),
@@ -107,10 +108,13 @@ F['fluxo-chamado'] = () => {
     seta('M150 308 V330 H577 V348'),
     seta('M88 404 V440'),
     seta('M253 404 V440'),
-    seta('M253 496 V532'));
+    seta('M253 496 V532'),
+    // Escalada consultoria → contratação (nota do fluxograma v2): em atendimento
+    // ou já resolvido, o chamado pode ser convertido em demanda de obra.
+    setaT('M183 562 H88 V500'));
   return ajudaFig({
     titulo: 'Ciclo do chamado — da abertura à conclusão',
-    legenda: 'Abertura pelo campus → triagem (diligência opcional, com o SLA pausado) → desfecho: obra (vira demanda e segue GUT → CODIR → fila), consultoria/laudo (atendimento → resolvido), encaminhado ou não enquadrado.',
+    legenda: 'Abertura pelo campus → triagem (diligência opcional, com o SLA pausado) → desfecho: obra (vira demanda e segue GUT → CODIR → fila), consultoria/laudo (atendimento → resolvido), encaminhado ou não enquadrado. A linha tracejada é a escalada da consultoria: se a orientação concluir pela contratação, o chamado é convertido em demanda de obra sem abrir novo chamado.',
     corpo: el('div', { style: 'padding:6px' }, svg),
   });
 };
@@ -185,10 +189,10 @@ F['login'] = () => ajudaFig({
 // CAMPUS
 // ============================================================================
 F['campus-fila'] = () => ajudaFig({
-  titulo: 'Painel — fila pública',
+  titulo: 'Chamados — fila pública (Fila e atendimento)',
   legenda: '① Filtros e busca · ② Baixar PDF da fila · ③ Clique numa linha para ver os detalhes.',
   marcadores: [{ n: 1, top: '20%', left: '17%' }, { n: 2, top: '9%', left: '90%' }, { n: 3, top: '70%', left: '44%' }],
-  corpo: el('div', {}, topbar('Painel'),
+  corpo: el('div', {}, topbar('Chamados'),
     el('div', { class: 'rp-hero' }, el('div', {}, h('Demandas de Obras e Serviços'), nota('Acompanhamento público — Portaria 7503/2025')), acoes(btn('Baixar PDF', 'ghost'))),
     el('div', { class: 'rp-filtros' }, chips(['Todos os campi', 'Todos os status', 'Especialidade'])),
     tabela(['Fila', 'Campus', 'Objeto', 'Status', 'Prior.'], [
@@ -200,12 +204,12 @@ F['campus-fila'] = () => ajudaFig({
 
 F['campus-abrir'] = () => ajudaFig({
   titulo: 'Chamados › Abrir chamado',
-  legenda: '① Campus (seu) · ② Assunto/categoria (define disciplina e SLA) · ③ Título · ④ Descrição · ⑤ Abrir.',
+  legenda: '① Campus (seu) · ② Categoria (define disciplina e SLA) · ③ Assunto · ④ Descrição · ⑤ Abrir.',
   marcadores: [{ n: 1, top: '24%', left: '27%' }, { n: 2, top: '24%', left: '75%' }, { n: 3, top: '45%', left: '50%' }, { n: 4, top: '70%', left: '50%' }, { n: 5, top: '92%', left: '86%' }],
   corpo: el('div', {}, h('Abrir chamado'), nota('Solicitação à Engenharia — passa por triagem.'),
     card(
-      grid(campo('Campus / unidade', 'São Cristóvão II'), campo('Assunto / categoria', 'Hidráulica / sanitária · SLA 5d')),
-      campo('Título do chamado', 'Vazamento no banheiro do 2º pav.'),
+      grid(campo('Campus / unidade', 'São Cristóvão II'), campo('Categoria do chamado', 'Hidráulica / sanitária · SLA 5d')),
+      campo('Assunto do chamado', 'Vazamento no banheiro do 2º pav.'),
       grid(campo('Localização', 'Bloco B, 2º pav.'), campo('Urgência', 'Alta')),
       area('Descrição', 'Vazamento constante sob a bancada, com infiltração no forro abaixo.'),
       acoes(btn('Cancelar', 'ghost'), btn('Abrir chamado')))),
@@ -266,12 +270,11 @@ const cargaLinha = (nome, uso, pct) => el('div', { class: 'rp-carga' }, el('div'
 // ENGENHARIA / CHEFIA / ADMIN
 // ============================================================================
 F['eng-painel'] = () => ajudaFig({
-  titulo: 'Painel interno da SENG',
-  legenda: '① Carga da equipe (acima da fila) · ② Filtro “Minhas atribuições” · ③ Coluna Fiscal técnico.',
-  marcadores: [{ n: 1, top: '25%', left: '20%' }, { n: 2, top: '55%', left: '82%' }, { n: 3, top: '84%', left: '88%' }],
-  corpo: el('div', {}, topbar('Painel', ['Profissionais', 'Administração']),
-    card(ctit('Carga da equipe (limite 6 pts — art. 12)'), cargaLinha('Noé — Elétrica', '6/6', 100), cargaLinha('Raquel — Civil', '4/6', 66)),
-    el('div', { class: 'rp-filtros' }, chips(['Todos os status', 'Especialidade', { t: 'Minhas atribuições', on: true }])),
+  titulo: 'Chamados — fila interna da SENG',
+  legenda: '① Filtros (status, especialidade, fase) com “Minhas atribuições” · ② Coluna Fiscal técnico. O cartão Carga da equipe fica na página Início.',
+  marcadores: [{ n: 1, top: '28%', left: '30%' }, { n: 2, top: '66%', left: '88%' }],
+  corpo: el('div', {}, topbar('Chamados', ['Profissionais', 'Administração']),
+    el('div', { class: 'rp-filtros' }, chips(['Todos os status', 'Especialidade', 'Todas as fases', { t: 'Minhas atribuições', on: true }])),
     tabela(['Campus', 'Objeto', 'Status', 'GUT', 'Fiscal'], [
       ['Centro', 'Reforma do telhado', badge('Em atendimento', 'st-atendimento'), '64', 'Pâmella, Julie'],
       ['SC III', 'Fiscalização do telhado', badge('Em atendimento', 'st-atendimento'), '—', 'Rafael, Suellen'],
@@ -280,10 +283,18 @@ F['eng-painel'] = () => ajudaFig({
 
 F['eng-demanda'] = () => ajudaFig({
   titulo: 'Detalhe da demanda',
-  legenda: 'Esquerda: dados e histórico. Direita: priorização, avaliação, gestão e alocação.',
-  corpo: el('div', { class: 'rp-2col' },
-    el('div', {}, card(ctit('Dados da solicitação'), campo('Objeto', 'Reforma do telhado'), campo('Campus', 'Centro')), card(ctit('Histórico'), nota('Registro · Análise · CODIR · Fila'))),
-    el('div', {}, card(ctit('Priorização'), el('div', { class: 'rp-final' }, el('span', {}, 'Prioridade'), el('b', {}, '0,61'))), card(ctit('Gestão'), acoes(btn('Aguardando CODIR', 'ghost'), btn('Em diligência', 'ghost'))))),
+  legenda: 'Topo: stepper do ciclo completo. Esquerda: dados e linha do tempo. Direita: Fase atual (em atendimento), priorização, gestão e alocação.',
+  corpo: el('div', {},
+    el('div', { class: 'rp-filtros' }, chips(['Recebida ✓', 'GUT ✓', 'CODIR ✓', 'Fila ✓', { t: 'Planejamento', on: true }, 'Licitação', 'Execução', 'Recebimento'])),
+    el('div', { class: 'rp-2col' },
+      el('div', {}, card(ctit('Dados da solicitação'), campo('Objeto', 'Reforma do telhado'), campo('Campus', 'Centro')), card(ctit('Linha do tempo'), nota('Registro · Análise · CODIR · Fila · comentários e anexos'))),
+      el('div', {},
+        card(ctit('Fase atual — Planejamento (5 de 8 itens)'),
+          check('Estudo Técnico Preliminar (ETP)', true),
+          check('Elaboração / Atualização de Orçamento', true),
+          check('Termo de Referência / Projeto Básico', false)),
+        card(ctit('Priorização'), el('div', { class: 'rp-final' }, el('span', {}, 'Prioridade'), el('b', {}, '0,61'))),
+        card(ctit('Gestão'), acoes(btn('Aguardando CODIR', 'ghost'), btn('Em diligência', 'ghost')))))),
 });
 
 F['eng-gut'] = () => ajudaFig({
@@ -420,9 +431,9 @@ F['ch-triagem'] = () => ajudaFig({
 // CODIR
 // ============================================================================
 F['codir-painel'] = () => ajudaFig({
-  titulo: 'Painel do CODIR',
+  titulo: 'Chamados — fila vista pelo CODIR',
   legenda: 'Fila ordenada por prioridade, com GUT, prioridade e pontos (Pts).',
-  corpo: el('div', {}, topbar('Painel'),
+  corpo: el('div', {}, topbar('Chamados'),
     tabela(['Fila', 'Campus', 'Objeto', 'GUT', 'Prior.', 'Pts'], [
       ['1º', 'Tijuca II', 'Cobertura do Anexo', '80', '0,64', '3'],
       ['2º', 'Duque de Caxias', 'Lab. de informática', '64', '0,61', '2'],

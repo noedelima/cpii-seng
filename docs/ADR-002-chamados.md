@@ -29,28 +29,43 @@ consultoria — a expansão prevista quando os ocultamos.
    (comentários), notificações, histórico, arquivo morto, PDF efêmero, a camada
    de API e a skill `ia-engenharia` (para a Nota Técnica de resolução).
 
-## Modelo de dados (coleção `chamados`)
+## Modelo de dados (coleção `chamados`) — como implementado
 
-`id (CH-AAAA-NNNN) · campus · autor{nome,email,uid} · categoria · assunto ·
+ID no padrão **`CH + ANO + SIGLA DO CAMPUS + SEQUENCIAL`** (ex.: `CH2026CSCII001`;
+campos auxiliares `ano` e `seq`). Documento:
+
+`id · ano · seq · campus · autor{nome,email,uid} · categoria · assunto ·
 descricao · local · urgencia · anexos[] · status · aberturaEm · prazoLimite ·
-atualizadoEm · triagem{responsavel, em, desfecho, disciplina} ·
-resolucao{tipo, texto, encaminhadoA, ntRef, encerradoEm, por} · demandaId? ·
-obsInterna[] · obsExterna[] · historico[]`.
+diligenciaDesde? · atualizadoEm · desfecho? · atendentes[]? ·
+resolucao{setor?, texto, parecerTriagem?}? · demandaId? ·
+obsInterna[] · obsExterna[] · comentarios[] · historico[]`.
 
-## Ciclo de vida
+*(Evolução v2 sobre o esboço original: a triagem vive em `desfecho`/`atendentes`
+em vez de um objeto `triagem`; `comentarios[]` é o fio único da linha do tempo;
+`diligenciaDesde` é a marca da pausa de SLA.)*
+
+## Ciclo de vida (workflow v2)
 
 `Aberto → Em triagem →` **desfecho**:
 - **Obra** → cria/vincula uma **Demanda** (segue GUT→CODIR→fila); status `obra`.
-- **Consultoria** / **Laudo** → `atendimento` → **Resolvido** (orientação/NT).
+- **Consultoria** / **Laudo** → `atendimento` (com `atendentes[]`) → **Resolvido**
+  (orientação/NT). **Escalada:** em `atendimento` ou já `resolvido`, o chamado
+  pode ser **convertido em demanda de obra** sem novo chamado (nota do
+  fluxograma v2) — o histórico segue no dossiê da demanda (`chamadoOrigem`).
 - **Encaminhado** a outro setor (manutenção/DTI/Adm) → orientação → `encaminhado`.
-- **Improcedente** / **Duplicado** / **Cancelado**.
+- **Improcedente** / **Duplicado** / **Cancelado** (cancelamento pela SENG, com
+  motivo obrigatório).
 
 Estado lateral **Em diligência** (SENG pede complemento; **o SLA pausa**).
 
 ## SLA
 
 `prazoLimite = aberturaEm + slaDias(categoria)`. Vencido = `now > prazoLimite` em
-status ativo. O relógio **pausa** em *Em diligência* (aguardando o campus).
+status ativo. O relógio **pausa** em *Em diligência*: ao entrar, grava-se
+`diligenciaDesde` (o restante congela e a UI exibe **“SLA pausado”**); ao sair
+(resposta do campus ou retomada da SENG), `prazoLimite += now − diligenciaDesde`
+e a marca é limpa — o tempo em diligência não é descontado. Nas rules, o campus
+só pode **estender** `prazoLimite`, nunca reduzir.
 
 ## Segurança (rules)
 

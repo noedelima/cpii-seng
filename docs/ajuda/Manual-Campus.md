@@ -115,7 +115,7 @@ A aba **Chamados** (recorte **Fila e atendimento**) lista todas as demandas de o
 
 **O que você pode fazer aqui**
 
-1. **Filtrar** a fila por **campus**, **status**, **tipo de atividade** (incluindo **Chamado**, para ver só os chamados em atendimento), **especialidade** ou por **busca livre**.
+1. **Filtrar** a fila por **campus**, **status**, **tipo de atividade** (incluindo **Chamado**, para ver só os chamados em atendimento), **especialidade**, **fase do atendimento** (Planejamento/Licitação/Execução/Recebimento) ou por **busca livre**.
 2. **Abrir uma demanda**: clique em qualquer linha da tabela para ver os detalhes.
 3. **Baixar o PDF da fila**: gera um relatório com timbre e data/hora contendo **exatamente o que está filtrado na tela** — demandas e, quando visíveis, os chamados em atendimento. O arquivo baixa para o seu computador e **não fica armazenado** no sistema (relatório efêmero).
 
@@ -134,8 +134,8 @@ Este é o fluxo mais importante para o campus. O formulário é **curto e direto
 | Campo | Como preencher |
 |-------|----------------|
 | **Campus / unidade *** | Já vem definido pelo seu perfil. Se você atende a mais de uma unidade, selecione a correta. |
-| **Assunto / categoria *** | Escolha a categoria mais próxima: *Instalações elétricas, Hidráulica/sanitária, Cobertura/infiltração, Estrutura/patologia, Acessibilidade, Climatização, Segurança/incêndio, Consultoria/parecer técnico* ou *Outros*. Cada categoria tem um **prazo de triagem (SLA)** estimado, exibido ao selecionar. |
-| **Título do chamado *** | Um resumo curto e claro. Ex.: *Vazamento constante no banheiro do 2º pavimento*. |
+| **Categoria do chamado *** | Escolha a categoria mais próxima: *Instalações elétricas, Hidráulica/sanitária, Cobertura/infiltração, Estrutura/patologia, Acessibilidade, Climatização, Segurança/incêndio, Consultoria/parecer técnico* ou *Outros*. Cada categoria tem um **prazo de triagem (SLA)** estimado, exibido ao selecionar. |
+| **Assunto do chamado *** | Um resumo curto e claro. Ex.: *Vazamento constante no banheiro do 2º pavimento*. |
 | **Localização** | Onde ocorre: bloco, pavimento, sala. |
 | **Urgência** | *Baixa / Média / Alta / Emergencial (risco iminente)*. É só a **percepção inicial** — a SENG confirma na triagem. |
 | **Descrição *** | O problema, onde ocorre e o resultado esperado. Quanto melhor descrito, mais rápida a triagem. |
@@ -157,8 +157,8 @@ Depois de aberto, acompanhe a evolução a qualquer momento.
 
 **Passo a passo**
 
-1. Abra o menu **Chamados**. Você vê apenas os chamados da(s) sua(s) unidade(s).
-2. Use os filtros (**situação**, **categoria**, **busca**) para localizar; a faixa de **SLA** mostra rapidamente o que está no prazo, vencendo ou vencido.
+1. Abra o menu **Chamados** e escolha o recorte **Chamados da unidade** — é a lista dos chamados da(s) sua(s) unidade(s), do recém-aberto ao encerrado.
+2. Use os filtros (**situação**, **categoria**, **busca**) para localizar; a faixa de **SLA** mostra rapidamente o que está no prazo, vencendo, vencido — ou **pausado** (em diligência).
 3. Clique no chamado para abrir os detalhes: **status** (selo colorido), **prazo (SLA)**, **descrição** e a **linha do tempo** — comentários com a Engenharia, anexos e eventos, em ordem cronológica.
 4. **Anexos:** no cartão **Anexos**, clique em **+ Adicionar anexo** para enviar **imagens ou PDF** (até 10 MB cada) — fotos do local, plantas, orçamentos. As miniaturas abrem em nova aba. Você pode anexar enquanto o chamado está **aberto / em triagem / em diligência**.
 5. **Comentários:** use o campo de comentário para se comunicar com a SENG sobre o chamado; tudo fica registrado.
@@ -179,7 +179,7 @@ Quando falta uma informação para a triagem, a SENG coloca o chamado **Em dilig
 
 **Passo a passo**
 
-1. Em **Chamados**, localize o que está **Em diligência** (ou abra pelo aviso no sino).
+1. Em **Chamados** (recorte **Chamados da unidade**), localize o que está **Em diligência** (ou abra pelo aviso no sino).
 2. Abra o chamado. No cartão **Diligência — resposta do campus**, escreva a informação solicitada.
 3. Se ajudar, **anexe fotos** no cartão Anexos.
 4. Clique em **Responder diligência**. O chamado **retorna para triagem** e a SENG retoma a análise. Seu complemento fica no histórico e nos comentários.
@@ -234,7 +234,9 @@ Tipicamente **não** são obras/serviços de engenharia e podem ser **encaminhad
 | **Improcedente / Duplicado** | Encerrado sem atendimento, com o motivo no histórico. | Ver o motivo. |
 | **Cancelado** | Encerrado sem atendimento. | Ver o motivo. |
 
-> Quando o chamado vira **obra**, passa a valer também a **tabela de status da demanda** (Recebido, Em análise, Aguardando CODIR, Na fila, Em atendimento, Concluído…), visível na fila pública.
+> **A consultoria pode virar obra.** Se a orientação técnica concluir que é preciso **contratar** (obra/serviço), a própria SENG converte o chamado em **demanda de obra** — **sem** que você precise abrir um novo chamado. Isso vale com o chamado **em atendimento** ou já **resolvido**; a página do chamado passa a mostrar o link da demanda criada.
+
+> Quando o chamado vira **obra**, passa a valer também a **tabela de status da demanda** (Recebido, Em análise, Aguardando CODIR, Na fila, Em atendimento, Concluído…), visível na fila pública. A demanda pode ainda aparecer como **Suspensa** — em geral **aguardando dotação orçamentária**: ela **não foi encerrada**; retorna à fila quando houver orçamento, com o motivo visível na página.
 
 ---
 

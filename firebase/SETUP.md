@@ -1,8 +1,11 @@
 # Ativação da produção (Firebase) — ~15 minutos
 
-O sistema publicado no GitHub Pages funciona em **modo demonstração** (dados
-fictícios no navegador). Para uso real e multiusuário, ative o backend Firebase
-(plano gratuito *Spark* é suficiente):
+Sem a configuração do Firebase, o sistema roda em **modo demonstração** (dados
+fictícios no navegador). Para uso real e multiusuário, ative o backend Firebase.
+*(O projeto usa o plano **Blaze** por causa dos anexos no Cloud Storage — com
+alerta de orçamento configurado; sem anexos, o plano gratuito Spark basta.)*
+A hospedagem de produção é o **Azure Static Web Apps** (`docs/AZURE-SWA-SETUP.md`),
+com a camada de API em `/api/*` (`docs/API-CAMADA.md`).
 
 ## 1. Criar o projeto
 1. Acesse https://console.firebase.google.com → **Adicionar projeto** (ex.: `cpii-seng`).
@@ -53,14 +56,15 @@ export const FIREBASE_CONFIG = {
 ```
 
 4. Em **Authentication → Settings → Authorized domains**, adicione o domínio
-   do GitHub Pages (ex.: `SEU-USUARIO.github.io`).
-5. Faça commit/push — o GitHub Pages publica e o sistema sai do modo demonstração.
+   de produção (ex.: `polite-forest-0f8e6fe10.7.azurestaticapps.net` ou o domínio
+   próprio) — e o do GitHub Pages, se ele ainda servir o app.
+5. Faça commit/push — o CI/CD publica e o sistema sai do modo demonstração.
 
 > A `apiKey` do Firebase Web **não é segredo**: a segurança é garantida pelas
 > Security Rules. O alerta de "secret detected" do GitHub é falso positivo
-> esperado. Neste projeto a chave já está **restrita por referrer** (somente
-> `noedelima.github.io` + localhost) e às APIs do Firebase — requisições de
-> fora do site recebem 403. Gerencie em
+> esperado. Neste projeto a chave já está **restrita por referrer** (domínios do
+> app — Azure SWA e `noedelima.github.io` — + localhost) e às APIs do Firebase —
+> requisições de fora do site recebem 403. Gerencie em
 > https://console.cloud.google.com/apis/credentials?project=cpii-seng.
 > Se publicar o site em outro domínio, acrescente-o aos referrers da chave.
 

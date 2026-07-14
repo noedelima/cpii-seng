@@ -44,7 +44,8 @@ export function toast(msg, tipo = 'ok') {
 // --- Modal de confirmação -----------------------------------------------------
 export function confirmar(titulo, texto, { ok = 'Confirmar', perigo = false } = {}) {
   return new Promise((resolve) => {
-    const close = (v) => { wrap.remove(); resolve(v); };
+    const esc = (e) => { if (e.key === 'Escape') close(false); };
+    const close = (v) => { document.removeEventListener('keydown', esc); wrap.remove(); resolve(v); };
     const wrap = el('div', { class: 'modal-wrap', onclick: (e) => e.target === wrap && close(false) },
       el('div', { class: 'modal', role: 'dialog', 'aria-modal': 'true', 'aria-label': titulo },
         el('h3', {}, titulo),
@@ -53,6 +54,7 @@ export function confirmar(titulo, texto, { ok = 'Confirmar', perigo = false } = 
           el('button', { class: 'btn ghost', onclick: () => close(false) }, 'Cancelar'),
           el('button', { class: `btn ${perigo ? 'perigo' : 'primario'}`, onclick: () => close(true) }, ok),
         )));
+    document.addEventListener('keydown', esc);
     document.body.append(wrap);
     wrap.querySelector('button.ghost').focus();
   });

@@ -56,7 +56,16 @@ export function seedDemo() {
       aval: { g: 5, u: 4, t: 4, tipoAtividade: 'fisc-projeto', tombadoConf: false, especial: false,
               valorConsiderado: 100000, prazoConsiderado: '<6' },
       ajuste: null,
-      historico: [ev(38, 'Direção do campus', 'Solicitação registrada'), ev(30, 'Chefia da SENG', 'Avaliação GUT concluída'), ev(20, 'Chefia da SENG', 'Aprovada pelo CODIR'), ev(12, 'Chefia da SENG', 'Iniciado o atendimento')],
+      // Workflow v2: fase de planejamento em curso, com o checklist de artefatos.
+      fase: 'planejamento', projetoOrigem: 'contratado',
+      artefatos: {
+        indicacao:      { feito: true, em: agora - 10 * dia, por: 'Chefia da SENG' },
+        portaria:       { feito: true, em: agora - 8 * dia,  por: 'Chefia da SENG' },
+        etp:            { feito: true, em: agora - 5 * dia,  por: 'Flávia Drummond' },
+        matrizRiscos:   { feito: true, em: agora - 4 * dia,  por: 'Flávia Drummond' },
+        pesquisaPrecos: { feito: true, em: agora - 2 * dia,  por: 'Flávia Drummond' },
+      },
+      historico: [ev(38, 'Direção do campus', 'Solicitação registrada'), ev(30, 'Chefia da SENG', 'Avaliação GUT concluída'), ev(20, 'Chefia da SENG', 'Aprovada pelo CODIR'), ev(12, 'Chefia da SENG', 'Iniciado o atendimento'), ev(2, 'Flávia Drummond', 'Artefato “Elaboração / Atualização de Orçamento” concluído')],
     }),
     D('CHII', 1, {
       objeto: 'Projeto de reforma das coberturas',
@@ -78,7 +87,10 @@ export function seedDemo() {
       status: 'atendimento', codirAprovado: true,
       aval: { g: 4, u: 4, t: 3, tipoAtividade: 'fisc-obra', tombadoConf: true, especial: false,
               valorConsiderado: 1300000, prazoConsiderado: '6-12' },
-      historico: [ev(34, 'Direção do campus', 'Solicitação registrada'), ev(26, 'Chefia da SENG', 'Avaliação GUT concluída'), ev(20, 'Chefia da SENG', 'Aprovada pelo CODIR'), ev(8, 'Chefia da SENG', 'Iniciado o atendimento')],
+      // Workflow v2: contrato assinado (certame com êxito) — fase de execução.
+      fase: 'execucao',
+      certame: { enviadoEm: agora - 6 * dia, resultado: 'exito', contratoEm: agora - 3 * dia },
+      historico: [ev(34, 'Direção do campus', 'Solicitação registrada'), ev(26, 'Chefia da SENG', 'Avaliação GUT concluída'), ev(20, 'Chefia da SENG', 'Aprovada pelo CODIR'), ev(8, 'Chefia da SENG', 'Iniciado o atendimento'), ev(3, 'Chefia da SENG', 'Certame com êxito — contrato assinado; iniciada a execução')],
     }),
     D('CTII', 2, {
       objeto: 'Obra da cobertura do prédio Anexo',
@@ -206,7 +218,9 @@ export function seedDemo() {
       status: 'suspenso',
       aval: { g: 3, u: 3, t: 3, tipoAtividade: 'elab-projeto', tombadoConf: false, especial: false,
               valorConsiderado: 90000, prazoConsiderado: '<6' },
-      historico: [ev(26, 'Direção do campus', 'Solicitação registrada'), ev(19, 'Chefia da SENG', 'Avaliação GUT concluída'), ev(6, 'Chefia da SENG', 'Suspensa a pedido do campus — obra de terceiros no local')],
+      // Workflow v2: suspensão estruturada (motivo + desde) — não encerra o ciclo.
+      suspensao: { motivo: 'outro', obs: 'Obra de terceiros no local — retomada após a conclusão', desde: agora - 6 * dia },
+      historico: [ev(26, 'Direção do campus', 'Solicitação registrada'), ev(19, 'Chefia da SENG', 'Avaliação GUT concluída'), ev(6, 'Chefia da SENG', 'Demanda suspensa — Outro motivo: obra de terceiros no local')],
     }),
     D('REIT', 1, {
       objeto: 'Planejamento da contratação de levantamento cadastral BIM',
@@ -217,6 +231,11 @@ export function seedDemo() {
       status: 'atendimento', codirAprovado: true,
       aval: { g: 2, u: 2, t: 2, tipoAtividade: 'planejamento', tombadoConf: true, especial: false,
               valorConsiderado: 500000, prazoConsiderado: '6-12' },
+      fase: 'planejamento',
+      artefatos: {
+        indicacao: { feito: true, em: agora - 9 * dia, por: 'Chefia da SENG' },
+        portaria:  { feito: true, em: agora - 7 * dia, por: 'Chefia da SENG' },
+      },
       historico: [ev(28, 'DECOF', 'Solicitação registrada'), ev(16, 'Chefia da SENG', 'Aprovada pelo CODIR'), ev(9, 'Chefia da SENG', 'Equipe de planejamento constituída')],
     }),
   ];
@@ -244,6 +263,20 @@ export function seedDemo() {
       aberturaEm: agora - 1 * dia, atualizadoEm: agora - 1 * dia, prazoLimite: agora + 14 * dia,
       autor: { nome: 'Prefeitura Tijuca II', email: 'campus.t2@cp2.demo' },
       historico: [ev(1, 'Prefeitura Tijuca II', 'Chamado aberto')] },
+    // Workflow v2: diligência com o SLA PAUSADO (diligenciaDesde congela o prazo).
+    { id: `CH${anoCh}CSCII002`, ano: anoCh, seq: 2, campus: 'CSCII', categoria: 'estrutura',
+      assunto: 'Fissuras na empena do bloco B', descricao: 'Fissuras inclinadas na empena do bloco B, próximas à junta de dilatação.',
+      local: 'Bloco B — empena norte', urgencia: 'media', status: 'diligencia',
+      aberturaEm: agora - 5 * dia, atualizadoEm: agora - 2 * dia, prazoLimite: agora + 10 * dia, diligenciaDesde: agora - 2 * dia,
+      autor: { nome: 'DIAD São Cristóvão II', email: 'campus.sc2@cp2.demo' },
+      historico: [ev(5, 'DIAD São Cristóvão II', 'Chamado aberto'), ev(3, 'Beatriz Antunes', 'Em triagem'), ev(2, 'Beatriz Antunes', 'Diligência solicitada ao campus')] },
+    // Workflow v2: consultoria/laudo em atendimento, com responsáveis alocados.
+    { id: `CH${anoCh}CTII002`, ano: anoCh, seq: 2, campus: 'CTII', categoria: 'consultoria',
+      assunto: 'Parecer sobre sobrecarga no piso da biblioteca', descricao: 'Avaliação da capacidade de carga do piso da biblioteca para novas estantes deslizantes.',
+      local: 'Biblioteca — 2º pavimento', urgencia: 'media', status: 'atendimento', desfecho: 'laudo', atendentes: ['p1'],
+      aberturaEm: agora - 6 * dia, atualizadoEm: agora - 3 * dia, prazoLimite: agora + 9 * dia,
+      autor: { nome: 'Prefeitura Tijuca II', email: 'campus.t2@cp2.demo' },
+      historico: [ev(6, 'Prefeitura Tijuca II', 'Chamado aberto'), ev(4, 'Beatriz Antunes', 'Em triagem'), ev(3, 'Beatriz Antunes', 'Desfecho: Laudo / avaliação técnica')] },
     { id: `CH${anoCh}CREII001`, ano: anoCh, seq: 1, campus: 'CREII', categoria: 'eletrica',
       assunto: 'Disjuntor desarmando no laboratório', descricao: 'O disjuntor do laboratório de informática desarma ao ligar os equipamentos.',
       local: 'Bloco C — laboratório', urgencia: 'media', status: 'encaminhado',
@@ -254,7 +287,7 @@ export function seedDemo() {
   ];
 
   return {
-    _v: 2,
+    _v: 3,
     params: { ...PARAMS_DEFAULT },
     usuarios, profissionais, demandas, internas, chamados,
     logs: [{ ts: agora, uid: 'sistema', nome: 'Sistema', email: '', acao: 'Dados de demonstração gerados', alvo: 'sistema', detalhes: '' }],

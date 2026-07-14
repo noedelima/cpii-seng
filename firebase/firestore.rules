@@ -66,13 +66,22 @@ service cloud.firestore {
           && (!('projetoOrigem' in d) || d.projetoOrigem == null || d.projetoOrigem in ['interno','contratado'])
           && (!('chamadoOrigem' in d) || d.chamadoOrigem == null || (d.chamadoOrigem is string && d.chamadoOrigem.size() <= 24));
     }
-    // Deliberação do CODIR: muda somente codirAprovado/ajuste/status/historico/atualizadoEm,
-    // com transição de status restrita a codir→fila (aprovação posiciona na fila).
+    // Deliberação do CODIR (gateways "Aprovada?" e "Há dotação orçamentária?"
+    // do fluxograma v2). Transições permitidas ao Conselho:
+    //   codir → fila       (aprovada, com dotação)
+    //   codir → suspenso   (aprovada, SEM dotação — suspensao.motivo = 'dotacao')
+    //   codir → analise    (não aprovada — devolvida para reanálise)
+    //   codir → cancelado  (não aprovada — encerrada)
+    //   fila  → codir      (aprovação desfeita — retirada da fila)
     function somenteDeliberacao() {
       return request.resource.data.diff(resource.data).affectedKeys()
-               .hasOnly(['codirAprovado','ajuste','status','historico','atualizadoEm'])
+               .hasOnly(['codirAprovado','ajuste','status','suspensao','historico','atualizadoEm'])
           && ( request.resource.data.status == resource.data.status
-            || (resource.data.status == 'codir' && request.resource.data.status == 'fila') );
+            || ( resource.data.status == 'codir'
+                 && ( request.resource.data.status in ['fila','analise','cancelado']
+                   || ( request.resource.data.status == 'suspenso'
+                        && request.resource.data.get('suspensao', {}).get('motivo','') == 'dotacao' ) ) )
+            || (resource.data.status == 'fila' && request.resource.data.status == 'codir') );
     }
     // Edição dos DADOS da solicitação: não altera status, campus, avaliação nem a
     // deliberação do CODIR; permitida apenas até a submissão ao CODIR
@@ -102,23 +111,46 @@ service cloud.firestore {
     match /demandas/{id} {
       allow read: if true; // dashboard e relatório públicos
 
+      // Intake unificado nos CHAMADOS: demandas nascem da triagem da SENG
+      // (conversão chamado→demanda) — o campus não cria demanda diretamente.
       allow create: if demandaValida(request.resource.data)
         && request.resource.data.status == 'recebido'
-        && ( isEng()
-          || isCampusDe(request.resource.data.campus) );
+        && isEng();
 
-      allow update: if demandaValida(request.resource.data) && (
+      allow update: if demandaValida(request.resource.data)
+        // Trava de atendimento/concluído também bloqueia o soft-delete
+        // (arquivo morto): status 'excluido' só fora da trava.
+        && !(travada() && request.resource.data.status == 'excluido')
+        && (
         // Administrador: tudo, exceto violar a trava
         ( isAdmin() && (!travada() || mantemClassificacao()) )
         // Chefe: gestão e avaliação; deliberação (ajuste/aprovação) é do CODIR
         || ( isChefe() && !isAdmin()
              && mantemDeliberacao()
              && (!travada() || mantemClassificacao()) )
-        // Engenharia: tratamento básico (sem deliberação; respeita a trava)
+        // Workflow v2 — ciclo projeto → obra: concluída a etapa de projeto, a
+        // Chefia devolve a demanda ao CODIR como obra para REPRIORIZAÇÃO —
+        // única exceção em que a deliberação (codirAprovado) é zerada e as
+        // fases/artefatos/certame do ciclo do projeto são limpos.
+        || ( isChefe()
+             && resource.data.status == 'atendimento'
+             && request.resource.data.status == 'codir'
+             && ( resource.data.get('etapa', null) == 'projeto'
+               || resource.data.get('tipoDemanda', '') == 'projeto' )
+             && request.resource.data.get('etapa', null) == 'obra'
+             && request.resource.data.get('codirAprovado', null) == false
+             && request.resource.data.get('aval', null) == resource.data.get('aval', null)
+             && request.resource.data.get('ajuste', null) == resource.data.get('ajuste', null) )
+        // Engenharia: tratamento básico (sem deliberação; respeita a trava).
+        // Congelamento de servidor: fora de recebido/análise/diligência, os
+        // DADOS da solicitação não podem ser alterados pela Engenharia.
         || ( isEng() && !isChefe()
              && mantemDeliberacao()
              && request.resource.data.status in ['recebido','analise','diligencia','codir']
-             && !travada() )
+             && !travada()
+             && ( resource.data.status in ['recebido','analise','diligencia']
+               || !request.resource.data.diff(resource.data).affectedKeys()
+                    .hasAny(['objeto','descricao','local','tipoDemanda','projetoExiste','tombado','valorEstimado','prazoEstimado','processoSuap','especialidades','emergencial']) ) )
         // CODIR: somente aprovação e ajuste, após a análise GUT
         || ( isCodir() && !isAdmin()
              && !travada()
@@ -266,6 +298,11 @@ service cloud.firestore {
                && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['descricao','status','obsExterna','comentarios','anexos','historico','atualizadoEm','prazoLimite','diligenciaDesde'])
                && request.resource.data.get('prazoLimite', 0) >= resource.data.get('prazoLimite', 0)
                && request.resource.data.status in ['aberto','triagem','diligencia'] )
+          // Campus dono: comentar também com o chamado EM ATENDIMENTO
+          // (consultoria/laudo em curso) — sem mudar status nem outros campos.
+          || ( isCampusDe(resource.data.campus)
+               && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['obsExterna','comentarios','historico','atualizadoEm'])
+               && request.resource.data.status == resource.data.status )
         );
       allow delete: if isChefe();
     }

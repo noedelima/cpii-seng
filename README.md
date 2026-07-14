@@ -1,68 +1,90 @@
-# SENG Demandas — Colégio Pedro II
+# Portal da Engenharia — Colégio Pedro II
 
-Sistema de gerenciamento de demandas de obras e serviços de engenharia da
-**Seção de Engenharia (SENG/DECOF)** do Colégio Pedro II, em atendimento à
-**Portaria nº 7503/REITORIA/CPII, de 24/11/2025**.
+Sistema da **Seção de Engenharia (SENG/DECOF)** do Colégio Pedro II para o
+atendimento de chamados e o gerenciamento das demandas de obras e serviços de
+engenharia, em atendimento à **Portaria nº 7503/REITORIA/CPII, de 24/11/2025**.
+*(Nome anterior: SENG Demandas.)*
 
-Substitui o formulário anual por **cadastro contínuo**: os campi registram
-solicitações a qualquer tempo, a SENG faz a triagem e a avaliação **GUT**
-(Gravidade, Urgência e Tendência), o **CODIR** aprova a fila e o sistema
-controla a alocação de profissionais com a pontuação dos arts. 11–13.
+O **chamado é a porta de entrada única**: o campus abre um chamado, a SENG faz a
+**triagem** (com prazo/SLA por categoria, pausado em diligência) e define o
+desfecho — **consultoria/laudo** (resolvido com orientação ou Nota Técnica),
+**encaminhamento** a outro setor, ou conversão em **demanda de obra**, que segue
+a avaliação **GUT**, a deliberação do **CODIR** (aprovação, dotação orçamentária,
+fator de ajuste), a **fila pública** priorizada e as **fases do ciclo da
+contratação** (workflow v2 — BPMN “Atendimento de Chamados v2”).
 
 ## Funcionalidades
-- **Dashboard público** (sem login): resumo clicável por status, gráficos por
-  campus/tipo, fila priorizada com filtros e busca.
-- **Relatório PDF efêmero** em papel timbrado, com data/hora de geração —
-  baixa na hora, nada fica armazenado. Versão pública omite profissionais.
-- **Cadastro contínuo de solicitações** pelos campi (Prefeito/DIAD e
-  delegados), com máximo de campos de seleção, indicação de projeto
-  existente × necessidade de contratação e sinalização de emergência.
-- **Avaliação GUT** com as mesmas escalas do modelo em PowerBI da SENG,
-  faixas de valor/prazo, **fator de ajuste** com justificativa (deliberação
-  CODIR), caixa de **aprovação do CODIR** e fluxo completo de **status**
-  (Recebido → Em análise → Em diligência → Aguardando CODIR → Na fila →
-  Em atendimento → Concluído, além de Suspenso, Cancelado e Não enquadrado).
-- **Trava funcional**: demandas em atendimento não podem ser excluídas nem
-  ter classificação alterada (interface **e** Security Rules).
-- **Profissionais**: cadastro com **e-mail** (vinculado automaticamente ao
-  usuário de login com o mesmo e-mail), alocação de Fiscal Técnico
-  Titular/Substituto e equipes de planejamento, contabilização automática de
-  pontos (art. 11), limite de 6 pontos (art. 12) e monitor do art. 13.
-- **Perfis**: Campus, Engenharia, Chefe de Seção, **CODIR** (marca a aprovação
-  e define o fator de ajuste, após a análise GUT) e Administrador (executa
-  todas as ações). **Salvaguarda**: sempre há ao menos um administrador —
-  o perfil de admin só pode ser revogado por outro administrador.
-- **Log de auditoria** (somente administrador): registra toda modificação —
-  o quê, quando e por quem; imutável (append-only nas Security Rules).
+
+- **Início público** (sem login): KPIs, gráficos (status, meses, campus,
+  especialidade, chamados agregados), top 5 da fila — transparência sem nomes.
+- **Módulo de Chamados** (intake + triagem): categorias com **SLA** (pausado em
+  diligência, com recomposição do prazo), desfechos da triagem, conversão em
+  demanda (inclusive **escalada** da consultoria já em atendimento/resolvida),
+  minuta de **Nota Técnica** em PDF, anexos (imagem/PDF) e fio único de
+  comentários campus ↔ SENG.
+- **Avaliação GUT** com as escalas da SENG, faixas de valor/prazo e pontos de
+  complexidade (arts. 11–13).
+- **Deliberação do CODIR** (gateways do fluxograma v2): aprovar e posicionar na
+  fila, aprovar **aguardando dotação** (suspensão estruturada que não encerra o
+  ciclo), **não aprovar** (reanálise ou encerramento, com justificativa) e
+  **fator de ajuste** com justificativa (marca `*` na fila).
+- **Fases do atendimento** (workflow v2): Planejamento (checklist de artefatos —
+  ETP, Matriz de Riscos, **Elaboração / Atualização de Orçamento**, TR/PB, lista
+  AGU, Processo SUAP), Licitação (certame com loop deserto/fracassado),
+  Execução e Recebimento — com **stepper** do ciclo no dossiê e etiqueta/filtro
+  de fase na fila.
+- **Ciclo projeto → obra**: concluído o projeto, a demanda retorna ao CODIR como
+  obra para **repriorização** (nova deliberação).
+- **Trava funcional**: demandas em atendimento/concluídas não podem ser
+  excluídas nem ter a classificação alterada (interface **e** Security Rules).
+- **Profissionais e alocação**: fiscais titulares/substitutos e equipes de
+  planejamento, carga por profissional (limite do art. 12) e monitor do art. 13.
+- **Perfis**: Campus, Engenharia, Chefe de Seção, CODIR e Administrador —
+  com salvaguarda de sempre haver ao menos um administrador ativo.
+- **Notificações** (sino), **log de auditoria** imutável (admin), **arquivo
+  morto** recuperável (30 dias), relatórios **PDF efêmeros** e **Excel** interno.
+- **Ajuda embutida**: manuais por perfil (Campus, Engenharia, CODIR) renderizados
+  no app, com reproduções fiéis das telas e os fluxogramas do chamado e do ciclo
+  da demanda.
 - Identidade visual CP2, **temas claro/escuro**, responsivo e acessível.
 
 ## Arquitetura
-SPA estática (ES Modules, sem build) publicada no **GitHub Pages**.
-Backend em **Firebase Auth + Cloud Firestore** com regras de segurança
-restritivas (`firebase/firestore.rules`). Sem configuração de Firebase, o
-sistema roda em **modo demonstração** (dados fictícios em `localStorage`),
-com usuários de teste exibidos na tela de login.
+
+SPA estática (ES Modules, **sem build**). **Produção no Azure Static Web Apps**
+(CI/CD por GitHub Actions; o endereço antigo no GitHub Pages apenas redireciona —
+ver `docs/AZURE-SWA-SETUP.md`). Backend em **Firebase Auth + Cloud Firestore +
+Cloud Storage** com regras de segurança restritivas (`firebase/*.rules`) e
+**camada de API** opcional em `/api/*` (Azure Functions validando o ID token —
+`docs/API-CAMADA.md`). Sem configuração de Firebase, roda em **modo
+demonstração** (dados fictícios em `localStorage`), com usuários de teste na
+tela de login.
 
 ```
 index.html            shell + CSP
 css/app.css           design system (temas claro/escuro)
-js/config.js          domínio: campi, status, escalas GUT, papéis
+js/config.js          domínio: campi, status, fases, artefatos, escalas GUT, papéis
 js/calc.js            GUT, faixas, prioridade, pontos art. 11, arts. 12–13
 js/store.js           camada de dados (demo) + seleção de provedor
-js/firebase-provider.js  provedor de produção (Auth + Firestore)
-js/seed.js            dados fictícios do modo demonstração
-js/views/*.js         dashboard, login, solicitação, demanda, profissionais, admin
-js/pdf.js             relatório PDF efêmero (papel timbrado, jsPDF sob demanda)
+js/firebase-provider.js  provedor de produção (Auth + Firestore + Storage)
+js/seed.js            dados fictícios do modo demonstração (inclui workflow v2)
+js/views/*.js         início, chamados (hub/triagem/dossiê), demanda, ajuda, admin…
+js/ajuda-figs.js      reproduções de tela e fluxogramas SVG dos manuais
+js/pdf.js · js/xlsx.js  relatórios efêmeros (PDF timbrado, Excel interno)
+api/                  camada de API (Azure Functions) — docs/API-CAMADA.md
 firebase/             Security Rules + guia de ativação (SETUP.md)
+docs/                 ADRs, manuais da Ajuda, BPMN do fluxo de chamados
 ```
 
 ## Produção
+
 Siga **[firebase/SETUP.md](firebase/SETUP.md)** (~15 min): criar projeto
 Firebase, ativar e-mail/senha, publicar as rules, criar perfis e colar a
 config em `js/firebase-config.js`. A `apiKey` Web do Firebase não é segredo;
-o controle de acesso é feito pelas Security Rules.
+o controle de acesso é feito pelas Security Rules. Hospedagem e API:
+`docs/AZURE-SWA-SETUP.md` e `docs/API-CAMADA.md`.
 
 ## Cálculo de priorização
+
 `GUT = G×U×T` (escalas 1–5) · `ScoreValor` 1–5 por faixas múltiplas do valor
 de referência do art. 75-I da Lei 14.133/2021 (parametrizável) ·
 `ScorePrazo` 3/2/1 · `Prazo×Custo = (V/5 + P/3)/2` ·

@@ -65,7 +65,12 @@ O CODIR atua a partir do status **“Aguardando aprovação do CODIR”** (após
 
 > **Origem por chamado.** As demandas chegam ao CODIR a partir da **triagem de um chamado**: quando a SENG classifica um chamado como **obra**, ele é convertido em demanda (status Recebido), avaliado (GUT) e então enviado para a sua aprovação. Para o CODIR, o fluxo de deliberação é o mesmo — muda apenas a **porta de entrada** (o chamado unificou a antiga “Nova solicitação”).
 
-> **Projeto + Obra.** Uma demanda que exigia projeto e obra **volta ao CODIR como obra** (com projeto existente) quando a etapa de projeto é concluída — reaprove e reposicione na fila normalmente, conferindo o GUT e o valor reavaliados para a obra.
+> **Desfechos da deliberação (fluxograma v2).** No cartão **Deliberação do CODIR**, além de **Aprovar — posicionar na fila**, o Conselho registra os demais desfechos do gateway:
+> - **Aprovar — aguardar dotação**: a demanda é aprovada, mas fica **Suspensa** com o motivo *Aguardando dotação orçamentária*. A suspensão **não encerra o ciclo** — havendo orçamento, a Chefia a retorna à fila.
+> - **Não aprovar — reanálise**: volta para **Em análise** na SENG, com **justificativa obrigatória** registrada no histórico.
+> - **Não aprovar — encerrar**: a demanda é encerrada como **Cancelado** (não aprovada), também com justificativa.
+
+> **Projeto + Obra.** Uma demanda que exigia projeto e obra **volta ao CODIR como obra** (com projeto existente) quando a etapa de projeto é concluída — a **aprovação anterior é zerada** (repriorização): delibere novamente, conferindo o GUT e o valor reavaliados para a obra.
 
 ---
 
@@ -129,6 +134,7 @@ No cartão **Deliberação do CODIR**:
 
 1. **① “Aprovada pelo CODIR”** — marque esta caixa para validar a demanda. Ao marcar, a demanda **entra automaticamente na fila**.
 2. A ação é registrada no **histórico** com data e responsável.
+3. Se for o caso, use os botões de desfecho: **Aprovar — aguardar dotação** (aprova e suspende até haver orçamento), **Não aprovar — reanálise** (devolve à SENG) ou **Não aprovar — encerrar** — os dois últimos com justificativa obrigatória (seção 3).
 
 > A aprovação só fica disponível quando a demanda está em **“Aguardando aprovação do CODIR”** (ou status posteriores elegíveis). Antes da análise GUT, o cartão informa que a deliberação ainda não está liberada.
 
@@ -198,7 +204,7 @@ Após salvar, confira o resultado no cartão **Priorização**:
 A demanda provavelmente ainda não passou pela análise GUT, ou já está em atendimento/concluída (deliberação travada). O cartão só fica ativo em “Aguardando aprovação do CODIR” (e, para rever o ajuste, em “Na fila” ou “Suspenso”).
 
 **Aprovei uma demanda por engano.**
-Procure a Chefia da SENG: os perfis Chefe de Seção/Administrador podem reverter o status (desfazer a entrada na fila), mantendo tudo registrado no histórico.
+Com a demanda ainda **Na fila**, basta **desmarcar** a caixa “Aprovada pelo CODIR”: o sistema pede confirmação e a devolve para “Aguardando aprovação do CODIR”, com registro no histórico. Se o **atendimento já começou**, procure a Chefia da SENG (reversão de status).
 
 **Quero mudar só a prioridade, sem aprovar.**
 São ações independentes. Você pode salvar o fator de ajuste sem marcar “Aprovada”, e vice-versa — mas a demanda só entra na fila quando aprovada.
@@ -217,7 +223,7 @@ Demandas “Em atendimento” ou “Concluído” não aceitam deliberação. Se
 - **CODIR** — instância colegiada que **aprova** as demandas avaliadas pela SENG e define o **fator de ajuste**.
 - **SUAP** — Sistema Unificado de Administração Pública; o sistema eletrônico de processos do CPII.
 - **GUT** — método de priorização: **G**ravidade × **U**rgência × **T**endência (escala de 1 a 5 em cada eixo).
-- **Prioridade calculada** — índice que ordena a fila, combinando o GUT com valor, prazo e os pontos de complexidade (art. 11).
+- **Prioridade calculada** — índice que ordena a fila: **0,75 · (GUT/125) + 0,25 · (Prazo × Custo)**, sendo Prazo × Custo a combinação das faixas de valor e prazo. *(Os pontos de complexidade do art. 11 medem o esforço da equipe técnica e **não** entram nessa fórmula.)*
 - **Fator de ajuste** — valor somado pelo CODIR à prioridade calculada; sinalizado com `*` na fila.
 - **Prioridade final** — prioridade calculada + fator de ajuste.
 - **Na fila** — demanda aprovada, aguardando atendimento, na posição dada pela prioridade.

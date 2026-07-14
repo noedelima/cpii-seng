@@ -32,7 +32,7 @@ class DemoProvider {
   }
   _load() {
     try { this.db = JSON.parse(localStorage.getItem(LS_KEY)) || null; } catch { this.db = null; }
-    if (!this.db || this.db._v !== 2) { this.db = seedDemo(); this._save(); }
+    if (!this.db || this.db._v !== 3) { this.db = seedDemo(); this._save(); }
     this.db.logs = this.db.logs || [];
     this.db.notificacoes = this.db.notificacoes || []; // inbox pessoal (não destrutivo)
     this.db.chamados = this.db.chamados || [];
@@ -200,8 +200,10 @@ class DemoProvider {
   }
   _ev(texto) { return { ts: Date.now(), user: this.user ? this.user.nome : 'Sistema', acao: texto }; }
 
-  // --- Dados internos (alocação) ---
-  getInternas() { return this.user ? this.db.internas : {}; }
+  // --- Dados internos (alocação) — como nas rules: só perfis internos leem ---
+  getInternas() {
+    return ['engenharia', 'chefe', 'codir', 'admin'].includes(this.user?.role) ? this.db.internas : {};
+  }
   async setInterna(id, patch) {
     this.db.internas[id] = { ...(this.db.internas[id] || {}), ...patch };
     this._log('Alocação atualizada', id, Object.keys(patch).join(', '));

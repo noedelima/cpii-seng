@@ -35,7 +35,7 @@ export function viewInicio() {
   const kpis = el('div', { class: 'kpi-grid' },
     kpi('Em atendimento', n('atendimento'), false, '#/chamados?status=atendimento'),
     kpi('Na fila', n('fila'), false, '#/chamados?status=fila'),
-    kpi(`Concluídas em ${anoAtual}`, concluidasAno, false, '#/chamados?status=concluido'),
+    kpi(`Concluídas em ${anoAtual}`, concluidasAno, false, `#/chamados?status=concluido&ano=${anoAtual}`),
     kpi('Chamados ativos', t ? t.ativos : null, false, user ? '#/chamados?recorte=triagem' : null),
     kpi('Triagem no prazo', pctPrazo == null ? null : pctPrazo + '%', pctPrazo != null && pctPrazo >= 80),
     kpi('Triagem média', t && t.triagemMediaDias != null ? t.triagemMediaDias + 'd' : null));

@@ -109,6 +109,7 @@ export function viewChamado(rerender, id) {
     el('h2', {}, 'Desfecho'),
     c.desfecho ? el('p', {}, el('strong', {}, 'Trilha: '), desfechoNome(c.desfecho)) : null,
     c.resolucao?.setor ? el('p', {}, el('strong', {}, 'Encaminhado a: '), c.resolucao.setor) : null,
+    c.resolucao?.parecerTriagem ? el('p', { class: 'ch-descricao' }, el('strong', {}, 'Parecer da triagem: '), c.resolucao.parecerTriagem) : null,
     c.resolucao?.texto ? el('p', { class: 'ch-descricao' }, c.resolucao.texto) : null,
     (ehSeng && temConsultoria) ? el('div', { class: 'form-acoes' }, btnNT,
       el('span', { class: 'sub' }, 'Rascunho — revise e numere antes de assinar.')) : null) : null;
@@ -239,7 +240,8 @@ function renderAcaoMomento(c, s, user, terminal, acao, rerender) {
     secao.append(
       el('p', { class: 'sub' }, 'Chamado recém-aberto. Inicie a triagem para classificar e decidir a destinação.'),
       el('div', { class: 'form-acoes' },
-        el('button', { class: 'btn primario', onclick: () => acao({ status: 'triagem' }, 'Triagem iniciada', 'chamado-atualizado') }, 'Iniciar triagem')));
+        el('button', { class: 'btn primario', onclick: () => acao({ status: 'triagem' }, 'Triagem iniciada', 'chamado-atualizado') }, 'Iniciar triagem')),
+      blocoCancelar(c, user, acao));
     return secao;
   }
 
@@ -248,7 +250,8 @@ function renderAcaoMomento(c, s, user, terminal, acao, rerender) {
     secao.append(
       el('p', { class: 'sub' }, 'Diligência em curso — aguardando complemento do campus. Ao responder, o chamado retorna à triagem automaticamente.'),
       el('div', { class: 'form-acoes' },
-        el('button', { class: 'btn ghost sm', onclick: () => acao({ status: 'triagem' }, 'Triagem retomada pela SENG', 'chamado-atualizado') }, 'Retomar triagem agora')));
+        el('button', { class: 'btn ghost sm', onclick: () => acao({ status: 'triagem' }, 'Triagem retomada pela SENG', 'chamado-atualizado') }, 'Retomar triagem agora')),
+      blocoCancelar(c, user, acao));
     return secao;
   }
 
@@ -298,7 +301,8 @@ function renderAcaoMomento(c, s, user, terminal, acao, rerender) {
         el('div', { class: 'form-acoes' }, btnDesf)),
       el('details', { class: 'triagem-bloco' },
         el('summary', { class: 'sub-titulo' }, 'Precisa de mais informações? Solicitar diligência'),
-        campo('Mensagem ao campus', inDilig), el('div', { class: 'form-acoes' }, btnDilig)));
+        campo('Mensagem ao campus', inDilig), el('div', { class: 'form-acoes' }, btnDilig)),
+      blocoCancelar(c, user, acao));
     return secao;
   }
 
@@ -311,7 +315,9 @@ function renderAcaoMomento(c, s, user, terminal, acao, rerender) {
       el('div', { class: 'form-acoes' }, el('button', { class: 'btn primario', onclick: async () => {
         const txt = inResol.value.trim();
         if (!txt) { toast('Descreva a orientação/desfecho.', 'erro'); return; }
-        await acao({ status: 'resolvido', resolucao: { texto: txt } }, 'Chamado resolvido (consultoria/laudo)', 'chamado-resolvido');
+        // Preserva o parecer registrado na triagem (não é sobrescrito pela orientação final).
+        await acao({ status: 'resolvido', resolucao: { ...(c.resolucao || {}), parecerTriagem: c.resolucao?.texto || null, texto: txt } },
+          'Chamado resolvido (consultoria/laudo)', 'chamado-resolvido');
       } }, 'Marcar como resolvido')));
 
     const selRealoc = selecaoPessoas({ itens: profs, atuais: c.atendentes || [], rotulo: rotProf, vazio: 'Nenhum responsável incluído.' });
@@ -337,6 +343,23 @@ function renderAcaoMomento(c, s, user, terminal, acao, rerender) {
     el('p', { class: 'sub' }, 'Chamado resolvido. Se a orientação técnica concluir pela necessidade de contratação, converta em demanda de obra — o histórico segue no dossiê da demanda.'),
     blocoConversao(c, s, user));
   return secao;
+}
+
+// Bloco recolhível "Cancelar chamado" — encerramento sem atendimento, com o
+// motivo registrado (torna alcançável o status 'cancelado' do ciclo).
+function blocoCancelar(c, user, acao) {
+  const inMotivo = el('input', { type: 'text', maxlength: 300, placeholder: 'Motivo do cancelamento (registrado no histórico)' });
+  return el('details', { class: 'triagem-bloco' },
+    el('summary', { class: 'sub-titulo' }, 'Cancelar chamado'),
+    el('p', { class: 'sub' }, 'Encerra o chamado sem atendimento (ex.: aberto por engano, pedido do campus). O motivo fica no histórico e o campus é avisado.'),
+    campo('Motivo *', inMotivo),
+    el('div', { class: 'form-acoes' }, el('button', { class: 'btn perigo sm', onclick: async () => {
+      const motivo = inMotivo.value.trim();
+      if (!motivo) { toast('Informe o motivo do cancelamento.', 'erro'); return; }
+      const ok = await confirmar('Cancelar chamado?', `O chamado ${c.id} será encerrado como “Cancelado”, com o motivo registrado.`, { ok: 'Cancelar chamado', perigo: true });
+      if (!ok) return;
+      await acao({ status: 'cancelado', resolucao: { ...(c.resolucao || {}), texto: motivo } }, `Chamado cancelado — ${motivo}`, 'chamado-desfecho');
+    } }, 'Cancelar chamado')));
 }
 
 // Bloco recolhível "Converter em demanda de obra" (gate “Exige contratação?”).
