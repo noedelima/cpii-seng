@@ -165,6 +165,7 @@ export async function gerarRelatorioChamados({ chamados, filtros }) {
   const body = chamados.map(c => {
     const sla = slaChamado(c);
     const prazo = sla.estado === 'vencido' ? `atrasado ${Math.abs(sla.dias)}d`
+      : sla.estado === 'pausado' ? `pausado · ${sla.dias}d`
       : sla.estado === 'encerrado' ? '—' : `${sla.dias}d`;
     return [c.id, campusNome(c.campus), categoriaChamadoNome(c.categoria), c.assunto || '—',
       statusChamadoNome(c.status), prazo, new Date(c.atualizadoEm || c.aberturaEm).toLocaleDateString('pt-BR')];

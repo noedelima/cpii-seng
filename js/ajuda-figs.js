@@ -61,22 +61,27 @@ export function figura(id) {
   return f ? f() : el('p', { class: 'nota' }, `(reprodução “${id}” indisponível)`);
 }
 
+// ---- primitivos de fluxograma (compartilhados pelas figuras de fluxo) -------
+const caixa = (x, y, w, h, titulo, sub, destaque) => sv('g', {},
+  sv('rect', { x, y, width: w, height: h, rx: 8, fill: 'var(--card)', stroke: destaque ? 'var(--acento)' : 'var(--borda-forte)', 'stroke-width': destaque ? 1.5 : 1 }),
+  sv('text', { x: x + w / 2, y: y + (sub ? 21 : h / 2 + 4), 'text-anchor': 'middle', fill: 'var(--texto)', 'font-size': 13, 'font-weight': 600 }, titulo),
+  sub ? sv('text', { x: x + w / 2, y: y + 38, 'text-anchor': 'middle', fill: 'var(--texto-2)', 'font-size': 11 }, sub) : null);
+const seta = (d) => sv('path', { d, fill: 'none', stroke: 'var(--texto-2)', 'stroke-width': 1.2, 'marker-end': 'url(#af-seta)' });
+const setaT = (d) => sv('path', { d, fill: 'none', stroke: 'var(--texto-2)', 'stroke-width': 1.2, 'stroke-dasharray': '4 3', 'marker-end': 'url(#af-seta)' });
+const rotSeta = (x, y, t) => sv('text', { x, y, fill: 'var(--texto-2)', 'font-size': 10.5, 'font-weight': 600 }, t);
+const raia = (y, h, rotulo) => sv('g', {},
+  sv('rect', { x: 8, y, width: 664, height: h, rx: 10, fill: 'none', stroke: 'var(--borda)', 'stroke-dasharray': '5 4' }),
+  sv('text', { x: 20, y: y + 18, fill: 'var(--texto-2)', 'font-size': 11, 'font-weight': 600, 'letter-spacing': '.06em' }, rotulo));
+const defsSeta = () => sv('defs', {}, sv('marker', { id: 'af-seta', viewBox: '0 0 10 10', refX: 8, refY: 5, markerWidth: 6, markerHeight: 6, orient: 'auto-start-reverse' },
+  sv('path', { d: 'M2 1L8 5L2 9', fill: 'none', stroke: 'var(--texto-2)', 'stroke-width': 1.5, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' })));
+
 // ============================================================================
 // FLUXOGRAMA — ciclo do chamado (usado nos manuais Campus e Engenharia).
 // Espelha docs/fluxo-chamados.bpmn (editável no Bizagi Modeler).
 // ============================================================================
 F['fluxo-chamado'] = () => {
-  const caixa = (x, y, w, h, titulo, sub, destaque) => sv('g', {},
-    sv('rect', { x, y, width: w, height: h, rx: 8, fill: 'var(--card)', stroke: destaque ? 'var(--acento)' : 'var(--borda-forte)', 'stroke-width': destaque ? 1.5 : 1 }),
-    sv('text', { x: x + w / 2, y: y + (sub ? 21 : h / 2 + 4), 'text-anchor': 'middle', fill: 'var(--texto)', 'font-size': 13, 'font-weight': 600 }, titulo),
-    sub ? sv('text', { x: x + w / 2, y: y + 38, 'text-anchor': 'middle', fill: 'var(--texto-2)', 'font-size': 11 }, sub) : null);
-  const seta = (d) => sv('path', { d, fill: 'none', stroke: 'var(--texto-2)', 'stroke-width': 1.2, 'marker-end': 'url(#af-seta)' });
-  const raia = (y, h, rotulo) => sv('g', {},
-    sv('rect', { x: 8, y, width: 664, height: h, rx: 10, fill: 'none', stroke: 'var(--borda)', 'stroke-dasharray': '5 4' }),
-    sv('text', { x: 20, y: y + 18, fill: 'var(--texto-2)', 'font-size': 11, 'font-weight': 600, 'letter-spacing': '.06em' }, rotulo));
   const svg = sv('svg', { viewBox: '0 0 680 640', width: '100%', role: 'img', 'aria-label': 'Fluxo do chamado, da abertura à conclusão' },
-    sv('defs', {}, sv('marker', { id: 'af-seta', viewBox: '0 0 10 10', refX: 8, refY: 5, markerWidth: 6, markerHeight: 6, orient: 'auto-start-reverse' },
-      sv('path', { d: 'M2 1L8 5L2 9', fill: 'none', stroke: 'var(--texto-2)', 'stroke-width': 1.5, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }))),
+    defsSeta(),
     raia(8, 116, 'CAMPUS'),
     raia(132, 500, 'SENG / DECOF'),
     caixa(60, 32, 180, 52, 'Abrir chamado', 'categoria, urgência, anexos'),
@@ -106,6 +111,57 @@ F['fluxo-chamado'] = () => {
   return ajudaFig({
     titulo: 'Ciclo do chamado — da abertura à conclusão',
     legenda: 'Abertura pelo campus → triagem (diligência opcional, com o SLA pausado) → desfecho: obra (vira demanda e segue GUT → CODIR → fila), consultoria/laudo (atendimento → resolvido), encaminhado ou não enquadrado.',
+    corpo: el('div', { style: 'padding:6px' }, svg),
+  });
+};
+
+// ============================================================================
+// FLUXOGRAMA — ciclo da demanda de contratação (workflow v2 “Atendimento de
+// Chamados”): GUT → CODIR (aprovação e dotação) → fila → fases do atendimento
+// (planejamento → licitação → execução → recebimento), com os loops do certame
+// deserto/fracassado e do projeto → obra. Usado nos três manuais.
+// ============================================================================
+F['fluxo-demanda'] = () => {
+  const svg = sv('svg', { viewBox: '0 0 680 872', width: '100%', role: 'img', 'aria-label': 'Ciclo da demanda de contratação, da avaliação GUT à conclusão' },
+    defsSeta(),
+    raia(8, 96, 'SENG / DECOF — AVALIAÇÃO'),
+    raia(112, 196, 'CODIR'),
+    raia(316, 548, 'SENG / DECOF — FILA E ATENDIMENTO'),
+    caixa(40, 36, 200, 52, 'Avaliar GUT e classificar', 'prioridade calculada (art. 5º)'),
+    caixa(40, 140, 200, 52, 'Deliberar sobre a demanda', 'aguardando aprovação'),
+    caixa(280, 140, 140, 52, 'Aprovada?', 'deliberação'),
+    caixa(500, 140, 160, 52, 'Não aprovada', 'reanálise ou cancelada'),
+    caixa(280, 232, 200, 52, 'Há dotação orçamentária?'),
+    caixa(500, 232, 160, 52, 'Aguardar dotação', 'suspensa — retorna depois'),
+    caixa(40, 348, 200, 52, 'Aguardar posição na fila', 'pública, por prioridade'),
+    caixa(280, 348, 200, 52, 'Contratação autorizada', 'inicia o atendimento', true),
+    caixa(280, 440, 200, 52, 'Planejamento', 'artefatos — modelos AGU'),
+    caixa(280, 532, 200, 52, 'Licitação', 'processo no certame'),
+    caixa(500, 532, 160, 52, 'Certame com êxito?', 'deserto/fracassado volta'),
+    caixa(280, 624, 200, 52, 'Execução', 'fiscalização do contrato'),
+    caixa(280, 716, 200, 52, 'Recebimento', 'provisório e definitivo'),
+    caixa(280, 800, 200, 52, 'Concluída', 'obra/serviço recebido', true),
+    caixa(30, 624, 220, 76, 'Projeto → obra', 'volta ao CODIR (repriorização)'),
+    seta('M140 88 V136'),
+    seta('M240 166 H276'),
+    seta('M420 166 H496'), rotSeta(444, 158, 'Não'),
+    seta('M350 192 V228'), rotSeta(358, 216, 'Sim'),
+    seta('M480 258 H496'), rotSeta(484, 250, 'Não'),
+    seta('M350 284 V316 H140 V344'), rotSeta(358, 306, 'Sim'),
+    setaT('M580 284 V312 H190 V344'),
+    seta('M240 374 H276'),
+    seta('M380 400 V436'),
+    seta('M380 492 V528'),
+    seta('M480 558 H496'),
+    seta('M580 528 V466 H484'), rotSeta(590, 514, 'Não'),
+    seta('M580 588 V650 H484'), rotSeta(590, 606, 'Sim'),
+    seta('M380 676 V712'),
+    seta('M380 768 V796'),
+    setaT('M140 620 V592 H24 V166 H36'),
+    setaT('M276 650 H254'));
+  return ajudaFig({
+    titulo: 'Ciclo da demanda — da avaliação à conclusão',
+    legenda: 'Avaliação GUT → deliberação do CODIR (sem dotação: suspensa até haver orçamento — não é encerrada) → fila pública por prioridade → fases do atendimento: planejamento (checklist de artefatos, modelos AGU) → licitação (certame deserto/fracassado retorna ao planejamento) → execução → recebimento. No ciclo projeto → obra, o projeto concluído devolve a demanda ao CODIR para repriorização como obra.',
     corpo: el('div', { style: 'padding:6px' }, svg),
   });
 };

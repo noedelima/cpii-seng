@@ -259,9 +259,12 @@ service cloud.firestore {
         && (
           // SENG/Admin: triagem, resolução e status
           isEng()
-          // Campus dono: complementar/responder diligência, comentar (externa) e anexar
+          // Campus dono: complementar/responder diligência, comentar (externa) e anexar.
+          // prazoLimite/diligenciaDesde: recomposição do SLA pausado ao responder a
+          // diligência (workflow v2) — o prazo só pode ser estendido, nunca reduzido.
           || ( isCampusDe(resource.data.campus)
-               && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['descricao','status','obsExterna','comentarios','anexos','historico','atualizadoEm'])
+               && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['descricao','status','obsExterna','comentarios','anexos','historico','atualizadoEm','prazoLimite','diligenciaDesde'])
+               && request.resource.data.get('prazoLimite', 0) >= resource.data.get('prazoLimite', 0)
                && request.resource.data.status in ['aberto','triagem','diligencia'] )
         );
       allow delete: if isChefe();

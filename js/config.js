@@ -8,7 +8,7 @@ export const APP = {
   orgao: 'Colégio Pedro II',
   setor: 'Seção de Engenharia — SENG/DECOF',
   portaria: 'Portaria nº 7503/REITORIA/CPII, de 24/11/2025',
-  versao: '1.17.0',
+  versao: '1.18.0',
 };
 
 // --- Parâmetros ajustáveis pelo Administrador (defaults) ---------------------
@@ -95,13 +95,14 @@ export const faseNome  = (id) => (FASES_DEMANDA.find(f => f.id === id) || {}).no
 export const faseCurta = (id) => (FASES_DEMANDA.find(f => f.id === id) || {}).curto || id || '—';
 
 // Checklist de artefatos da fase de planejamento — fluxo da fase preparatória
-// (Lei nº 14.133/2021: ETP → riscos ∥ preços → TR/PB → lista de verificação).
+// (Lei nº 14.133/2021: ETP → riscos ∥ orçamento → TR/PB → lista de verificação).
+// O id `pesquisaPrecos` é chave dos checklists já gravados — não renomear.
 export const ARTEFATOS_PLANEJAMENTO = [
   { id: 'indicacao',        nome: 'Integrantes técnicos indicados' },
   { id: 'portaria',         nome: 'Portaria da equipe publicada' },
   { id: 'etp',              nome: 'Estudo Técnico Preliminar (ETP)' },
   { id: 'matrizRiscos',     nome: 'Mapa / Matriz de Riscos' },
-  { id: 'pesquisaPrecos',   nome: 'Pesquisa de Preços' },
+  { id: 'pesquisaPrecos',   nome: 'Elaboração / Atualização de Orçamento' },
   { id: 'trpb',             nome: 'Termo de Referência / Projeto Básico' },
   { id: 'listaVerificacao', nome: 'Lista de Verificação (AGU)' },
   { id: 'envioSuap',        nome: 'Processo SUAP instruído e encaminhado' },
@@ -271,12 +272,31 @@ export const STATUS_CHAMADO_ABERTO = ['aberto', 'triagem', 'diligencia', 'atendi
 
 // Estado do SLA (prazo de triagem) de um chamado. `dias` = dias corridos restantes
 // (negativo = em atraso). Só corre nos status abertos; encerrados não têm prazo.
+// Em diligência o SLA PAUSA (nota do fluxograma v2): o restante congela no valor
+// do momento em que a diligência abriu e o prazo é recomposto na retomada.
 export function slaChamado(c) {
   if (!c || !STATUS_CHAMADO_ABERTO.includes(c.status)) return { estado: 'encerrado', dias: null };
-  const restante = Math.ceil(((c.prazoLimite || 0) - Date.now()) / 86400000);
+  const ref = c.status === 'diligencia' ? (c.diligenciaDesde || c.atualizadoEm || Date.now()) : Date.now();
+  const restante = Math.ceil(((c.prazoLimite || 0) - ref) / 86400000);
+  if (c.status === 'diligencia') return { estado: 'pausado', dias: restante };
   if (restante < 0) return { estado: 'vencido', dias: restante };
   if (restante <= 2) return { estado: 'vencendo', dias: restante };
   return { estado: 'no-prazo', dias: restante };
+}
+
+// Contabilidade da pausa do SLA nas transições de status do chamado:
+// entra em diligência → marca `diligenciaDesde`; sai → estende `prazoLimite`
+// pelo tempo pausado e limpa a marca. Devolve os campos a mesclar no patch.
+export function patchSlaDiligencia(c, novoStatus) {
+  if (!c || !novoStatus || novoStatus === c.status) return {};
+  if (novoStatus === 'diligencia') return { diligenciaDesde: Date.now() };
+  if (c.status === 'diligencia') {
+    const extra = { diligenciaDesde: null };
+    if (c.diligenciaDesde && c.prazoLimite)
+      extra.prazoLimite = c.prazoLimite + Math.max(0, Date.now() - c.diligenciaDesde);
+    return extra;
+  }
+  return {};
 }
 
 // Categorias/assuntos — cada uma mapeia a disciplina (= área do profissional, p/

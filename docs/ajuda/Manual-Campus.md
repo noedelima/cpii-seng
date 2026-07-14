@@ -76,6 +76,10 @@ Na página do chamado, a **trilha de etapas** no topo (Aberto → Triagem → At
 - **Consultoria / Laudo** → a SENG atende e **resolve** com orientação técnica ou **Nota Técnica**.
 - **Encaminhado** → segue para o setor responsável (ex.: manutenção/prefeitura, DTI, Administração).
 
+Quando o chamado **vira obra**, a demanda criada percorre o ciclo abaixo — aprovação do CODIR, fila pública por prioridade e as fases da contratação:
+
+@fig fluxo-demanda
+
 **Estados laterais possíveis**
 
 - **Em diligência** — a SENG precisa de um complemento e devolve o chamado para você responder (o prazo de triagem pausa).
@@ -171,7 +175,7 @@ Depois de aberto, acompanhe a evolução a qualquer momento.
 
 ## 8. Fluxo 5 — Responder a uma diligência
 
-Quando falta uma informação para a triagem, a SENG coloca o chamado **Em diligência**. Cabe ao campus complementar — enquanto isso, o **prazo (SLA) pausa**.
+Quando falta uma informação para a triagem, a SENG coloca o chamado **Em diligência**. Cabe ao campus complementar — enquanto isso, o **prazo (SLA) pausa**: o selo do chamado passa a **“SLA pausado”**, o tempo em diligência **não é descontado** e o prazo é **recomposto automaticamente** quando a triagem retoma.
 
 **Passo a passo**
 
