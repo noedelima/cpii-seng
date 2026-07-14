@@ -5,8 +5,9 @@
 import { el } from './ui.js';
 
 // passos: [{ rotulo, estado: 'feito' | 'atual' | 'pendente' }]
-// opts: { nota?: string|Node, aviso?: string|Node } — linha auxiliar sob o stepper.
-export function renderStepper(passos, { nota = null, aviso = null } = {}) {
+// opts: { nota?, aviso?, avisoClasse? } — linha auxiliar sob o stepper;
+// avisoClasse dá destaque extra (ex.: 'aviso-suspensao').
+export function renderStepper(passos, { nota = null, aviso = null, avisoClasse = '' } = {}) {
   const kids = [];
   passos.forEach((p, i) => {
     if (i) kids.push(el('span', { class: `stp-linha ${passos[i - 1].estado === 'feito' ? 'stp-linha-feita' : ''}`, 'aria-hidden': 'true' }));
@@ -17,6 +18,6 @@ export function renderStepper(passos, { nota = null, aviso = null } = {}) {
   const atual = passos.find(p => p.estado === 'atual');
   return el('section', { class: 'card stepper-card' },
     el('div', { class: 'stepper', role: 'img', 'aria-label': `Etapas do ciclo${atual ? ` — etapa atual: ${atual.rotulo}` : ''}` }, kids),
-    aviso ? el('p', { class: 'stp-aviso' }, aviso) : null,
+    aviso ? el('p', { class: `stp-aviso${avisoClasse ? ' ' + avisoClasse : ''}` }, aviso) : null,
     nota ? el('p', { class: 'stp-nota' }, nota) : null);
 }

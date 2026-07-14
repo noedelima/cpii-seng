@@ -2,7 +2,7 @@
   "name": "cpii-seng-api",
   "version": "1.0.0",
   "private": true,
-  "description": "Camada de API (Azure Functions) do SENG Demandas — valida o ID token do Firebase e acessa o Firestore sob as Security Rules do usuário.",
+  "description": "Camada de API (Azure Functions) do Portal da Engenharia (ex-SENG Demandas) — valida o ID token do Firebase e acessa o Firestore sob as Security Rules do usuário.",
   "main": "src/functions/*.js",
   "scripts": {
     "start": "func start"

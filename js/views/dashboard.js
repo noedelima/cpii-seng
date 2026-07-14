@@ -8,11 +8,18 @@ import { store } from '../store.js';
 import { can } from '../auth.js';
 
 // Estado dos filtros (persiste durante a sessão de navegação)
-const filtros = { busca: '', campus: '', status: '', tipo: '', esp: '', fase: '', minhas: false };
+const filtros = { busca: '', campus: '', status: '', tipo: '', esp: '', fase: '', ano: '', minhas: false };
 
 // Aplica filtros vindos de links externos (ex.: gráficos do Início — #/chamados?status=fila)
 export function aplicarFiltrosExternos(obj = {}) {
-  Object.assign(filtros, { busca: '', campus: '', status: '', tipo: '', esp: '', fase: '', minhas: false }, obj);
+  Object.assign(filtros, { busca: '', campus: '', status: '', tipo: '', esp: '', fase: '', ano: '', minhas: false }, obj);
+}
+
+// Ano de referência de uma demanda para o filtro `ano`: conclusão (evento
+// "conclu…" do histórico) quando concluída; senão, a última atualização.
+function anoRef(d) {
+  const h = d.status === 'concluido' ? (d.historico || []).filter(x => /conclu/i.test(x.acao || '')).pop() : null;
+  return new Date((h && h.ts) || d.atualizadoEm || d.criadoEm || 0).getFullYear();
 }
 let purgaFeita = false; // limpeza do arquivo morto roda uma vez por sessão (Chefe/Admin)
 let purgaNotifFeita = false; // limpeza do próprio inbox de notificações, 1x por sessão
@@ -33,6 +40,7 @@ export function viewDashboard(rerender) {
     (!filtros.tipo || d.aval?.tipoAtividade === filtros.tipo) &&
     (!filtros.esp || (d.especialidades || []).includes(filtros.esp)) &&
     (!filtros.fase || (filtros.fase === 'sem-fase' ? (d.status === 'atendimento' && !d.fase) : d.fase === filtros.fase)) &&
+    (!filtros.ano || anoRef(d) === +filtros.ano) &&
     (!txt || `${d.id} ${d.objeto} ${d.descricao} ${campusNome(d.campus)}`.toLowerCase().includes(txt))
   );
   // Profissional vinculado ao usuário pelo e-mail de login
@@ -86,7 +94,8 @@ export function viewDashboard(rerender) {
     meuProf ? el('label', { class: 'chip-check' },
       el('input', { type: 'checkbox', ...(filtros.minhas ? { checked: true } : {}), onchange: (e) => { filtros.minhas = e.target.checked; rerender(); } }),
       ' Minhas atribuições') : null,
-    el('button', { class: 'btn ghost sm', onclick: () => { Object.assign(filtros, { busca: '', campus: '', status: '', tipo: '', esp: '', fase: '', minhas: false }); rerender(); } }, 'Limpar filtros'),
+    filtros.ano ? el('span', { class: 'sla-pill', title: 'Filtro aplicado por link do Início' }, `Ano: ${filtros.ano}`) : null,
+    el('button', { class: 'btn ghost sm', onclick: () => { Object.assign(filtros, { busca: '', campus: '', status: '', tipo: '', esp: '', fase: '', ano: '', minhas: false }); rerender(); } }, 'Limpar filtros'),
   );
 
   // ---- tabela ----------------------------------------------------------------------
@@ -138,17 +147,21 @@ export function viewDashboard(rerender) {
       .sort((a, b) => (slaChamado(a).dias ?? 999) - (slaChamado(b).dias ?? 999));
     linhasChamados = chamadosFila.map(ch => {
       const sla = slaChamado(ch);
+      // SLA vive junto do objeto (chip) — a coluna "Prioridade" fica vazia,
+      // pois o chamado não tem pontuação GUT/prioridade.
+      const slaCls = sla.estado === 'vencido' ? 'sla-vencido' : sla.estado === 'vencendo' ? 'sla-alerta' : 'sla-ok';
+      const slaTxt = sla.estado === 'vencido' ? `SLA −${Math.abs(sla.dias)}d` : `SLA ${sla.dias}d`;
       return el('tr', { tabindex: 0, role: 'link', 'aria-label': `Abrir chamado: ${ch.assunto || ch.id}`,
         onclick: () => { location.hash = `#/chamado/${ch.id}`; },
         onkeydown: (e) => { if (e.key === 'Enter') location.hash = `#/chamado/${ch.id}`; } },
         el('td', { class: 'num' }, '—'),
         el('td', {}, campusNome(ch.campus)),
         el('td', { class: 'objeto' }, el('strong', {}, ch.assunto || ch.id),
-          el('span', { class: 'tag-chamado', title: 'Chamado em tratamento pela SENG (sem pontuação GUT)' }, 'CHAMADO')),
+          el('span', { class: 'tag-chamado', title: 'Chamado em tratamento pela SENG (sem pontuação GUT)' }, 'CHAMADO'),
+          el('span', { class: `ch-sla ${slaCls}`, title: 'Prazo de triagem/atendimento (SLA)' }, slaTxt)),
         el('td', {}, el('span', { class: `badge ${statusChamadoCor(ch.status)}` }, statusChamadoNome(ch.status))),
         el('td', { class: 'num' }, '—'),
-        el('td', { class: 'num sub', title: 'Prazo de triagem/atendimento (SLA)' },
-          sla.estado === 'vencido' ? `SLA −${Math.abs(sla.dias)}d` : `SLA ${sla.dias}d`),
+        el('td', { class: 'num' }, '—'),
         el('td', { class: 'num' }, '—'),
         el('td', { class: 'prof-cell' }, (ch.atendentes || []).length
           ? el('span', {}, ch.atendentes.map(nomeProf).join(', '))

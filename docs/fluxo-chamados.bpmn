@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="defs_fluxo_chamados" targetNamespace="http://cpii.seng/chamados" exporter="cpii-seng" exporterVersion="1.13.2">
-<bpmn:collaboration id="colab1"><bpmn:participant id="pool1" name="SENG Demandas — Tratamento de chamados (Portaria 7503/2025)" processRef="proc1"/></bpmn:collaboration>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="defs_fluxo_chamados" targetNamespace="http://cpii.seng/chamados" exporter="cpii-seng" exporterVersion="1.19.0">
+<bpmn:collaboration id="colab1"><bpmn:participant id="pool1" name="Portal da Engenharia — Tratamento de chamados v2 (Portaria 7503/2025)" processRef="proc1"/></bpmn:collaboration>
 <bpmn:process id="proc1" isExecutable="false">
 <bpmn:laneSet id="ls1">
 <bpmn:lane id="lane_campus" name="Campus (solicitante)"><bpmn:flowNodeRef>se1</bpmn:flowNodeRef><bpmn:flowNodeRef>t_abrir</bpmn:flowNodeRef><bpmn:flowNodeRef>t_resp</bpmn:flowNodeRef></bpmn:lane>
@@ -46,6 +46,8 @@
 <bpmn:association id="assoc_an2" sourceRef="t_triar" targetRef="an2"/>
 <bpmn:textAnnotation id="an3"><bpmn:text>Responsáveis contam na carga do profissional (contagem à parte dos pontos do art. 12).</bpmn:text></bpmn:textAnnotation>
 <bpmn:association id="assoc_an3" sourceRef="t_aloc" targetRef="an3"/>
+<bpmn:textAnnotation id="an4"><bpmn:text>Workflow v2: a consultoria pode escalar para contratação sem abrir novo chamado — em atendimento ou já resolvida, a conversão cria a demanda de obra vinculada (GUT → CODIR → fila), levando o histórico.</bpmn:text></bpmn:textAnnotation>
+<bpmn:association id="assoc_an4" sourceRef="t_atend" targetRef="an4"/>
 </bpmn:process>
 <bpmndi:BPMNDiagram id="dia1"><bpmndi:BPMNPlane id="plane1" bpmnElement="colab1">
 <bpmndi:BPMNShape id="sh_pool1" bpmnElement="pool1" isHorizontal="true"><dc:Bounds x="40" y="60" width="1500" height="700"/></bpmndi:BPMNShape>
@@ -73,6 +75,8 @@
 <bpmndi:BPMNShape id="sh_an2" bpmnElement="an2"><dc:Bounds x="1200" y="100" width="260" height="60"/></bpmndi:BPMNShape>
 <bpmndi:BPMNEdge id="ed_assoc_an2" bpmnElement="assoc_an2"><di:waypoint x="1200" y="130.0"/><di:waypoint x="1200" y="130.0"/></bpmndi:BPMNEdge>
 <bpmndi:BPMNShape id="sh_an3" bpmnElement="an3"><dc:Bounds x="860" y="660" width="240" height="60"/></bpmndi:BPMNShape>
+<bpmndi:BPMNShape id="sh_an4" bpmnElement="an4"><dc:Bounds x="1160" y="500" width="280" height="70"/></bpmndi:BPMNShape>
+<bpmndi:BPMNEdge id="ed_assoc_an4" bpmnElement="assoc_an4"><di:waypoint x="1130" y="450.0"/><di:waypoint x="1200" y="500.0"/></bpmndi:BPMNEdge>
 <bpmndi:BPMNEdge id="ed_assoc_an3" bpmnElement="assoc_an3"><di:waypoint x="860" y="690.0"/><di:waypoint x="860" y="690.0"/></bpmndi:BPMNEdge>
 <bpmndi:BPMNEdge id="ed_f1" bpmnElement="f1"><di:waypoint x="136" y="140.0"/><di:waypoint x="180" y="140.0"/></bpmndi:BPMNEdge>
 <bpmndi:BPMNEdge id="ed_f2" bpmnElement="f2"><di:waypoint x="250.0" y="175"/><di:waypoint x="250" y="365"/><di:waypoint x="400" y="365.0"/></bpmndi:BPMNEdge>

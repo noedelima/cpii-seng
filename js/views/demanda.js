@@ -2,7 +2,7 @@
 // Detalhe da demanda — consulta pública + tratamento (GUT, status, alocação)
 // =============================================================================
 import { el, frag, campo, select, toast, confirmar, badgeStatus, fmtMoeda, fmtNum, fmtData, fmtDataHora, abreviarNome } from '../ui.js';
-import { campusNome, statusNome, TIPOS_DEMANDA, PROJETO_EXISTE, PRAZOS, TIPOS_ATIVIDADE, ESPECIALIDADES, ESCALA_G, ESCALA_U, ESCALA_T, precisaEtapaProjeto, DIAS_ARQUIVO_MORTO, FASES_DEMANDA, faseNome, faseCurta, ARTEFATOS_PLANEJAMENTO, MOTIVOS_SUSPENSAO, motivoSuspensaoNome, PROJETO_ORIGEM } from '../config.js';
+import { campusNome, statusNome, TIPOS_DEMANDA, PROJETO_EXISTE, PRAZOS, TIPOS_ATIVIDADE, ESPECIALIDADES, ESCALA_G, ESCALA_U, ESCALA_T, precisaEtapaProjeto, DIAS_ARQUIVO_MORTO, FASES_DEMANDA, faseNome, faseCurta, ARTEFATOS_PLANEJAMENTO, MOTIVOS_SUSPENSAO, motivoSuspensaoNome, PROJETO_ORIGEM, RESULTADOS_CERTAME } from '../config.js';
 import { selecaoPessoas } from '../alocacao.js';
 import { renderStepper } from '../stepper.js';
 import { prioridade, pontosArt11, faixaValorLabel, cargaProfissionais, fiscaisDe } from '../calc.js';
@@ -227,6 +227,15 @@ export function viewDemanda(rerender, id) {
     } else {
       const ck = el('input', { type: 'checkbox', ...(d.codirAprovado ? { checked: true } : {}) });
       ck.addEventListener('change', async () => {
+        // Desfazer a aprovação com a demanda já na fila a retira da fila
+        // (volta a “Aguardando aprovação do CODIR”), com confirmação.
+        if (!ck.checked && d.status === 'fila') {
+          const okRet = await confirmar('Retirar da fila?', 'Desfazer a aprovação retira a demanda da fila e a devolve para “Aguardando aprovação do CODIR”. A ação fica registrada no histórico.', { ok: 'Retirar da fila', perigo: true });
+          if (!okRet) { ck.checked = true; return; }
+          await s.atualizarDemanda(d.id, { codirAprovado: false, status: 'codir' }, 'Aprovação do CODIR desfeita — retirada da fila');
+          toast('Demanda devolvida para aprovação do CODIR.');
+          return;
+        }
         const patch = { codirAprovado: ck.checked };
         let evento = ck.checked ? 'Aprovada pelo CODIR' : 'Aprovação do CODIR desmarcada';
         if (ck.checked && d.status === 'codir') { patch.status = 'fila'; evento = 'Aprovada pelo CODIR — posicionada na fila'; }
@@ -237,11 +246,39 @@ export function viewDemanda(rerender, id) {
       filhosCodir.push(el('label', { class: 'chip-check destaque-codir' }, ck, ' Aprovada pelo CODIR',
         d.status === 'codir' ? el('span', { class: 'sub' }, ' (ao marcar, entra na fila)') : null));
       if (d.status === 'codir') {
-        filhosCodir.push(el('button', { class: 'btn ghost sm', onclick: async () => {
-          await s.atualizarDemanda(d.id, { codirAprovado: true, status: 'fila' }, 'Aprovada pelo CODIR — posicionada na fila');
-          await notificar(s, 'fila', d, interna);
-          toast('Demanda posicionada na fila.');
-        } }, 'Posicionar na fila'));
+        // Gateways do fluxograma v2 na raia do CODIR: “Aprovada?” e
+        // “Há dotação orçamentária?” — desfechos registrados pelo próprio CODIR.
+        filhosCodir.push(el('div', { class: 'chips' },
+          el('button', { class: 'btn ghost sm', onclick: async () => {
+            await s.atualizarDemanda(d.id, { codirAprovado: true, status: 'fila' }, 'Aprovada pelo CODIR — posicionada na fila');
+            await notificar(s, 'fila', d, interna);
+            toast('Demanda posicionada na fila.');
+          } }, 'Aprovar — posicionar na fila'),
+          el('button', { class: 'btn ghost sm', onclick: async () => {
+            const obs = await pedirTexto('Aprovar — aguardar dotação',
+              'A demanda é aprovada, mas fica suspensa com o motivo “Aguardando dotação orçamentária”. A suspensão não encerra o ciclo: havendo orçamento, a Chefia a retorna à fila.',
+              'Observação (opcional)', 'Aprovar e aguardar dotação', { opcional: true });
+            if (obs === null) return;
+            await s.atualizarDemanda(d.id, { codirAprovado: true, status: 'suspenso', suspensao: { motivo: 'dotacao', obs, desde: Date.now() } },
+              'Aprovada pelo CODIR — sem dotação orçamentária: suspensa até haver orçamento');
+            toast('Aprovada — aguardando dotação orçamentária.');
+          } }, 'Aprovar — aguardar dotação'),
+          el('button', { class: 'btn ghost sm', onclick: async () => {
+            const just = await pedirTexto('Não aprovar — devolver para reanálise',
+              'A demanda volta para “Em análise” na SENG, com a justificativa registrada no histórico.',
+              'Justificativa *', 'Devolver para reanálise');
+            if (!just) return;
+            await s.atualizarDemanda(d.id, { codirAprovado: false, status: 'analise' }, `Não aprovada pelo CODIR — devolvida para reanálise: ${just}`);
+            toast('Demanda devolvida para reanálise.');
+          } }, 'Não aprovar — reanálise'),
+          el('button', { class: 'btn ghost sm', onclick: async () => {
+            const just = await pedirTexto('Não aprovar — encerrar',
+              'A demanda é encerrada como “Cancelado” (não aprovada pelo CODIR), com a justificativa registrada no histórico.',
+              'Justificativa *', 'Não aprovar e encerrar');
+            if (!just) return;
+            await s.atualizarDemanda(d.id, { codirAprovado: false, status: 'cancelado' }, `Não aprovada pelo CODIR — encerrada: ${just}`);
+            toast('Demanda encerrada como não aprovada.');
+          } }, 'Não aprovar — encerrar')));
       }
 
       const inAjuste = el('input', { type: 'number', step: 0.01, min: -1, max: 1, value: d.ajuste?.valor ?? '', placeholder: '0,00' });
@@ -357,18 +394,28 @@ export function viewDemanda(rerender, id) {
         } }, 'Salvar alocação')));
     }
 
-    // Conclusão da etapa de projeto (demandas que exigem projeto + obra)
-    if (can(user, 'statusTotal') && d.status === 'atendimento' && precisaEtapaProjeto(d) && d.etapa !== 'obra') {
+    // Ciclo projeto → obra (workflow v2): concluído o projeto, a demanda volta
+    // ao CODIR como obra para REPRIORIZAÇÃO — a deliberação anterior e o ciclo
+    // de fases do projeto são zerados (o estado fica arquivado em cicloProjeto).
+    const ehProjetoPuro = d.tipoDemanda === 'projeto';
+    if (can(user, 'statusTotal') && d.status === 'atendimento' && (precisaEtapaProjeto(d) || ehProjetoPuro) && d.etapa !== 'obra') {
       filhos.push(el('h3', {}, 'Etapa de projeto'));
-      filhos.push(el('p', { class: 'sub' }, 'Concluída a elaboração do projeto, a demanda retorna ao CODIR como obra (projeto existente), para repriorização.'));
+      filhos.push(el('p', { class: 'sub' }, ehProjetoPuro
+        ? 'Se, com o projeto pronto, a obra deve ser contratada, reavalie a demanda como OBRA: ela retorna ao CODIR (projeto existente) para repriorização, com nova deliberação.'
+        : 'Concluída a elaboração do projeto, a demanda retorna ao CODIR como obra (projeto existente), para repriorização — com nova deliberação do Conselho.'));
+      const patchProjetoObra = {
+        etapa: 'obra', tipoDemanda: 'obra', projetoExiste: 'completo', status: 'codir',
+        codirAprovado: false, fase: null, artefatos: null, certame: null,
+        cicloProjeto: { fase: d.fase || null, artefatos: d.artefatos || null, certame: d.certame || null, encerradoEm: Date.now() },
+      };
       const acoesEtapa = [el('button', { class: 'btn ghost sm', onclick: async () => {
-        const ok = await confirmar('Concluir etapa de projeto?', 'A demanda passará a “Aguardando aprovação do CODIR” como OBRA, com projeto existente. Reavalie o GUT e o valor da obra antes do envio.', { ok: 'Concluir e enviar ao CODIR' });
+        const ok = await confirmar(ehProjetoPuro ? 'Reavaliar como obra?' : 'Concluir etapa de projeto?', 'A demanda passará a “Aguardando aprovação do CODIR” como OBRA, com projeto existente. A aprovação anterior e o ciclo de fases do projeto são zerados (nova deliberação). Reavalie o GUT e o valor da obra antes do envio.', { ok: 'Concluir e enviar ao CODIR' });
         if (!ok) return;
-        await s.atualizarDemanda(d.id, { etapa: 'obra', tipoDemanda: 'obra', projetoExiste: 'completo', status: 'codir' },
-          'Etapa de projeto concluída — retorna ao CODIR como obra (projeto existente)');
+        await s.atualizarDemanda(d.id, patchProjetoObra,
+          'Etapa de projeto concluída — retorna ao CODIR como obra (projeto existente) para repriorização');
         await notificar(s, 'codir', d, interna);
         toast('Etapa de projeto concluída. Demanda enviada ao CODIR como obra.');
-      } }, 'Concluir projeto → obra ao CODIR')];
+      } }, ehProjetoPuro ? 'Reavaliar como obra (projeto pronto)' : 'Concluir projeto → obra ao CODIR')];
       if (d.projetoExiste === 'parcial') {
         acoesEtapa.push(el('button', { class: 'btn ghost sm', onclick: async () => {
           const ok = await confirmar('Manter contratação unificada?', 'A demanda seguirá em atendimento como projeto + obra em contratação única, sem retornar ao CODIR.', { ok: 'Manter unificada' });
@@ -518,7 +565,8 @@ function stepperDemanda(d, user) {
   const nota = (d.status === 'atendimento' && idxFase < 0)
     ? 'Fase do atendimento ainda não classificada — defina no cartão “Fase atual”.'
     : (d.etapa === 'projeto' ? 'Ciclo de projeto: concluído o projeto, a demanda reentra no CODIR como obra.' : null);
-  return renderStepper(passos, { aviso, nota });
+  // Suspensão ganha destaque visual (motivo é informação de primeira ordem).
+  return renderStepper(passos, { aviso, nota, avisoClasse: d.status === 'suspenso' ? 'aviso-suspensao' : '' });
 }
 
 // ----------------------------------------------------------------------------
@@ -528,7 +576,8 @@ function pedirSuspensao() {
   return new Promise((resolve) => {
     const selMotivo = select(MOTIVOS_SUSPENSAO, { placeholder: 'Selecione o motivo…' });
     const inObs = el('input', { type: 'text', maxlength: 300, placeholder: 'Observação (opcional)' });
-    const close = (v) => { wrap.remove(); resolve(v); };
+    const esc = (e) => { if (e.key === 'Escape') close(null); };
+    const close = (v) => { document.removeEventListener('keydown', esc); wrap.remove(); resolve(v); };
     const wrap = el('div', { class: 'modal-wrap', onclick: (e) => e.target === wrap && close(null) },
       el('div', { class: 'modal', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Suspender demanda' },
         el('h3', {}, 'Suspender demanda'),
@@ -541,8 +590,36 @@ function pedirSuspensao() {
             if (!selMotivo.value) { toast('Selecione o motivo da suspensão.', 'erro'); return; }
             close({ motivo: selMotivo.value, obs: inObs.value.trim() });
           } }, 'Suspender'))));
+    document.addEventListener('keydown', esc);
     document.body.append(wrap);
     selMotivo.focus();
+  });
+}
+
+// ----------------------------------------------------------------------------
+// Modal de texto (justificativa/observação) — usado nos desfechos do CODIR.
+// Resolve com a string digitada, '' quando opcional e vazio, ou null (cancelado).
+// ----------------------------------------------------------------------------
+function pedirTexto(titulo, texto, rotulo, rotuloOk, { opcional = false } = {}) {
+  return new Promise((resolve) => {
+    const inTxt = el('input', { type: 'text', maxlength: 300, placeholder: opcional ? 'Opcional' : 'Obrigatória' });
+    const esc = (e) => { if (e.key === 'Escape') close(null); };
+    const close = (v) => { document.removeEventListener('keydown', esc); wrap.remove(); resolve(v); };
+    const wrap = el('div', { class: 'modal-wrap', onclick: (e) => e.target === wrap && close(null) },
+      el('div', { class: 'modal', role: 'dialog', 'aria-modal': 'true', 'aria-label': titulo },
+        el('h3', {}, titulo),
+        el('p', {}, texto),
+        campo(rotulo, inTxt),
+        el('div', { class: 'modal-acoes' },
+          el('button', { class: 'btn ghost', onclick: () => close(null) }, 'Cancelar'),
+          el('button', { class: 'btn primario', onclick: () => {
+            const v = inTxt.value.trim();
+            if (!v && !opcional) { toast('Informe a justificativa.', 'erro'); return; }
+            close(v);
+          } }, rotuloOk))));
+    document.addEventListener('keydown', esc);
+    document.body.append(wrap);
+    inTxt.focus();
   });
 }
 
@@ -581,6 +658,12 @@ function cartaoFaseAtual(d, s, user, interna) {
     const feitos = ARTEFATOS_PLANEJAMENTO.filter(a => arte[a.id]?.feito).length;
     filhos.push(el('h2', {}, `Fase atual — ${faseNome('planejamento')}`,
       el('span', { class: 'fase-progresso' }, `${feitos} de ${ARTEFATOS_PLANEJAMENTO.length} itens`)));
+    // Retorno de certame deserto/fracassado: sinaliza o loop de ajuste (v2).
+    if (['deserto', 'fracassado'].includes((d.certame || {}).resultado)) {
+      filhos.push(el('p', { class: 'aviso-certame' },
+        `Retorno da licitação — certame ${d.certame.resultado}. Ajuste os artefatos e reencaminhe o processo (o item “Processo SUAP” foi reaberto).`));
+    }
+    filhos.push(el('p', { class: 'sub' }, 'Fase preparatória da Lei nº 14.133/2021 — artefatos sempre a partir dos modelos da AGU.'));
     filhos.push(el('ul', { class: 'chk-artefatos' }, ARTEFATOS_PLANEJAMENTO.map(a => {
       const info = arte[a.id] || {};
       const ck = el('input', { type: 'checkbox', ...(info.feito ? { checked: true } : {}), 'aria-label': a.nome });
@@ -605,6 +688,15 @@ function cartaoFaseAtual(d, s, user, interna) {
 
   if (d.fase === 'licitacao') {
     const ct = d.certame || {};
+    const nomeResultado = (id) => (RESULTADOS_CERTAME.find(r => r.id === id) || {}).nome || id;
+    // Deserto/fracassado: retorna ao planejamento e REABRE o item "Processo
+    // SUAP" do checklist (o processo precisa ser reencaminhado após o ajuste).
+    const retornar = async (resultado) => {
+      const ok = await confirmar(`Certame ${resultado}?`, `${nomeResultado(resultado)} — a demanda retorna ao planejamento para ajuste dos artefatos (o item “Processo SUAP” é reaberto), com registro no histórico.`, { ok: 'Registrar e retornar', perigo: true });
+      if (!ok) return;
+      await salvar({ fase: 'planejamento', certame: { ...ct, resultado }, artefatos: { ...(d.artefatos || {}), envioSuap: { feito: false } } },
+        `Certame ${resultado} — retorna ao planejamento para ajuste dos artefatos`);
+    };
     filhos.push(el('h2', {}, `Fase atual — ${faseNome('licitacao')}`));
     filhos.push(el('p', { class: 'sub' }, ct.enviadoEm ? `Processo encaminhado à licitação em ${fmtData(ct.enviadoEm)}. Registre o resultado do certame:` : 'Registre o resultado do certame:'));
     filhos.push(el('div', { class: 'chips' },
@@ -613,19 +705,9 @@ function cartaoFaseAtual(d, s, user, interna) {
         if (!ok) return;
         await salvar({ fase: 'execucao', certame: { ...ct, resultado: 'exito', contratoEm: Date.now() } },
           'Certame com êxito — contrato assinado; iniciada a execução');
-      } }, 'Êxito — contrato assinado'),
-      el('button', { class: 'btn ghost sm', onclick: async () => {
-        const ok = await confirmar('Certame deserto?', 'Sem licitantes — a demanda retorna ao planejamento para ajuste dos artefatos, com registro no histórico.', { ok: 'Registrar e retornar', perigo: true });
-        if (!ok) return;
-        await salvar({ fase: 'planejamento', certame: { ...ct, resultado: 'deserto' } },
-          'Certame deserto — retorna ao planejamento para ajuste dos artefatos');
-      } }, 'Deserto'),
-      el('button', { class: 'btn ghost sm', onclick: async () => {
-        const ok = await confirmar('Certame fracassado?', 'Propostas desclassificadas — a demanda retorna ao planejamento para ajuste dos artefatos, com registro no histórico.', { ok: 'Registrar e retornar', perigo: true });
-        if (!ok) return;
-        await salvar({ fase: 'planejamento', certame: { ...ct, resultado: 'fracassado' } },
-          'Certame fracassado — retorna ao planejamento para ajuste dos artefatos');
-      } }, 'Fracassado')));
+      } }, nomeResultado('exito')),
+      el('button', { class: 'btn ghost sm', onclick: () => retornar('deserto') }, nomeResultado('deserto')),
+      el('button', { class: 'btn ghost sm', onclick: () => retornar('fracassado') }, nomeResultado('fracassado'))));
   }
 
   if (d.fase === 'execucao') {
@@ -642,7 +724,9 @@ function cartaoFaseAtual(d, s, user, interna) {
   if (d.fase === 'recebimento') {
     filhos.push(el('h2', {}, `Fase atual — ${faseNome('recebimento')}`));
     filhos.push(el('p', { class: 'sub' }, 'Recebimento provisório e definitivo do objeto (termos de recebimento). Após o recebimento definitivo, conclua a demanda.'));
-    if (can(user, 'statusBasico') || can(user, 'statusTotal')) {
+    // Concluir é ação da Chefia/Administração (statusTotal) — as Security Rules
+    // não permitem à Engenharia a transição atendimento → concluído.
+    if (can(user, 'statusTotal')) {
       filhos.push(el('div', { class: 'form-acoes' }, el('button', { class: 'btn primario', onclick: async () => {
         const ok = await confirmar('Concluir a demanda?', 'Recebimento definitivo registrado — a demanda será marcada como Concluída.', { ok: 'Concluir demanda' });
         if (!ok) return;

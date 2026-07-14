@@ -5,13 +5,14 @@
 // =============================================================================
 import { el, frag } from '../ui.js';
 import { figura } from '../ajuda-figs.js';
+import { store } from '../store.js';
 
 const MANUAIS = [
   { id: 'campus', rotulo: 'Campus', arq: 'docs/ajuda/Manual-Campus.md' },
   { id: 'engenharia', rotulo: 'Engenharia', arq: 'docs/ajuda/Manual-Engenharia.md' },
   { id: 'codir', rotulo: 'CODIR', arq: 'docs/ajuda/Manual-CODIR.md' },
 ];
-let abaAtual = 'campus';
+let abaAtual = null; // definida no 1º acesso conforme o perfil do usuário
 const cache = {};
 
 // ---- Markdown → nós do DOM (subconjunto usado nos manuais) -----------------
@@ -65,15 +66,30 @@ export function mdToNodes(md) {
     if (/^>\s?/.test(ln)) {
       const buf = [];
       while (i < linhas.length && /^>\s?/.test(linhas[i])) { buf.push(linhas[i].replace(/^>\s?/, '')); i++; }
+      // Linhas com "- " dentro da citação viram listas de verdade (não hífen literal).
+      const corpoDe = (lns) => {
+        const out = [];
+        let j = 0;
+        while (j < lns.length) {
+          if (!lns[j].trim()) { j++; continue; }
+          if (/^\s*[-*]\s+/.test(lns[j])) {
+            const itens = [];
+            while (j < lns.length && /^\s*[-*]\s+/.test(lns[j])) { itens.push(lns[j].replace(/^\s*[-*]\s+/, '')); j++; }
+            out.push(el('ul', {}, itens.map(t => el('li', {}, inline(t)))));
+            continue;
+          }
+          out.push(el('p', {}, inline(lns[j]))); j++;
+        }
+        return out;
+      };
       const mc = /^\[!(dica|aten[cç][aã]o|nota|importante)\]\s*(.*)$/i.exec(buf[0] || '');
       if (mc) {
         const tipo = mc[1].toLowerCase().startsWith('aten') ? 'atencao' : mc[1].toLowerCase();
         buf[0] = mc[2];
-        const corpo = buf.filter((b, k) => !(k === 0 && !b.trim())).map(b => el('p', {}, inline(b)));
-        nodes.push(el('div', { class: `ajuda-callout ${tipo}` }, ...corpo));
+        nodes.push(el('div', { class: `ajuda-callout ${tipo}` }, ...corpoDe(buf)));
         continue;
       }
-      nodes.push(el('blockquote', {}, ...buf.map((b) => el('p', {}, inline(b)))));
+      nodes.push(el('blockquote', {}, ...corpoDe(buf)));
       continue;
     }
     // tabela
@@ -94,9 +110,13 @@ export function mdToNodes(md) {
       nodes.push(el('ul', sumarioNext ? { class: 'ajuda-sumario' } : {}, itens.map(t => el('li', {}, inline(t))))); sumarioNext = false; continue;
     }
     if (/^\s*\d+\.\s+/.test(ln)) {
+      // O número do 1º item vira o `start` do <ol>: passo a passo interrompido
+      // por figura/tabela continua a numeração em vez de reiniciar em 1.
+      const start = parseInt((/^\s*(\d+)\./.exec(ln) || [])[1] || '1', 10);
       const itens = [];
       while (i < linhas.length && /^\s*\d+\.\s+/.test(linhas[i])) { itens.push(linhas[i].replace(/^\s*\d+\.\s+/, '')); i++; }
-      nodes.push(el('ol', sumarioNext ? { class: 'ajuda-sumario' } : {}, itens.map(t => el('li', {}, inline(t))))); sumarioNext = false; continue;
+      nodes.push(el('ol', { ...(sumarioNext ? { class: 'ajuda-sumario' } : {}), ...(start > 1 ? { start } : {}) },
+        itens.map(t => el('li', {}, inline(t))))); sumarioNext = false; continue;
     }
     // legenda solta (itálico) → parágrafo em itálico
     if (/^\*[^*].*\*\s*$/.test(ln.trim())) { nodes.push(el('p', { class: 'ajuda-cap' }, el('em', {}, ln.trim().replace(/^\*|\*$/g, '')))); i++; continue; }
@@ -112,9 +132,15 @@ export function mdToNodes(md) {
 }
 
 export function viewAjuda(rerender) {
+  // Abre no manual do perfil de quem está logado (campus por padrão).
+  if (!abaAtual) {
+    const r = store()?.user?.role;
+    abaAtual = r === 'codir' ? 'codir' : ['engenharia', 'chefe', 'admin'].includes(r) ? 'engenharia' : 'campus';
+  }
   const barra = el('nav', { class: 'abas', 'aria-label': 'Manuais' },
     MANUAIS.map(m => el('button', {
       class: `aba ${m.id === abaAtual ? 'ativo' : ''}`, type: 'button',
+      'aria-current': m.id === abaAtual ? 'true' : null,
       onclick: () => { abaAtual = m.id; rerender(); },
     }, m.rotulo)));
 
@@ -126,7 +152,9 @@ export function viewAjuda(rerender) {
   else {
     fetch(man.arq).then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
       .then(md => { cache[man.id] = md; if (man.id === abaAtual) render(md); })
-      .catch(err => doc.replaceChildren(el('p', { class: 'nota' }, 'Não foi possível carregar o manual (' + err.message + ').')));
+      .catch(err => doc.replaceChildren(
+        el('p', { class: 'nota' }, 'Não foi possível carregar o manual (' + err.message + ').'),
+        el('button', { class: 'btn ghost sm', type: 'button', onclick: () => { delete cache[man.id]; rerender(); } }, 'Tentar novamente')));
   }
 
   return frag(

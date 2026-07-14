@@ -25,7 +25,7 @@ export function viewChamadosHub(rerender) {
       aplicarFiltrosExternos({
         status: p.get('status') || '', campus: p.get('campus') || '',
         tipo: p.get('tipo') || '', esp: p.get('esp') || '', busca: p.get('busca') || '',
-        fase: p.get('fase') || '',
+        fase: p.get('fase') || '', ano: p.get('ano') || '',
       });
     }
     history.replaceState(null, '', location.pathname + location.search + '#/chamados');
@@ -38,9 +38,11 @@ export function viewChamadosHub(rerender) {
     onclick: () => { recorte = id; rerender(); },
   }, txt);
 
+  // Para o campus, o recorte é a lista dos próprios chamados — sem o jargão
+  // interno "triagem", que descreve o trabalho da SENG.
   const barra = el('div', { class: 'hub-barra' },
     pill('fila', 'Fila e atendimento'),
-    user ? pill('triagem', 'Triagem de chamados') : null);
+    user ? pill('triagem', user.role === 'campus' ? 'Chamados da unidade' : 'Triagem de chamados') : null);
 
   const corpo = (recorte === 'triagem' && user) ? viewChamados(rerender) : viewDashboard(rerender);
   return frag(barra, corpo);

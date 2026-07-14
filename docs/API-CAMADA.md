@@ -49,7 +49,13 @@ api/
     │   └── http.js           # json(), withAuth() (lê x-fb-token)
     └── functions/
         ├── health.js         # GET /api/health  (sem auth)
-        └── me.js             # GET /api/me       (perfil do logado, sob as rules)
+        ├── me.js             # GET /api/me       (perfil do logado, sob as rules)
+        ├── demandas.js       # PATCH/PUT /api/demandas/{id} (+ /arquivar, /resgatar)
+        ├── chamados.js       # PATCH/PUT /api/chamados/{id}
+        ├── internas.js       # PATCH /api/internas/{id}
+        ├── profissionais.js  # POST /api/profissionais
+        ├── params.js         # PATCH /api/config/params
+        └── claims.js         # POST /api/claims/self · /api/claims/sync (custom claims)
 ```
 
 ## Estado
@@ -65,6 +71,10 @@ api/
 | `PATCH /api/internas/{id}` | alocação / observação técnica interna | ✅ no ar |
 | `POST /api/profissionais` | criar/atualizar profissional | ✅ no ar |
 | `PATCH /api/config/params` | parâmetros do sistema | ✅ no ar |
+| `PUT /api/chamados/{id}` | abrir chamado (id calculado no cliente) | ✅ no ar |
+| `PATCH /api/chamados/{id}` | atualizar chamado (triagem, desfechos, diligência/SLA, comentários) | ✅ no ar |
+| `POST /api/claims/self` | sincroniza as custom claims do próprio token (Storage — ADR-002) | ✅ no ar |
+| `POST /api/claims/sync` | admin/chefe sincroniza as claims de um usuário (`{ uid }`) | ✅ no ar |
 
 **Roteamento no provider.** As guardas ficam no `FirebaseProvider` (métodos
 `criarDemanda/atualizarDemanda/setInterna/arquivar/resgatar/salvarProfissional/setParams`):

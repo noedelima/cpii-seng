@@ -377,6 +377,9 @@ export class FirebaseProvider {
   }
   async excluirDemanda(id) {
     const fs = this._F;
+    const d = this.getDemanda(id);
+    if (d && ['atendimento', 'concluido'].includes(d.status))
+      throw new Error('Demandas em atendimento ou concluídas não podem ser excluídas.');
     await fs.deleteDoc(fs.doc(this.db, 'demandas', id));
     await fs.deleteDoc(fs.doc(this.db, 'internas', id)).catch(() => {});
     await this._log('Demanda excluída', id);

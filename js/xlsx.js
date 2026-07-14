@@ -3,7 +3,7 @@
 // Todas as colunas (inclui classificação, escores, alocação e observações).
 // SheetJS carregado sob demanda (CDN jsdelivr, conforme CSP) apenas ao clicar.
 // =============================================================================
-import { campusNome, statusNome, TIPOS_DEMANDA, PROJETO_EXISTE, TIPOS_ATIVIDADE, PRAZOS, APP } from './config.js';
+import { campusNome, statusNome, TIPOS_DEMANDA, PROJETO_EXISTE, TIPOS_ATIVIDADE, PRAZOS, APP, faseNome } from './config.js';
 import { prioridade, pontosArt11, faixaValorLabel, fiscaisDe } from './calc.js';
 
 const SRC = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
@@ -30,7 +30,7 @@ export function montarLinhas({ demandas, params, internas = {}, profissionais = 
     'Tipo de atividade (SENG)', 'Status', 'G', 'U', 'T', 'GUT', 'Score Valor', 'Score Prazo',
     'Prazo×Custo', 'Prioridade calculada', 'Ajuste (CODIR)', 'Prioridade final', 'Pontos (art. 11)',
     'Valor estimado (R$)', 'Valor considerado (R$)', 'Prazo', 'Bem tombado', 'Emergencial',
-    'Processo SUAP', 'Aprovada CODIR', 'Etapa', 'Fiscal titular', 'Fiscal substituto',
+    'Processo SUAP', 'Aprovada CODIR', 'Etapa', 'Fase do atendimento', 'Fiscal titular', 'Fiscal substituto',
     'Equipe de planejamento', 'Obs. Engenharia', 'Obs. Solicitante/CODIR', 'Registrada em', 'Atualizada em',
   ];
   const fmt = (ts) => ts ? new Date(ts).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '';
@@ -58,6 +58,7 @@ export function montarLinhas({ demandas, params, internas = {}, profissionais = 
       tombadoTxt[d.tombado] || '', simNao(!!d.emergencial),
       d.processoSuap || '', d.codirAprovado ? 'Sim' : 'Não',
       d.etapa ? (d.etapa === 'obra' ? 'Obra' : 'Projeto') : '',
+      d.fase ? faseNome(d.fase) : '',
       fiscaisDe(it).titulares.map(nomeProf).filter(Boolean).join(', '),
       fiscaisDe(it).substitutos.map(nomeProf).filter(Boolean).join(', '),
       (it.equipePlanejamento || []).map(nomeProf).filter(Boolean).join(', '),
