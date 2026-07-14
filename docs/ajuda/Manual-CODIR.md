@@ -57,6 +57,8 @@ Caminho principal da demanda:
 
 **Em análise → Aguardando aprovação do CODIR → Na fila → Em atendimento → Concluído**
 
+@fig fluxo-demanda
+
 O CODIR atua a partir do status **“Aguardando aprovação do CODIR”** (após a análise GUT). Também é possível rever o ajuste enquanto a demanda está **Na fila** ou **Suspensa**. Demandas **Em atendimento** ou **Concluídas** ficam **travadas** (não aceitam aprovação nem ajuste).
 
 > **Trilha de etapas (stepper).** No topo da página da demanda, a trilha mostra o ciclo completo — chamado de origem (quando houver), análise GUT, deliberação do CODIR, fila e as fases do atendimento (planejamento → licitação → execução → recebimento) — com a etapa atual destacada. É leitura rápida do contexto antes de deliberar.

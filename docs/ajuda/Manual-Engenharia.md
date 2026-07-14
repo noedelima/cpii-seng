@@ -74,13 +74,17 @@ Caminho principal:
 
 Estados laterais: **Em diligência**, **Suspenso**, **Cancelado**, **Não enquadrado (Art. 18)**.
 
+O ciclo completo da contratação — com a deliberação do CODIR, a espera por dotação, a fila pública e os loops do certame e do projeto → obra — é este:
+
+@fig fluxo-demanda
+
 ### Fases do atendimento (ciclo da contratação)
 
 Dentro de **Em atendimento**, a demanda percorre as **fases do ciclo da contratação**, exibidas no **stepper** (a trilha de etapas no topo da página) e como etiqueta na fila:
 
 **Planejamento → Licitação → Execução → Recebimento**
 
-- **Planejamento da contratação** — o cartão **Fase atual** traz o **checklist de artefatos** (integrantes indicados, Portaria, ETP, Matriz de Riscos, Pesquisa de Preços, TR/Projeto Básico, Lista de Verificação e envio pelo Processo SUAP). Cada item marcado registra data e responsável no histórico.
+- **Planejamento da contratação** — o cartão **Fase atual** traz o **checklist de artefatos** (integrantes indicados, Portaria, ETP, Matriz de Riscos, Elaboração / Atualização de Orçamento, TR/Projeto Básico, Lista de Verificação e envio pelo Processo SUAP). Cada item marcado registra data e responsável no histórico.
 - **Licitação** — registre o **resultado do certame**: com **êxito**, a demanda avança à execução; **deserto** ou **fracassado**, ela **retorna ao planejamento** para ajuste dos artefatos (com registro no histórico).
 - **Execução** — contrato em andamento, acompanhado pelos fiscais alocados.
 - **Recebimento** — recebimento provisório/definitivo do objeto; ao final, a Chefia **conclui a demanda**.
@@ -359,7 +363,7 @@ O **Chamado** é a **porta de entrada única** da Engenharia. O campus abre um c
 A página do chamado também ganhou o **stepper** (Aberto → Triagem → Atendimento → Resolvido) e o cartão **Ação do momento**, que mostra **somente os próximos passos válidos** para o status atual:
 
 1. **Aberto** → **Iniciar triagem**.
-2. **Em triagem** → **Desfecho da triagem** (abaixo) e, se faltar informação, **Solicitar diligência**: escreva o que falta; o chamado vai a **Em diligência**, o campus é avisado e o **SLA pausa**.
+2. **Em triagem** → **Desfecho da triagem** (abaixo) e, se faltar informação, **Solicitar diligência**: escreva o que falta; o chamado vai a **Em diligência**, o campus é avisado e o **SLA pausa** (o selo passa a **“SLA pausado”** e o prazo é **recomposto** automaticamente na retomada da triagem — o tempo em diligência não conta).
 3. **Desfecho** — escolha e aplique:
    - **Obra (vira Demanda)** — abre o bloco de **classificação** (tipo de demanda, projeto existe, tombado, prazo, valor, Processo SUAP e **especialidades**, já pré-marcadas pela disciplina da categoria). Ao confirmar, cria-se a **Demanda** (status Recebido) vinculada ao chamado, que segue o fluxo **GUT → CODIR → fila**. O chamado passa a **“Encaminhado à fila de Obras”**, com link para a demanda.
    - **Consultoria** / **Laudo** — selecione os **responsáveis pelo atendimento** (lista de seleção + Incluir); o chamado vai a **Em atendimento**. Nesse status, a Ação do momento oferece **Concluir o atendimento** (registra a orientação/NT e marca **Resolvido**; o campus é avisado), o ajuste dos **responsáveis** e — se a orientação concluir pela necessidade de contratação — **Converter em demanda de obra** (disponível também com o chamado **Resolvido**), levando o histórico para o dossiê da demanda.
@@ -419,7 +423,7 @@ Nos desfechos **consultoria/laudo**, o cartão **Desfecho** traz **“Gerar Nota
 | 4 | Piora em pouco tempo |
 | 5 | Piora rapidamente |
 
-> O **índice GUT** é o produto **G × U × T** (de 1 a 125). Ele entra na prioridade com o peso definido nos Parâmetros (padrão: 0,75 do GUT + 0,25 dos pontos de complexidade do art. 11).
+> O **índice GUT** é o produto **G × U × T** (de 1 a 125). Ele entra na prioridade com o peso definido nos Parâmetros (padrão: **0,75** do GUT + **0,25** do **Prazo × Custo** — as faixas de valor e prazo da seção 4).
 
 ---
 

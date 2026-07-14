@@ -9,7 +9,7 @@ import { renderAnexosCard } from '../anexos.js';
 import { renderLinhaTempo } from '../timeline.js';
 import {
   statusChamadoNome, statusChamadoCor, categoriaChamado, categoriaChamadoNome, campusNome,
-  URGENCIA_CHAMADO, DESFECHO_CHAMADO, SETORES_ENCAMINHAMENTO, STATUS_CHAMADO_ABERTO, slaChamado,
+  URGENCIA_CHAMADO, DESFECHO_CHAMADO, SETORES_ENCAMINHAMENTO, STATUS_CHAMADO_ABERTO, slaChamado, patchSlaDiligencia,
   TIPOS_DEMANDA, PROJETO_EXISTE, PRAZOS, ESPECIALIDADES, precisaEtapaProjeto,
 } from '../config.js';
 import { store } from '../store.js';
@@ -41,8 +41,10 @@ export function viewChamado(rerender, id) {
   const sla = slaChamado(c);
 
   // Wrapper de ação: aplica patch/evento, dispara notificação opcional, dá feedback.
+  // Transições de status passam pela contabilidade da pausa do SLA (diligência).
   const acao = async (patch, evento, notif) => {
     try {
+      if (patch.status) patch = { ...patchSlaDiligencia(c, patch.status), ...patch };
       await s.atualizarChamado(c.id, patch, evento);
       if (notif) await notificarChamado(s, notif, { ...c, ...patch });
       toast('Chamado atualizado.');
@@ -51,8 +53,11 @@ export function viewChamado(rerender, id) {
 
   // ---------------------------------------------------------------- cabeçalho
   const slaChip = terminal ? null : el('span', {
-    class: `ch-sla ${sla.estado === 'vencido' ? 'sla-vencido' : sla.estado === 'vencendo' ? 'sla-alerta' : 'sla-ok'}`,
-  }, sla.estado === 'vencido' ? `SLA atrasado ${Math.abs(sla.dias)}d` : `SLA: ${sla.dias}d`);
+    class: `ch-sla ${sla.estado === 'vencido' ? 'sla-vencido' : sla.estado === 'vencendo' ? 'sla-alerta' : sla.estado === 'pausado' ? 'sla-pausado' : 'sla-ok'}`,
+    title: sla.estado === 'pausado' ? 'O prazo de triagem fica pausado enquanto o chamado está em diligência.' : null,
+  }, sla.estado === 'vencido' ? `SLA atrasado ${Math.abs(sla.dias)}d`
+    : sla.estado === 'pausado' ? `SLA pausado · ${sla.dias}d restantes`
+    : `SLA: ${sla.dias}d`);
 
   const topo = el('section', { class: 'hero' },
     el('div', {},

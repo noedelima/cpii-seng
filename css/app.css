@@ -387,6 +387,7 @@ html[data-tema="escuro"] .notif-tag { color: color-mix(in srgb, var(--st) 72%, #
 .sla-ok { color: #4F8A57; background: color-mix(in srgb, #4F8A57 13%, transparent); }
 .sla-alerta { color: #C97B3C; background: color-mix(in srgb, #C97B3C 15%, transparent); }
 .sla-vencido { color: var(--perigo); background: color-mix(in srgb, var(--perigo) 13%, transparent); }
+.sla-pausado { color: #5A7B9C; background: color-mix(in srgb, #5A7B9C 13%, transparent); }
 .sla-neutro { color: var(--texto-2); }
 @media (max-width: 720px) {
   .chamado-linha { grid-template-columns: 1fr auto; grid-auto-rows: auto; gap: 4px 10px; }

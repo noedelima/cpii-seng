@@ -17,6 +17,7 @@ const SLA_ROTULO = {
   'no-prazo': (d) => ({ txt: `no prazo · ${d}d`, cls: 'sla-ok' }),
   'vencendo': (d) => ({ txt: d <= 0 ? 'vence hoje' : `vence em ${d}d`, cls: 'sla-alerta' }),
   'vencido': (d) => ({ txt: `atrasado ${Math.abs(d)}d`, cls: 'sla-vencido' }),
+  'pausado': (d) => ({ txt: `pausado · ${d}d`, cls: 'sla-pausado' }),
   'encerrado': () => ({ txt: '—', cls: 'sla-neutro' }),
 };
 
@@ -120,12 +121,14 @@ export function viewChamados(rerender) {
   const ativos = todos.filter(c => STATUS_CHAMADO_ABERTO.includes(c.status));
   const nVenc = ativos.filter(c => slaChamado(c).estado === 'vencido').length;
   const nVcndo = ativos.filter(c => slaChamado(c).estado === 'vencendo').length;
-  const nPrazo = ativos.length - nVenc - nVcndo;
+  const nPausa = ativos.filter(c => slaChamado(c).estado === 'pausado').length;
+  const nPrazo = ativos.length - nVenc - nVcndo - nPausa;
   const pill = (txt, cls, sit) => el('button', { class: `sla-pill ${cls}`, onclick: () => { filtro.situacao = sit; rerender(); } }, txt);
   const resumoSla = ativos.length ? el('div', { class: 'sla-resumo' },
     pill(`${nPrazo} no prazo`, 'sla-ok', 'ativos'),
     pill(`${nVcndo} vencendo`, 'sla-alerta', 'ativos'),
-    pill(`${nVenc} vencidos`, 'sla-vencido', 'atraso')) : null;
+    pill(`${nVenc} vencidos`, 'sla-vencido', 'atraso'),
+    nPausa ? pill(`${nPausa} em diligência (SLA pausado)`, 'sla-pausado', 'ativos') : null) : null;
 
   return frag(
     el('section', { class: 'hero' }, el('div', {},
