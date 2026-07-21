@@ -10,7 +10,7 @@ import { renderLinhaTempo } from '../timeline.js';
 import {
   statusChamadoNome, statusChamadoCor, categoriaChamado, categoriaChamadoNome, campusNome,
   URGENCIA_CHAMADO, DESFECHO_CHAMADO, SETORES_ENCAMINHAMENTO, STATUS_CHAMADO_ABERTO, slaChamado, patchSlaDiligencia,
-  TIPOS_DEMANDA, PROJETO_EXISTE, PRAZOS, ESPECIALIDADES, precisaEtapaProjeto,
+  TIPOS_DEMANDA, PROJETO_EXISTE, PRAZOS, ESPECIALIDADES, precisaEtapaProjeto, DIAS_ARQUIVO_MORTO,
 } from '../config.js';
 import { store } from '../store.js';
 import { can, ehCampusDe } from '../auth.js';
@@ -73,6 +73,9 @@ export function viewChamado(rerender, id) {
   const linhaMeta = (rot, val) => el('div', { class: 'meta-item' },
     el('span', { class: 'meta-rot' }, rot), el('span', { class: 'meta-val' }, val || '—'));
 
+  // Desfecho e resolução integrados aos dados do chamado — a Nota Técnica
+  // pronta e documentos complementares entram pelo cartão Anexos.
+  const desfechoNome = (id) => (DESFECHO_CHAMADO.find(d => d.id === id) || {}).nome || id;
   const dados = el('section', { class: 'card' },
     el('h2', {}, 'Dados do chamado'),
     el('div', { class: 'meta-grid' },
@@ -82,37 +85,42 @@ export function viewChamado(rerender, id) {
       linhaMeta('Localização', c.local),
       linhaMeta('Aberto em', fmtDataHora(c.aberturaEm)),
       linhaMeta('Prazo (SLA)', c.prazoLimite ? fmtData(c.prazoLimite) : '—'),
-      linhaMeta('Solicitante', c.autor?.nome)),
+      linhaMeta('Solicitante', c.autor?.nome),
+      c.desfecho ? linhaMeta('Desfecho da triagem', desfechoNome(c.desfecho)) : null,
+      c.resolucao?.setor ? linhaMeta('Encaminhado a', c.resolucao.setor) : null),
     el('h3', { class: 'sub-titulo' }, 'Descrição'),
-    el('p', { class: 'ch-descricao' }, c.descricao || '—'));
+    el('p', { class: 'ch-descricao' }, c.descricao || '—'),
+    c.resolucao?.parecerTriagem ? el('h3', { class: 'sub-titulo' }, 'Parecer da triagem') : null,
+    c.resolucao?.parecerTriagem ? el('p', { class: 'ch-descricao' }, c.resolucao.parecerTriagem) : null,
+    (c.resolucao?.texto && !c.demandaId) ? el('h3', { class: 'sub-titulo' }, 'Resolução / orientação') : null,
+    (c.resolucao?.texto && !c.demandaId) ? el('p', { class: 'ch-descricao' }, c.resolucao.texto) : null);
 
-  // Chamado já convertido em demanda
-  const cartaoDemanda = c.demandaId ? el('section', { class: 'card destaque' },
-    el('h2', {}, 'Encaminhado à fila de Obras'),
-    el('p', {}, 'Este chamado foi convertido na demanda ',
-      el('a', { class: 'link', href: `#/demanda/${c.demandaId}` }, c.demandaId), '.'),
-    (c.resolucao?.texto ? el('p', { class: 'ch-descricao' }, c.resolucao.texto) : null)) : null;
-
-  // Resolução/parecer + minuta de Nota Técnica (consultoria/laudo)
-  const temConsultoria = ['consultoria', 'laudo'].includes(c.desfecho);
-  const desfechoNome = (id) => (DESFECHO_CHAMADO.find(d => d.id === id) || {}).nome || id;
-  const btnNT = el('button', { class: 'btn', onclick: async (ev) => {
-    const b = ev.currentTarget; b.disabled = true; const t = b.textContent; b.textContent = 'Gerando…';
-    try {
-      const { gerarNotaTecnicaChamado } = await import('../pdf.js');
-      await gerarNotaTecnicaChamado({ chamado: c, assinante: { nome: user.nome } });
-      toast('Minuta de Nota Técnica gerada. Revise e numere antes de assinar.');
-    } catch (e) { toast('Falha ao gerar a NT: ' + (e.message || e), 'erro'); }
-    b.disabled = false; b.textContent = t;
-  } }, 'Gerar Nota Técnica (minuta)');
-  const cartaoResolucao = ((c.resolucao || temConsultoria) && !c.demandaId) ? el('section', { class: 'card' },
-    el('h2', {}, 'Desfecho'),
-    c.desfecho ? el('p', {}, el('strong', {}, 'Trilha: '), desfechoNome(c.desfecho)) : null,
-    c.resolucao?.setor ? el('p', {}, el('strong', {}, 'Encaminhado a: '), c.resolucao.setor) : null,
-    c.resolucao?.parecerTriagem ? el('p', { class: 'ch-descricao' }, el('strong', {}, 'Parecer da triagem: '), c.resolucao.parecerTriagem) : null,
-    c.resolucao?.texto ? el('p', { class: 'ch-descricao' }, c.resolucao.texto) : null,
-    (ehSeng && temConsultoria) ? el('div', { class: 'form-acoes' }, btnNT,
-      el('span', { class: 'sub' }, 'Rascunho — revise e numere antes de assinar.')) : null) : null;
+  // Chamado já convertido em demanda — com desfazer (correção de conversão
+  // acidental): a demanda vai ao arquivo morto e o chamado retorna à triagem.
+  let cartaoDemanda = null;
+  if (c.demandaId) {
+    const dem = s.getDemanda(c.demandaId);
+    const podeDesfazer = !!(dem && can(user, 'excluir') && !['atendimento', 'concluido', 'excluido'].includes(dem.status));
+    cartaoDemanda = el('section', { class: 'card destaque' },
+      el('h2', {}, 'Encaminhado à fila de Obras'),
+      el('p', {}, 'Este chamado foi convertido na demanda ',
+        el('a', { class: 'link', href: `#/demanda/${c.demandaId}` }, c.demandaId), '.'),
+      c.resolucao?.texto ? el('p', { class: 'ch-descricao' }, c.resolucao.texto) : null,
+      podeDesfazer ? el('div', { class: 'form-acoes' },
+        el('button', { class: 'btn ghost sm perigo', onclick: async () => {
+          const ok = await confirmar('Desfazer a conversão?',
+            `A demanda ${dem.id} vai para o arquivo morto (resgatável por ${DIAS_ARQUIVO_MORTO} dias) e o chamado retorna à triagem, para novo desfecho. Use para corrigir uma conversão acidental ou equivocada.`,
+            { ok: 'Desfazer conversão', perigo: true });
+          if (!ok) return;
+          try {
+            await s.arquivarDemanda(dem.id);
+            await s.atualizarChamado(c.id, { status: 'triagem', desfecho: null, demandaId: null },
+              `Conversão desfeita — demanda ${dem.id} arquivada; chamado retorna à triagem`);
+            toast('Conversão desfeita — o chamado voltou à triagem.');
+          } catch (err) { toast(err.message || 'Falha ao desfazer.', 'erro'); }
+        } }, 'Desfazer conversão'),
+        el('span', { class: 'sub' }, 'Chefia — disponível enquanto a demanda não entra em atendimento.')) : null);
+  }
 
   // ---------------------------------------------------------------- anexos
   const podeAnexar = ehSeng || (ehDono && ['aberto', 'triagem', 'diligencia'].includes(c.status));
@@ -161,7 +169,7 @@ export function viewChamado(rerender, id) {
   return frag(topo, stepper,
     el('div', { class: 'detalhe-grid' },
       el('div', { class: 'col' }, dados, linhaTempo),
-      el('div', { class: 'col' }, respostaCampus, acaoMomento, cartaoDemanda, cartaoResolucao, cartaoPessoas, anexos)));
+      el('div', { class: 'col' }, respostaCampus, acaoMomento, cartaoDemanda, cartaoPessoas, anexos)));
 }
 
 // ----------------------------------------------------------------------------

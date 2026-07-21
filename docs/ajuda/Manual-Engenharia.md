@@ -91,6 +91,8 @@ Dentro de **Em atendimento**, a demanda percorre as **fases do ciclo da contrata
 
 Demandas em atendimento **anteriores à classificação** aparecem “sem fase definida” até a equipe defini-la no cartão **Fase atual**. No ciclo **projeto → obra**, registre também a **origem do projeto** (interno ou contratado) — projeto interno pontua pela alocação (art. 11).
 
+> **Desfazer (correções de fase).** Cada fase traz uma ação de **correção** para desfazer avanços acidentais — remover a classificação (“sem fase definida”), retornar da licitação ao planejamento **sem registrar certame**, desfazer o êxito do certame (Execução → Licitação) ou retornar do recebimento à execução. Diferente do retorno por certame deserto/fracassado, a correção não registra resultado — apenas o evento de correção no histórico.
+
 > **Suspensão com motivo.** Ao suspender uma demanda, o sistema pede o **motivo** (dotação orçamentária, pendência técnica ou outro) e uma observação. A suspensão **não encerra o ciclo**: o motivo fica visível no topo da página e, resolvida a pendência, a Chefia retorna a demanda ao fluxo — o retorno também fica registrado.
 
 Regras de transição (resumo):
@@ -380,9 +382,11 @@ A página do chamado também ganhou o **stepper** (Aberto → Triagem → Atendi
 - **Comentários**: fio público campus ↔ SENG.
 - **Histórico**: cada evento com data/hora e autor.
 
-### Nota Técnica (minuta)
+### Nota Técnica e documentos complementares
 
-Nos desfechos **consultoria/laudo**, o cartão **Desfecho** traz **“Gerar Nota Técnica (minuta)”** — um PDF na estrutura DECOF-SENG (cabeçalho institucional, `NOTA TÉCNICA Nº ___/AAAA/DECOF-SENG`, Assunto, Referência ao chamado, Histórico, Análise técnica e Conclusão/Recomendação). É **rascunho**: revise, numere e assine antes de oficializar.
+Nos desfechos **consultoria/laudo**, elabore a Nota Técnica no fluxo institucional e **anexe o documento pronto** ao chamado (cartão **Anexos**) — assim ele integra o dossiê e fica visível ao campus. A referência da NT também é registrada ao **concluir o atendimento**. *(Um ambiente de elaboração de Notas Técnicas, com numeração automática, está no plano de evolução do Portal.)*
+
+> **Desfazer uma conversão (Chefia).** Um chamado convertido em demanda por engano pode ser **desfeito** no cartão “Encaminhado à fila de Obras”, enquanto a demanda não entra em atendimento: a demanda vai ao **arquivo morto** e o chamado **retorna à triagem**, com registro no histórico.
 
 ### Notificações do chamado
 

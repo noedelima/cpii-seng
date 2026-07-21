@@ -635,6 +635,15 @@ function cartaoFaseAtual(d, s, user, interna) {
   };
   const filhos = [];
 
+  // Desfazer alterações acidentais de fase (rollback — correção, sem registrar
+  // resultado de certame). Toda correção fica registrada no histórico.
+  const btnReverter = (rotulo, titulo, msg, patch, evento) =>
+    el('button', { class: 'btn ghost sm', onclick: async () => {
+      const ok = await confirmar(titulo, msg + ' A correção fica registrada no histórico.', { ok: 'Desfazer', perigo: true });
+      if (!ok) return;
+      await salvar(patch, evento);
+    } }, rotulo);
+
   // Origem do projeto (ciclo projeto → obra — art. 11: elaboração interna pontua)
   const blocoProjetoOrigem = () => {
     if (!['projeto', 'projeto-obra'].includes(d.tipoDemanda) && d.etapa !== 'projeto') return null;
@@ -683,7 +692,10 @@ function cartaoFaseAtual(d, s, user, interna) {
       if (!ok) return;
       await salvar({ fase: 'licitacao', certame: { ...(d.certame || {}), enviadoEm: Date.now(), resultado: null } },
         'Planejamento concluído — fase de licitação');
-    } }, 'Concluir fase → licitação')));
+    } }, 'Concluir fase → licitação'),
+      btnReverter('Desfazer classificação de fase', 'Desfazer a classificação?',
+        'A demanda volta a “sem fase definida” — use para corrigir uma classificação acidental.',
+        { fase: null }, 'Fase do atendimento removida (correção)')));
   }
 
   if (d.fase === 'licitacao') {
@@ -708,6 +720,11 @@ function cartaoFaseAtual(d, s, user, interna) {
       } }, nomeResultado('exito')),
       el('button', { class: 'btn ghost sm', onclick: () => retornar('deserto') }, nomeResultado('deserto')),
       el('button', { class: 'btn ghost sm', onclick: () => retornar('fracassado') }, nomeResultado('fracassado'))));
+    filhos.push(el('div', { class: 'form-acoes' },
+      btnReverter('Retornar ao planejamento (correção)', 'Desfazer a conclusão do planejamento?',
+        'A demanda volta à fase de planejamento sem registrar resultado de certame — use para corrigir um avanço acidental.',
+        { fase: 'planejamento', certame: { ...ct, enviadoEm: null, resultado: null } },
+        'Fase revertida: Licitação → Planejamento (correção)')));
   }
 
   if (d.fase === 'execucao') {
@@ -718,7 +735,11 @@ function cartaoFaseAtual(d, s, user, interna) {
       const ok = await confirmar('Concluir a execução?', 'A demanda avança para a fase de recebimento do objeto.', { ok: 'Avançar para recebimento' });
       if (!ok) return;
       await salvar({ fase: 'recebimento' }, 'Execução concluída — fase de recebimento');
-    } }, 'Concluir fase → recebimento')));
+    } }, 'Concluir fase → recebimento'),
+      btnReverter('Retornar à licitação (correção)', 'Desfazer o resultado do certame?',
+        'A demanda volta à fase de licitação e o registro de êxito do certame é desfeito — use para corrigir um registro acidental.',
+        { fase: 'licitacao', certame: { ...ct, resultado: null, contratoEm: null } },
+        'Fase revertida: Execução → Licitação (correção do certame)')));
   }
 
   if (d.fase === 'recebimento') {
@@ -736,6 +757,10 @@ function cartaoFaseAtual(d, s, user, interna) {
     } else {
       filhos.push(el('p', { class: 'nota' }, 'A conclusão da demanda (recebimento definitivo) é registrada pela Chefia.'));
     }
+    filhos.push(el('div', { class: 'form-acoes' },
+      btnReverter('Retornar à execução (correção)', 'Desfazer a conclusão da execução?',
+        'A demanda volta à fase de execução — use para corrigir um avanço acidental.',
+        { fase: 'execucao' }, 'Fase revertida: Recebimento → Execução (correção)')));
   }
 
   return el('section', { class: 'card acao-momento' }, filhos);
