@@ -151,8 +151,17 @@ export function viewProfissionais(rerender) {
     tblDisp,
     futuras.length ? el('div', { class: 'ausencias-lista' },
       el('h3', { class: 'sub-titulo' }, 'Ausências vigentes e previstas'),
-      ...futuras.map(({ p, a: a2 }) => el('p', { class: 'sub' },
-        `${p.nome} — ${tipoAusenciaNome(a2.tipo)}: ${fmtData(a2.inicio)} a ${fmtData(a2.fim)}${a2.obs ? ` (${a2.obs})` : ''}`)))
+      ...futuras.map(({ p, a: a2 }) => {
+        // Passagem de serviço: itens ativos do profissional, com link direto
+        // para realocação no dossiê (alocação/responsáveis).
+        const c2 = carga[p.id] || {};
+        const itens = [...(c2.demandas || []), ...((c2.chamados || []).map(x => ({ ...x, _ch: true })))];
+        return el('p', { class: 'sub' },
+          `${p.nome} — ${tipoAusenciaNome(a2.tipo)}: ${fmtData(a2.inicio)} a ${fmtData(a2.fim)}${a2.obs ? ` (${a2.obs})` : ''}`,
+          itens.length ? el('span', {}, ' · passagem de serviço: ',
+            itens.map((x, i) => el('span', {}, i ? ', ' : '',
+              el('a', { href: x._ch ? `#/chamado/${x.id}` : `#/demanda/${x.id}`, title: 'Abrir para realocar' }, x.id)))) : null);
+      }))
       : el('p', { class: 'sub' }, 'Nenhuma ausência registrada para os próximos meses.'));
 
   return frag(

@@ -285,3 +285,11 @@ Não. Cada perfil Campus abre para a(s) sua(s) unidade(s). Gestão compartilhada
 - **GUT** — método de priorização: Gravidade × Urgência × Tendência.
 - **Diligência** — devolução do chamado ao campus para complementar informações.
 - **Serviço emergencial** — risco iminente a pessoas ou patrimônio (art. 11, §5º); não é “fura-fila”.
+
+
+---
+
+## Arquivados e Meu espaço (novidades)
+
+- **Arquivados** (aba Chamados): histórico dos itens encerrados — sub-recorte **Demandas** (concluídas, canceladas e não enquadradas, público) e **Chamados** (os da sua unidade, autenticado). A fila mostra apenas itens ativos.
+- **Meu espaço** (menu do seu nome): dados do acesso, troca de senha e — para servidores da Engenharia — foto de perfil, atividades, ausências e tarefas.

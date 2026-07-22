@@ -519,3 +519,25 @@ Ela está no **arquivo morto** por 30 dias (visível ao Chefe/Admin no fim da fi
 - **Arquivo morto** — demandas excluídas, retidas 30 dias antes da exclusão definitiva.
 - **Serviço emergencial (art. 11, §5º)** — risco iminente a pessoas ou patrimônio; **não** é fura-fila: a demanda ainda passa pelo CODIR.
 - **Não enquadrado (Art. 18)** — demanda que não é obra ou serviço de engenharia da SENG.
+
+---
+
+## Meu espaço, Equipe e Arquivados (v1.20–v1.22)
+
+### Meu espaço (menu do seu nome → Minha conta)
+
+- **Foto de perfil** — envie uma imagem (corte quadrado automático); visível **somente para autenticados**, nunca nas páginas públicas. Sem foto, o sistema exibe o **avatar de iniciais**.
+- **Minhas atividades** — consolidado das demandas em que você é fiscal (titular/substituto) ou integrante de planejamento e dos chamados sob sua responsabilidade, com status/fase e link para cada dossiê.
+- **Minhas ausências** — registre férias, licenças, afastamentos, cessões e capacitações (tipo + período + observação opcional, **sem dados de saúde**). É um **controle informativo da seção — o registro oficial é o SouGov** — e alimenta a disponibilidade da Equipe. Você pode remover os próprios registros.
+- **Minhas tarefas** — recorte pessoal do kanban da seção.
+
+### Equipe (antiga aba Profissionais)
+
+- **Disponibilidade** — profissionais disponíveis por mês e por disciplina (próximos 6 meses), com destaque de **cobertura crítica** (0–1 disponível) e a lista de ausências vigentes/previstas. Em cada ausência, os itens ativos do profissional aparecem como links de **passagem de serviço** — abra o dossiê e realoque.
+- **Capacidade dinâmica** — os limites setoriais de referência são calculados como **referência por profissional × disponíveis**; a Administração pode fixar um valor manual (campo preenchido) ou deixar automático (campo vazio). A Chefia também pode definir **limites individuais** no cadastro de cada profissional (vazio = padrão). O art. 13 passa a considerar os **disponíveis** da especialidade.
+- **Alocação com aviso** — nos seletores de fiscais/planejamento/responsáveis, quem está ausente (ou entra em ausência em até 15 dias) aparece sinalizado — sem bloqueio, a decisão é da Chefia.
+- **Tarefas da seção (kanban)** — quadro com colunas *Abertas · Em andamento · Concluídas*: arraste os cartões entre colunas (ou use as setas ← →), crie tarefas rápidas com responsável e prazo (vencidas ficam destacadas) e cancele pela Chefia (✕). Tarefas cobrem o trabalho que **não é demanda nem chamado** e **não pontuam pelo art. 11** — a contagem é separada.
+
+### Arquivados (aba Chamados)
+
+O recorte **Arquivados** é o histórico universal dos encerrados, com dois sub-recortes: **Demandas** (concluídas, canceladas e não enquadradas — público, com filtro por desfecho) e **Chamados** (interno). A fila e a triagem listam **apenas itens ativos**.
