@@ -530,6 +530,7 @@ Ela está no **arquivo morto** por 30 dias (visível ao Chefe/Admin no fim da fi
 - **Minhas atividades** — consolidado das demandas em que você é fiscal (titular/substituto) ou integrante de planejamento e dos chamados sob sua responsabilidade, com status/fase e link para cada dossiê.
 - **Minhas ausências** — registre férias, licenças, afastamentos, cessões e capacitações (tipo + período + observação opcional, **sem dados de saúde**). É um **controle informativo da seção — o registro oficial é o SouGov** — e alimenta a disponibilidade da Equipe. Você pode remover os próprios registros.
 - **Minhas tarefas** — recorte pessoal do kanban da seção.
+- **Notificações** — o inbox pessoal agora é um cartão do Meu espaço (o **sino** no topo mantém o contador de não lidas e leva direto para cá); marque como lidas individualmente ou todas de uma vez.
 
 ### Equipe (antiga aba Profissionais)
 

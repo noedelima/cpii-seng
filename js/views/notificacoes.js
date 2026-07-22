@@ -7,10 +7,10 @@ import { store } from '../store.js';
 import { ROTULO_TIPO } from '../notificacoes.js';
 import { DIAS_NOTIFICACAO } from '../config.js';
 
-export function viewNotificacoes(rerender) {
+export function cardNotificacoes() {
   const s = store();
   const user = s.user;
-  if (!user) { location.hash = '#/login'; return frag(); }
+  if (!user) return null;
 
   const lista = s.listNotificacoes();
   const naoLidas = lista.filter(n => !n.lida).length;
@@ -41,10 +41,9 @@ export function viewNotificacoes(rerender) {
           n.lida ? null : el('span', { class: 'notif-ponto', 'aria-label': 'não lida', title: 'Não lida' })))));
   }
 
-  return frag(
-    el('section', { class: 'hero' }, el('div', {},
-      el('h1', {}, 'Notificações'),
-      el('p', { class: 'sub' }, 'Avisos pessoais conforme o seu perfil e as demandas em que você atua.'))),
-    el('section', { class: 'card' }, topo, corpo,
-      lista.length ? el('p', { class: 'nota' }, `Os avisos já lidos são removidos automaticamente após ${DIAS_NOTIFICACAO} dias.`) : null));
+  // Cartão para o Meu espaço (v1.23 — a antiga página virou área pessoal).
+  return el('section', { class: 'card' },
+    el('h2', {}, 'Notificações ', naoLidas ? el('span', { class: 'sub ref-acima' }, `(${naoLidas} não lidas)`) : null),
+    topo, corpo,
+    lista.length ? el('p', { class: 'nota' }, `Os avisos já lidos são removidos automaticamente após ${DIAS_NOTIFICACAO} dias.`) : null);
 }

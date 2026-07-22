@@ -10,6 +10,7 @@ import { avatar, reduzirFoto } from '../avatar.js';
 import { store } from '../store.js';
 import { campiDoUsuario, can } from '../auth.js';
 import { cardTarefas } from './tarefas.js';
+import { cardNotificacoes } from './notificacoes.js';
 import { api } from '../api.js';
 
 export function viewConta() {
@@ -175,6 +176,7 @@ export function viewConta() {
         cartaoAtividades,
         (prof && can(user, 'verInterno')) ? cardTarefas(s, user, null, { apenasProf: prof.id }) : null),
       el('div', { class: 'col' },
+        cardNotificacoes(),
         cartaoFoto,
         cartaoAusencias,
         el('section', { class: 'card' },

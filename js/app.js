@@ -14,7 +14,7 @@ import { viewProfissionais } from './views/profissionais.js';
 import { viewAdmin } from './views/admin.js';
 import { viewConta } from './views/conta.js';
 import { viewAjuda } from './views/ajuda.js';
-import { viewNotificacoes } from './views/notificacoes.js';
+
 import { viewChamadoNovo } from './views/chamado-novo.js';
 import { viewChamado } from './views/chamado.js';
 
@@ -48,8 +48,8 @@ function renderHeader() {
 
   const naoLidas = (user && typeof s.listNotificacoes === 'function') ? s.listNotificacoes().filter(n => !n.lida).length : 0;
   const sino = user ? el('a', {
-    class: `btn icone notif-sino${naoLidas ? ' tem' : ''} ${rota === '#/notificacoes' ? 'ativo' : ''}`,
-    href: '#/notificacoes', 'aria-label': naoLidas ? `Notificações — ${naoLidas} não lida(s)` : 'Notificações',
+    class: `btn icone notif-sino${naoLidas ? ' tem' : ''} ${rota === '#/conta' ? 'ativo' : ''}`,
+    href: '#/conta', 'aria-label': naoLidas ? `Notificações no Meu espaço — ${naoLidas} não lida(s)` : 'Notificações (Meu espaço)',
     title: naoLidas ? `Notificações — ${naoLidas} não lida(s)` : 'Notificações',
   }, '\u{1F514}', naoLidas ? el('span', { class: 'notif-badge' }, naoLidas > 99 ? '99+' : String(naoLidas)) : null) : null;
 
@@ -94,7 +94,7 @@ const rotas = [
   { re: /^#\/admin$/, view: viewAdmin, titulo: 'Administração' },
   { re: /^#\/conta$/, view: viewConta, titulo: 'Minha conta' },
   { re: /^#\/ajuda$/, view: viewAjuda, titulo: 'Ajuda' },
-  { re: /^#\/notificacoes$/, view: viewNotificacoes, titulo: 'Notificações' },
+  { re: /^#\/notificacoes$/, view: () => { location.hash = '#/conta'; return document.createDocumentFragment(); }, titulo: null }, // página antiga → Meu espaço
   { re: /^#\/chamados(?:\?.*)?$/, view: viewChamadosHub, titulo: 'Chamados' },
   { re: /^#\/chamado-novo$/, view: viewChamadoNovo, titulo: 'Abrir chamado' },
   { re: /^#\/chamado\/([\w-]+)$/, view: viewChamado, titulo: (m) => `Chamado ${m[1]}` },
