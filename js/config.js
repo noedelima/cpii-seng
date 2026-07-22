@@ -8,7 +8,7 @@ export const APP = {
   orgao: 'Colégio Pedro II',
   setor: 'Seção de Engenharia — SENG/DECOF',
   portaria: 'Portaria nº 7503/REITORIA/CPII, de 24/11/2025',
-  versao: '1.20.0',
+  versao: '1.21.0',
 };
 
 // --- Parâmetros ajustáveis pelo Administrador (defaults) ---------------------
@@ -21,10 +21,10 @@ export const PARAMS_DEFAULT = {
   limitePontos: 6, // art. 12
   // Limites de REFERÊNCIA (indicativos — não bloqueiam): sinalizam quando a
   // quantidade supera o valor de referência, por profissional e no setor.
-  refChamadosProf: 3,   // chamados em atendimento por profissional
-  refChamadosSetor: 10, // chamados em atendimento no setor
-  refPlanejProf: 2,     // participações em equipes de planejamento por profissional
-  refPlanejSetor: 8,    // participações em equipes de planejamento no setor
+  refChamadosProf: 3,    // chamados em atendimento por profissional
+  refChamadosSetor: null, // setor: null = AUTOMÁTICO (ref × disponíveis); número = override manual
+  refPlanejProf: 2,      // participações em equipes de planejamento por profissional
+  refPlanejSetor: null,  // setor: null = AUTOMÁTICO (ref × disponíveis); número = override manual
 };
 
 // --- Campi / unidades (siglas usadas no ID da demanda) -----------------------
@@ -248,6 +248,15 @@ export const tipoAusenciaNome = (id) => (TIPOS_AUSENCIA.find(t => t.id === id) |
 // Ausência vigente (ou null) e a próxima prevista de um profissional.
 export const ausenciaAtual = (p, ts = Date.now()) => (p?.ausencias || []).find(a => a.inicio <= ts && ts <= a.fim) || null;
 export const proximaAusencia = (p, ts = Date.now()) => (p?.ausencias || []).filter(a => a.inicio > ts).sort((a, b) => a.inicio - b.inicio)[0] || null;
+// Nota curta para os seletores de alocação: ausência vigente ou iniciando em breve.
+export function notaAusencia(p, diasAviso = 15) {
+  const dt = (ts) => new Date(ts).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+  const a = ausenciaAtual(p);
+  if (a) return ` · ${tipoAusenciaNome(a.tipo).toLowerCase()} até ${dt(a.fim)}`;
+  const prox = proximaAusencia(p);
+  if (prox && prox.inicio - Date.now() <= diasAviso * 86400000) return ` · ${tipoAusenciaNome(prox.tipo).toLowerCase()} a partir de ${dt(prox.inicio)}`;
+  return '';
+}
 
 // --- Papéis de usuário ---------------------------------------------------------
 export const ROLES = [

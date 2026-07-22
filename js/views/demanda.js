@@ -2,7 +2,7 @@
 // Detalhe da demanda — consulta pública + tratamento (GUT, status, alocação)
 // =============================================================================
 import { el, frag, campo, select, toast, confirmar, badgeStatus, fmtMoeda, fmtNum, fmtData, fmtDataHora, abreviarNome } from '../ui.js';
-import { campusNome, statusNome, TIPOS_DEMANDA, PROJETO_EXISTE, PRAZOS, TIPOS_ATIVIDADE, ESPECIALIDADES, ESCALA_G, ESCALA_U, ESCALA_T, precisaEtapaProjeto, DIAS_ARQUIVO_MORTO, FASES_DEMANDA, faseNome, faseCurta, ARTEFATOS_PLANEJAMENTO, MOTIVOS_SUSPENSAO, motivoSuspensaoNome, PROJETO_ORIGEM, RESULTADOS_CERTAME } from '../config.js';
+import { campusNome, statusNome, TIPOS_DEMANDA, PROJETO_EXISTE, PRAZOS, TIPOS_ATIVIDADE, ESPECIALIDADES, ESCALA_G, ESCALA_U, ESCALA_T, precisaEtapaProjeto, DIAS_ARQUIVO_MORTO, FASES_DEMANDA, faseNome, faseCurta, ARTEFATOS_PLANEJAMENTO, MOTIVOS_SUSPENSAO, motivoSuspensaoNome, PROJETO_ORIGEM, RESULTADOS_CERTAME, notaAusencia } from '../config.js';
 import { selecaoPessoas } from '../alocacao.js';
 import { renderStepper } from '../stepper.js';
 import { prioridade, pontosArt11, faixaValorLabel, cargaProfissionais, fiscaisDe } from '../calc.js';
@@ -355,10 +355,10 @@ export function viewDemanda(rerender, id) {
       const carga = cargaProfissionais(s.listDemandas(), internas, profissionais, params);
       const ativos = profissionais.filter(p => p.ativo !== false);
       const { titulares: titAtuais, substitutos: subAtuais } = fiscaisDe(interna);
-      const rotuloFiscal = (p) => abreviarNome(p.nome) + ` — ${p.area} (${carga[p.id].regular}/${params.limitePontos})`;
+      const rotuloFiscal = (p) => abreviarNome(p.nome) + ` — ${p.area} (${carga[p.id].regular}/${params.limitePontos})` + notaAusencia(p);
       const selTit = selecaoPessoas({ itens: ativos, atuais: titAtuais, rotulo: rotuloFiscal, vazio: 'Nenhum fiscal titular incluído.' });
       const selSub = selecaoPessoas({ itens: ativos, atuais: subAtuais, rotulo: rotuloFiscal, vazio: 'Nenhum fiscal substituto incluído.' });
-      const selEq  = selecaoPessoas({ itens: ativos, atuais: interna.equipePlanejamento || [], rotulo: (p) => abreviarNome(p.nome), vazio: 'Nenhum integrante incluído.' });
+      const selEq  = selecaoPessoas({ itens: ativos, atuais: interna.equipePlanejamento || [], rotulo: (p) => abreviarNome(p.nome) + notaAusencia(p), vazio: 'Nenhum integrante incluído.' });
       filhos.push(el('h3', {}, 'Alocação ', el('span', { class: 'sub' }, '(visível somente autenticado)')));
       filhos.push(el('div', { class: 'form-grid' },
         campo('Fiscais técnicos titulares', selTit.node, 'Um ou mais. Cada fiscal pontua pelo art. 11.'),

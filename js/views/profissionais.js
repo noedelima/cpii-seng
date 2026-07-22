@@ -4,7 +4,7 @@
 import { el, frag, campo, select, toast, fmtData } from '../ui.js';
 import { CARGOS, AREAS, tipoAusenciaNome, ausenciaAtual, proximaAusencia } from '../config.js';
 import { avatar } from '../avatar.js';
-import { cargaProfissionais, limitePlanejamento } from '../calc.js';
+import { cargaProfissionais, limitePlanejamento, refIndividual } from '../calc.js';
 import { store } from '../store.js';
 import { can } from '../auth.js';
 
@@ -52,8 +52,8 @@ export function viewProfissionais(rerender) {
       el('div', { class: 'prof-resumo' },
         stat('Titular', c.titular), stat('Substituto', c.substituto),
         stat('Total (art. 12)', c.total, c.excedido), stat('Emergencial', c.emergencial),
-        stat('Planejamento', c.planejamento, c.planejamento > params.refPlanejProf), stat('Disponível', c.disponivel),
-        stat('Chamados', (c.chamados || []).length, (c.chamados || []).length > params.refChamadosProf)),
+        stat('Planejamento', c.planejamento, c.planejamento > refIndividual(p, 'refPlanej', params.refPlanejProf)), stat('Disponível', c.disponivel),
+        stat('Chamados', (c.chamados || []).length, (c.chamados || []).length > refIndividual(p, 'refChamados', params.refChamadosProf))),
       el('div', { class: 'pontos-barra grande' },
         el('div', { class: `pontos-fill ${c.excedido ? 'cheia' : c.regular >= params.limitePontos ? 'limite' : ''}`, style: `width:${Math.min(100, (c.regular / params.limitePontos) * 100)}%` })),
       (det.length || detCh.length)
@@ -90,6 +90,8 @@ export function viewProfissionais(rerender) {
     const selArea = select(AREAS, { value: p.area || '', required: true });
     const ckAtivo = el('input', { type: 'checkbox', ...((p.ativo ?? true) ? { checked: true } : {}) });
     const inObs = el('input', { type: 'text', maxlength: 120, value: p.obs || '', placeholder: 'Ex.: em licença até 09/2026' });
+    const inRefCh = el('input', { type: 'number', min: 0, max: 50, value: p.refChamados ?? '', placeholder: 'padrão' });
+    const inRefPl = el('input', { type: 'number', min: 0, max: 20, value: p.refPlanej ?? '', placeholder: 'padrão' });
     formWrap.replaceChildren(el('section', { class: 'card form-prof' },
       el('h2', {}, p.id ? `Editar — ${p.nome}` : 'Novo profissional'),
       el('form', { class: 'form-grid', onsubmit: async (e) => {
@@ -101,7 +103,8 @@ export function viewProfissionais(rerender) {
           nome = u.nome; email = u.email;
         }
         try {
-          await s.salvarProfissional({ ...(p.id ? { id: p.id } : {}), nome, email, cargo: selCargo.value, area: selArea.value, ativo: ckAtivo.checked, obs: inObs.value.trim() });
+          await s.salvarProfissional({ ...(p.id ? { id: p.id } : {}), nome, email, cargo: selCargo.value, area: selArea.value, ativo: ckAtivo.checked, obs: inObs.value.trim(),
+            refChamados: inRefCh.value === '' ? null : +inRefCh.value, refPlanej: inRefPl.value === '' ? null : +inRefPl.value });
           toast('Profissional salvo.');
           formWrap.replaceChildren();
         } catch (err) { toast(err.message, 'erro'); }
@@ -109,12 +112,47 @@ export function viewProfissionais(rerender) {
         campo('Usuário *', selUsuario, 'Nome e e-mail vêm do cadastro de usuários (vínculo automático com o login). Não achou? Cadastre em Administração → Novo usuário.'),
         el('div', { class: 'form-linha' }, campo('Cargo *', selCargo), campo('Área / especialidade *', selArea)),
         campo('Observação', inObs),
+        el('div', { class: 'form-linha' },
+          campo('Limite individual — chamados', inRefCh, 'Vazio = padrão do sistema. Indicativo, sem bloqueio.'),
+          campo('Limite individual — planejamentos', inRefPl, 'Vazio = padrão do sistema. Indicativo, sem bloqueio.')),
         el('label', { class: 'chip-check' }, ckAtivo, ' Ativo (disponível para alocação)'),
         el('div', { class: 'form-acoes' },
           el('button', { class: 'btn ghost', type: 'button', onclick: () => formWrap.replaceChildren() }, 'Fechar'),
           el('button', { class: 'btn primario' }, 'Salvar')))));
     formWrap.scrollIntoView({ behavior: 'smooth' });
   }
+
+  // ---- Disponibilidade (6 meses × disciplina) + ausências futuras -------------
+  const meses = [];
+  const hoje = new Date();
+  for (let i = 0; i < 6; i++) meses.push(new Date(hoje.getFullYear(), hoje.getMonth() + i, 1));
+  const ativosDisp = profissionais.filter(p => p.ativo !== false);
+  const areas = [...new Set(ativosDisp.map(p => p.area))].sort();
+  const dispNoMes = (arr, m) => {
+    const ini = m.getTime(), fim = new Date(m.getFullYear(), m.getMonth() + 1, 0, 23, 59).getTime();
+    return arr.filter(p => !(p.ausencias || []).some(a => a.inicio <= fim && a.fim >= ini)).length;
+  };
+  const tblDisp = el('div', { class: 'tabela-wrap' }, el('table', { class: 'tabela' },
+    el('thead', {}, el('tr', {}, el('th', {}, 'Disciplina'),
+      meses.map(m => el('th', { class: 'num' }, m.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '') + '/' + String(m.getFullYear()).slice(2))))),
+    el('tbody', {}, areas.map(a2 => {
+      const doGrupo = ativosDisp.filter(p => p.area === a2);
+      return el('tr', {}, el('td', {}, a2), meses.map(m => {
+        const n = dispNoMes(doGrupo, m);
+        return el('td', { class: `num${n <= 1 ? ' ref-acima' : ''}`, title: n <= 1 ? 'Disciplina com cobertura crítica no período' : '' }, `${n}/${doGrupo.length}`);
+      }));
+    }))));
+  const futuras = ativosDisp.flatMap(p => (p.ausencias || [])
+    .filter(a2 => a2.fim >= Date.now())
+    .map(a2 => ({ p, a: a2 }))).sort((x, y) => x.a.inicio - y.a.inicio);
+  const cardDisp = el('section', { class: 'card' },
+    el('h2', {}, 'Disponibilidade ', el('span', { class: 'sub' }, '(profissionais disponíveis por mês — ausências registradas no Meu espaço)')),
+    tblDisp,
+    futuras.length ? el('div', { class: 'ausencias-lista' },
+      el('h3', { class: 'sub-titulo' }, 'Ausências vigentes e previstas'),
+      ...futuras.map(({ p, a: a2 }) => el('p', { class: 'sub' },
+        `${p.nome} — ${tipoAusenciaNome(a2.tipo)}: ${fmtData(a2.inicio)} a ${fmtData(a2.fim)}${a2.obs ? ` (${a2.obs})` : ''}`)))
+      : el('p', { class: 'sub' }, 'Nenhuma ausência registrada para os próximos meses.'));
 
   return frag(
     el('section', { class: 'hero' },
@@ -128,6 +166,7 @@ export function viewProfissionais(rerender) {
         el('div', { class: `art13-item ${(usoPlanejamento[area] || 0) > limites[area] ? 'excedido' : ''}` },
           el('strong', {}, area),
           el('span', {}, `${usoPlanejamento[area] || 0} / ${limites[area]} participações`))))),
+    cardDisp,
     formWrap,
     el('div', { class: 'prof-lista' }, cards));
 }

@@ -6,7 +6,7 @@
 // =============================================================================
 import { el, frag, fmtNum } from '../ui.js';
 import { CAMPI, ESPECIALIDADES, FASES_DEMANDA, campusNome } from '../config.js';
-import { ordenarFila, prioridade, cargaProfissionais } from '../calc.js';
+import { ordenarFila, prioridade, cargaProfissionais, capacidadeSetorial, refIndividual } from '../calc.js';
 import { store } from '../store.js';
 import { can } from '../auth.js';
 import { barrasH, linhasMensais, legenda, donut } from '../graficos.js';
@@ -141,8 +141,10 @@ export function viewInicio() {
           el('div', { class: 'prof-pontos' },
             el('span', { class: c2.excedido ? 'excedido' : '' }, `${c2.regular} / ${params.limitePontos} pts`),
             c2.emergencial ? el('span', { class: 'tag-emergencial' }, `+${c2.emergencial} emerg.`) : null,
-            c2.planejamento ? el('span', { class: `sub${c2.planejamento > params.refPlanejProf ? ' ref-acima' : ''}`, title: c2.planejamento > params.refPlanejProf ? `Acima do limite de referência (${params.refPlanejProf})` : '' }, ` · ${c2.planejamento} planej.`) : null,
-            (c2.chamados || []).length ? el('span', { class: `sub${c2.chamados.length > params.refChamadosProf ? ' ref-acima' : ''}`, title: c2.chamados.length > params.refChamadosProf ? `Acima do limite de referência (${params.refChamadosProf})` : '' }, ` · ${c2.chamados.length} chamado${c2.chamados.length === 1 ? '' : 's'}`) : null),
+            (() => { const ref = refIndividual(p, 'refPlanej', params.refPlanejProf);
+              return c2.planejamento ? el('span', { class: `sub${c2.planejamento > ref ? ' ref-acima' : ''}`, title: c2.planejamento > ref ? `Acima do limite de referência (${ref})` : '' }, ` · ${c2.planejamento} planej.`) : null; })(),
+            (() => { const ref = refIndividual(p, 'refChamados', params.refChamadosProf);
+              return (c2.chamados || []).length ? el('span', { class: `sub${c2.chamados.length > ref ? ' ref-acima' : ''}`, title: c2.chamados.length > ref ? `Acima do limite de referência (${ref})` : '' }, ` · ${c2.chamados.length} chamado${c2.chamados.length === 1 ? '' : 's'}`) : null; })()),
           el('div', { class: 'pontos-barra' },
             el('div', { class: `pontos-fill ${c2.excedido ? 'cheia' : c2.regular >= params.limitePontos ? 'limite' : ''}`, style: `width:${Math.min(100, (c2.regular / params.limitePontos) * 100)}%` })));
       });
@@ -150,13 +152,16 @@ export function viewInicio() {
       // de participações em planejamento, comparados aos limites de referência.
       const totCh = Object.values(carga).reduce((a, c2) => a + (c2.chamados || []).length, 0);
       const totPl = Object.values(carga).reduce((a, c2) => a + (c2.planejamento || 0), 0);
-      const refSpan = (rot, val, ref) => el('span', { class: `sub${val > ref ? ' ref-acima' : ''}`, title: `Limite de referência: ${ref}` }, `${rot}: ${val}/${ref}`);
+      const cap = capacidadeSetorial(profissionais, params);
+      const refSpan = (rot, val, ref, auto) => el('span', { class: `sub${val > ref ? ' ref-acima' : ''}`,
+        title: auto ? `Capacidade automática: referência por profissional × ${cap.disponiveis} disponíveis` : `Limite de referência definido manualmente: ${ref}` }, `${rot}: ${val}/${ref}`);
       painelProfs = el('section', { class: 'card' },
         el('div', { class: 'inicio-fila-cab' },
           el('h2', {}, 'Carga da equipe'),
           el('div', { class: 'carga-refs' },
-            refSpan('Chamados em atendimento', totCh, params.refChamadosSetor),
-            refSpan('Planejamentos em andamento', totPl, params.refPlanejSetor))),
+            el('span', { class: 'sub' }, `Disponíveis: ${cap.disponiveis}/${cap.total}`),
+            refSpan('Chamados em atendimento', totCh, cap.refChamadosSetor, cap.autoChamados),
+            refSpan('Planejamentos em andamento', totPl, cap.refPlanejSetor, cap.autoPlanej))),
         el('div', { class: 'prof-grid' }, cards));
     }
   }

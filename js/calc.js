@@ -179,10 +179,34 @@ export function cargaProfissionais(demandas, internas, profissionais, params, ch
 
 // Limite do art. 13: equipes de planejamento ≤ 2 × profissionais ativos da especialidade
 export function limitePlanejamento(profissionais) {
-  const ativos = profissionais.filter(p => p.ativo);
+  // Art. 13: 2× os profissionais DISPONÍVEIS da especialidade (capacidade real).
+  const disp = disponiveis(profissionais);
   const porArea = {};
-  for (const p of ativos) porArea[p.area] = (porArea[p.area] || 0) + 1;
+  for (const p of disp) porArea[p.area] = (porArea[p.area] || 0) + 1;
   const limites = {};
   for (const a of Object.keys(porArea)) limites[a] = porArea[a] * 2;
   return limites;
 }
+
+// --- Capacidade dinâmica (v1.21) ---------------------------------------------
+// Disponíveis = ativos sem ausência vigente no instante consultado.
+import { ausenciaAtual } from './config.js';
+export function disponiveis(profissionais, ts = Date.now()) {
+  return profissionais.filter(p => p.ativo !== false && !ausenciaAtual(p, ts));
+}
+// Limites setoriais: override manual quando informado; senão, referência por
+// profissional × disponíveis no momento (decisão D4 do plano Equipe).
+export function capacidadeSetorial(profissionais, params) {
+  const n = disponiveis(profissionais).length;
+  const auto = (manual, porProf) => (manual == null || manual === '' ? porProf * n : +manual);
+  return {
+    disponiveis: n,
+    total: profissionais.filter(p => p.ativo !== false).length,
+    refChamadosSetor: auto(params.refChamadosSetor, params.refChamadosProf),
+    refPlanejSetor: auto(params.refPlanejSetor, params.refPlanejProf),
+    autoChamados: params.refChamadosSetor == null || params.refChamadosSetor === '',
+    autoPlanej: params.refPlanejSetor == null || params.refPlanejSetor === '',
+  };
+}
+// Limite individual: personalizado pela Chefia no cadastro (vazio = padrão).
+export const refIndividual = (p, campo, padrao) => (p && p[campo] != null && p[campo] !== '' ? +p[campo] : padrao);
