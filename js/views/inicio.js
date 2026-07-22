@@ -101,7 +101,7 @@ export function viewInicio() {
     t ? barrasH([
       { rotulo: 'Em triagem', valor: t.emTriagem, onClick: user ? irPara('recorte=triagem') : null },
       { rotulo: 'Em atendimento', valor: t.emAtendimento, onClick: irPara('tipo=chamado') },
-      { rotulo: `Resolvidos em ${anoAtual}`, valor: t.resolvidosAno, onClick: user ? irPara('recorte=triagem') : null },
+      { rotulo: `Resolvidos em ${anoAtual}`, valor: t.resolvidosAno, onClick: user ? irPara('recorte=arquivo') : null },
     ], { rotuloW: 128, aria: 'Chamados por etapa' })
       : el('p', { class: 'sub' }, 'Os totais de chamados são publicados pela Engenharia e aparecerão aqui em breve.'),
     el('p', { class: 'nota' }, 'Contagens agregadas — sem assuntos nem nomes.'));

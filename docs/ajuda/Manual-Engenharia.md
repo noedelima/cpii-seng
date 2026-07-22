@@ -350,11 +350,11 @@ O **Chamado** é a **porta de entrada única** da Engenharia. O campus abre um c
 
 > O mesmo fluxo, em notação BPMN editável (Bizagi Modeler), está em `docs/fluxo-chamados.bpmn` no repositório.
 
-**Onde fica:** aba **Chamados**, recorte **Triagem de chamados**. Após a triagem, os chamados **em atendimento** passam a aparecer também no recorte **Fila e atendimento**, agrupados com as demandas do mesmo status, ordenados pelo prazo (SLA) e marcados com a etiqueta CHAMADO. A SENG vê **todos** os chamados; o campus vê só os da própria unidade.
+**Onde fica:** aba **Chamados**, recorte **Triagem de chamados** — que lista apenas os chamados **ativos** (cadastro/triagem, diligência e atendimento). Após a triagem, os chamados **em atendimento** passam a aparecer também no recorte **Fila e atendimento**, agrupados com as demandas do mesmo status, ordenados pelo prazo (SLA) e marcados com a etiqueta CHAMADO. Os **encerrados** (resolvidos, encaminhados, improcedentes, duplicados, cancelados e convertidos em obra) ficam no recorte **Arquivados** — o histórico, ordenado do mais recente, com filtro por desfecho e exportação em PDF. A SENG vê **todos** os chamados; o campus vê só os da própria unidade.
 
 ### Painel de chamados
 
-- Lista por **status operacional** e **prazo (SLA)**; filtros por **situação** (cadastro e triagem / em atendimento / todos os ativos / em atraso / encerrados / todos), **campus**, **categoria** e **busca**.
+- Lista por **status operacional** e **prazo (SLA)**; filtros por **situação** (cadastro e triagem / em atendimento / todos os ativos / em atraso), **campus**, **categoria** e **busca**. No recorte **Arquivados**, o filtro principal é por **desfecho**.
 - A **faixa de SLA** (no prazo / vencendo / vencido) é ao mesmo tempo **alerta** e filtro rápido.
 - **Baixar PDF**: relatório efêmero (timbre + data/hora) da lista filtrada.
 - **+ Abrir chamado**: a SENG também pode abrir um chamado (ex.: demanda de origem interna).

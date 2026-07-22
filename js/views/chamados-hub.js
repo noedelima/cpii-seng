@@ -20,6 +20,7 @@ export function viewChamadosHub(rerender) {
   if (q) {
     const p = new URLSearchParams(q);
     if (p.get('recorte') === 'triagem') recorte = 'triagem';
+    else if (p.get('recorte') === 'arquivo') recorte = 'arquivo';
     else {
       recorte = 'fila';
       aplicarFiltrosExternos({
@@ -30,7 +31,7 @@ export function viewChamadosHub(rerender) {
     }
     history.replaceState(null, '', location.pathname + location.search + '#/chamados');
   }
-  if (!user && recorte === 'triagem') recorte = 'fila';
+  if (!user && recorte !== 'fila') recorte = 'fila';
 
   const pill = (id, txt) => el('button', {
     class: `sla-pill hub-pill${recorte === id ? ' hub-on' : ''}`,
@@ -42,8 +43,11 @@ export function viewChamadosHub(rerender) {
   // interno "triagem", que descreve o trabalho da SENG.
   const barra = el('div', { class: 'hub-barra' },
     pill('fila', 'Fila e atendimento'),
-    user ? pill('triagem', user.role === 'campus' ? 'Chamados da unidade' : 'Triagem de chamados') : null);
+    user ? pill('triagem', user.role === 'campus' ? 'Chamados da unidade' : 'Triagem de chamados') : null,
+    user ? pill('arquivo', 'Arquivados') : null);
 
-  const corpo = (recorte === 'triagem' && user) ? viewChamados(rerender) : viewDashboard(rerender);
+  const corpo = (recorte === 'triagem' && user) ? viewChamados(rerender, 'ativos')
+    : (recorte === 'arquivo' && user) ? viewChamados(rerender, 'arquivo')
+    : viewDashboard(rerender);
   return frag(barra, corpo);
 }
