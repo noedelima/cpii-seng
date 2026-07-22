@@ -1,8 +1,9 @@
 // =============================================================================
 // Profissionais da SENG — cadastro, carga de pontos (art. 12) e art. 13
 // =============================================================================
-import { el, frag, campo, select, toast } from '../ui.js';
-import { CARGOS, AREAS } from '../config.js';
+import { el, frag, campo, select, toast, fmtData } from '../ui.js';
+import { CARGOS, AREAS, tipoAusenciaNome, ausenciaAtual, proximaAusencia } from '../config.js';
+import { avatar } from '../avatar.js';
 import { cargaProfissionais, limitePlanejamento } from '../calc.js';
 import { store } from '../store.js';
 import { can } from '../auth.js';
@@ -37,9 +38,16 @@ export function viewProfissionais(rerender) {
       el('span', { class: 'sub' }, '(chamado em atendimento)')));
     return el('section', { class: `card prof-detalhe ${p.ativo === false ? 'inativo' : ''}` },
       el('div', { class: 'prof-cab' },
-        el('div', {},
-          el('h2', {}, p.nome, p.ativo === false ? el('span', { class: 'sub' }, ` — inativo${p.obs ? ` (${p.obs})` : ''}` ) : null),
-          el('p', { class: 'sub' }, `${p.cargo} · ${p.area}${p.email ? ` · ${p.email}` : ''}`)),
+        el('div', { class: 'prof-ident' }, avatar(p.nome, p.fotoUrl, 44),
+          el('div', {},
+            el('h2', {}, p.nome, p.ativo === false ? el('span', { class: 'sub' }, ` — inativo${p.obs ? ` (${p.obs})` : ''}` ) : null),
+            el('p', { class: 'sub' }, `${p.cargo} · ${p.area}${p.email ? ` · ${p.email}` : ''}`),
+            (() => {
+              const atual = ausenciaAtual(p); const prox = proximaAusencia(p);
+              if (atual) return el('p', { class: 'sub ref-acima' }, `${tipoAusenciaNome(atual.tipo)} até ${fmtData(atual.fim)}`);
+              if (prox) return el('p', { class: 'sub' }, `${tipoAusenciaNome(prox.tipo)} prevista: ${fmtData(prox.inicio)} a ${fmtData(prox.fim)}`);
+              return null;
+            })())),
         podeEditar ? el('button', { class: 'btn ghost sm', onclick: () => abrirForm(p) }, 'Editar') : null),
       el('div', { class: 'prof-resumo' },
         stat('Titular', c.titular), stat('Substituto', c.substituto),
@@ -111,7 +119,7 @@ export function viewProfissionais(rerender) {
   return frag(
     el('section', { class: 'hero' },
       el('div', {},
-        el('h1', {}, 'Profissionais da Seção de Engenharia'),
+        el('h1', {}, 'Equipe da Seção de Engenharia'),
         el('p', { class: 'sub' }, `Limite de ${params.limitePontos} pontos simultâneos por profissional (art. 12). Equipes de planejamento limitadas a 2× os profissionais da especialidade (art. 13).`)),
       podeEditar ? el('button', { class: 'btn primario', onclick: () => abrirForm() }, '+ Novo profissional') : null),
     el('section', { class: 'card' },

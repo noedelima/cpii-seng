@@ -41,7 +41,7 @@ function renderHeader() {
   // "Início" não aparece no menu: a marca (logo) à esquerda já leva para lá.
   const nav = el('nav', { class: 'nav', 'aria-label': 'Navegação principal' },
     navlink('#/chamados', 'Chamados'),
-    user && can(user, 'verInterno') ? navlink('#/profissionais', 'Profissionais') : null,
+    user && can(user, 'verInterno') ? navlink('#/equipe', 'Equipe') : null,
     user && (can(user, 'usuarios') || can(user, 'params')) ? navlink('#/admin', 'Administração') : null,
     navlink('#/ajuda', 'Ajuda'),
   );
@@ -89,7 +89,8 @@ const rotas = [
   // chamado é a única porta. Redireciona links/marcadores antigos.
   { re: /^#\/nova$/, view: () => { location.hash = '#/chamado-novo'; return document.createDocumentFragment(); }, titulo: null },
   { re: /^#\/demanda\/([\w-]+)$/, view: viewDemanda, titulo: (m) => `Demanda ${m[1]}` },
-  { re: /^#\/profissionais$/, view: viewProfissionais, titulo: 'Profissionais' },
+  { re: /^#\/equipe$/, view: viewProfissionais, titulo: 'Equipe' },
+  { re: /^#\/profissionais$/, view: viewProfissionais, titulo: 'Equipe' }, // rota antiga (compat)
   { re: /^#\/admin$/, view: viewAdmin, titulo: 'Administração' },
   { re: /^#\/conta$/, view: viewConta, titulo: 'Minha conta' },
   { re: /^#\/ajuda$/, view: viewAjuda, titulo: 'Ajuda' },

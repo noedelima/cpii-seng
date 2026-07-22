@@ -210,6 +210,14 @@ service cloud.firestore {
       allow write: if isChefe()
         && request.resource.data.nome is string && request.resource.data.nome.size() <= 80
         && (!('email' in request.resource.data) || request.resource.data.email is string);
+      // Meu espaço (v1.20): o próprio profissional (vínculo por e-mail) atualiza
+      // SOMENTE a foto de perfil e as próprias ausências (controle informativo).
+      allow update: if ativo()
+        && resource.data.get('email', '') != ''
+        && resource.data.get('email', '') == perfil().get('email', '')
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['fotoUrl', 'ausencias'])
+        && (!('ausencias' in request.resource.data) || request.resource.data.ausencias == null
+            || (request.resource.data.ausencias is list && request.resource.data.ausencias.size() <= 50));
     }
 
     // ---------- usuários — leitura p/ chefia (vínculo de profissionais);

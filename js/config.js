@@ -8,7 +8,7 @@ export const APP = {
   orgao: 'Colégio Pedro II',
   setor: 'Seção de Engenharia — SENG/DECOF',
   portaria: 'Portaria nº 7503/REITORIA/CPII, de 24/11/2025',
-  versao: '1.19.2',
+  versao: '1.20.0',
 };
 
 // --- Parâmetros ajustáveis pelo Administrador (defaults) ---------------------
@@ -234,6 +234,20 @@ export const ESPECIALIDADES = [
 
 export const CARGOS = ['Engenheiro(a)', 'Arquiteto(a)'];
 export const AREAS  = ['Arquitetura', 'Civil', 'Elétrica', 'Mecânica', 'Segurança do Trabalho'];
+
+// --- Ausências (Meu espaço — controle informativo; o registro oficial é o SouGov) --
+export const TIPOS_AUSENCIA = [
+  { id: 'ferias',      nome: 'Férias' },
+  { id: 'licenca',     nome: 'Licença' },
+  { id: 'afastamento', nome: 'Afastamento' },
+  { id: 'cessao',      nome: 'Cessão / missão' },
+  { id: 'capacitacao', nome: 'Capacitação' },
+  { id: 'outro',       nome: 'Outro' },
+];
+export const tipoAusenciaNome = (id) => (TIPOS_AUSENCIA.find(t => t.id === id) || {}).nome || id || '—';
+// Ausência vigente (ou null) e a próxima prevista de um profissional.
+export const ausenciaAtual = (p, ts = Date.now()) => (p?.ausencias || []).find(a => a.inicio <= ts && ts <= a.fim) || null;
+export const proximaAusencia = (p, ts = Date.now()) => (p?.ausencias || []).filter(a => a.inicio > ts).sort((a, b) => a.inicio - b.inicio)[0] || null;
 
 // --- Papéis de usuário ---------------------------------------------------------
 export const ROLES = [

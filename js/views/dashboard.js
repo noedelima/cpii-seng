@@ -33,8 +33,12 @@ export function viewDashboard(rerender) {
   const profissionais = user ? s.listProfissionais() : [];
 
   // ---- aplicação dos filtros ------------------------------------------------
+  // Encerradas (concluídas, canceladas e não enquadradas) moram no recorte
+  // Arquivados — a fila lista apenas as ativas (e o arquivo morto p/ Chefia).
+  const ARQUIVADAS = ['concluido', 'cancelado', 'nao-enquadrado'];
   const txt = filtros.busca.trim().toLowerCase();
   let lista = todas.filter(d =>
+    !ARQUIVADAS.includes(d.status) &&
     (!filtros.campus || d.campus === filtros.campus) &&
     (!filtros.status || d.status === filtros.status) &&
     (!filtros.tipo || d.aval?.tipoAtividade === filtros.tipo) &&
@@ -79,7 +83,8 @@ export function viewDashboard(rerender) {
   });
   const selCampus = select(CAMPI, { value: filtros.campus, placeholder: 'Todos os campi', 'aria-label': 'Filtrar por campus' });
   selCampus.addEventListener('change', () => { filtros.campus = selCampus.value; rerender(); });
-  const selStatus = select(STATUS, { value: filtros.status, placeholder: 'Todos os status', 'aria-label': 'Filtrar por status' });
+  const selStatus = select(STATUS.filter(st => !ARQUIVADAS.includes(st.id) && st.id !== 'excluido'),
+    { value: filtros.status, placeholder: 'Todos os status', 'aria-label': 'Filtrar por status' });
   selStatus.addEventListener('change', () => { filtros.status = selStatus.value; rerender(); });
   const selTipoF = select([...TIPOS_ATIVIDADE, { id: 'chamado', nome: 'Chamado (consultoria/laudo)' }], { value: filtros.tipo, placeholder: 'Todos os tipos de atividade', 'aria-label': 'Filtrar por tipo de atividade' });
   selTipoF.addEventListener('change', () => { filtros.tipo = selTipoF.value; rerender(); });

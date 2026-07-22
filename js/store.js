@@ -266,6 +266,20 @@ class DemoProvider {
     return rem;
   }
 
+  // --- Meu espaço (v1.20): foto de perfil e autoatendimento (modo demonstração) ---
+  async uploadFotoPerfil(blob) {
+    return new Promise((res) => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(blob); });
+  }
+  async removerFotoPerfil() { /* demo: nada a remover no storage */ }
+  async atualizarMeuProfissional(patch, evento) {
+    const prof = this.profissionalDoUsuario(this.user);
+    if (!prof) throw new Error('Nenhum profissional vinculado ao seu e-mail.');
+    const i = this.db.profissionais.findIndex(x => x.id === prof.id);
+    this.db.profissionais[i] = { ...this.db.profissionais[i], ...patch };
+    this._log(evento || 'Perfil do profissional atualizado', prof.nome, Object.keys(patch).join(', '));
+    this._save();
+  }
+
   // --- Profissionais ---
   listProfissionais() { return this.user ? this.db.profissionais : []; }
   getTransparencia() { return calcularTransparencia(this.db.chamados || [], slaChamado, STATUS_CHAMADO_ABERTO); }

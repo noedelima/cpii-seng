@@ -10,6 +10,7 @@ import { ordenarFila, prioridade, cargaProfissionais } from '../calc.js';
 import { store } from '../store.js';
 import { can } from '../auth.js';
 import { barrasH, linhasMensais, legenda, donut } from '../graficos.js';
+import { avatar } from '../avatar.js';
 
 export function viewInicio() {
   const s = store();
@@ -35,7 +36,7 @@ export function viewInicio() {
   const kpis = el('div', { class: 'kpi-grid' },
     kpi('Em atendimento', n('atendimento'), false, '#/chamados?status=atendimento'),
     kpi('Na fila', n('fila'), false, '#/chamados?status=fila'),
-    kpi(`Concluídas em ${anoAtual}`, concluidasAno, false, `#/chamados?status=concluido&ano=${anoAtual}`),
+    kpi(`Concluídas em ${anoAtual}`, concluidasAno, false, '#/chamados?recorte=arquivo'),
     kpi('Chamados ativos', t ? t.ativos : null, false, user ? '#/chamados?recorte=triagem' : null),
     kpi('Triagem no prazo', pctPrazo == null ? null : pctPrazo + '%', pctPrazo != null && pctPrazo >= 80),
     kpi('Triagem média', t && t.triagemMediaDias != null ? t.triagemMediaDias + 'd' : null));
@@ -69,7 +70,8 @@ export function viewInicio() {
   const irPara = (query) => () => { location.hash = '#/chamados?' + query; };
   const ROTULO_CURTO = { atendimento: 'Em atendimento', fila: 'Na fila', codir: 'No CODIR', analise: 'Em análise', recebido: 'Recebidas', diligencia: 'Em diligência', suspenso: 'Suspensas', concluido: 'Concluídas' };
   const stDados = Object.keys(ROTULO_CURTO)
-    .map(st => ({ rotulo: ROTULO_CURTO[st], valor: n(st), onClick: irPara('status=' + st) })).filter(x => x.valor > 0);
+    .map(st => ({ rotulo: ROTULO_CURTO[st], valor: n(st),
+      onClick: st === 'concluido' ? irPara('recorte=arquivo') : irPara('status=' + st) })).filter(x => x.valor > 0);
   const gStatus = card('Demandas por status', barrasH(stDados, { rotuloW: 108, aria: 'Demandas por status' }));
 
   // Em atendimento, por fase do ciclo da contratação (workflow v2) + chamados
@@ -133,8 +135,8 @@ export function viewInicio() {
         typeof s.listChamados === 'function' ? s.listChamados() : []);
       const cards = profissionais.filter(p => p.ativo !== false || carga[p.id].total > 0).map(p => {
         const c2 = carga[p.id];
-        return el('a', { class: 'prof-card', href: '#/profissionais', title: 'Ver detalhes em Profissionais' },
-          el('div', { class: 'prof-nome' }, p.nome, p.ativo === false ? el('span', { class: 'sub' }, ' (inativo)') : null),
+        return el('a', { class: 'prof-card', href: '#/equipe', title: 'Ver detalhes na Equipe' },
+          el('div', { class: 'prof-nome' }, avatar(p.nome, p.fotoUrl, 26), ' ', p.nome, p.ativo === false ? el('span', { class: 'sub' }, ' (inativo)') : null),
           el('div', { class: 'sub' }, `${p.cargo} · ${p.area}`),
           el('div', { class: 'prof-pontos' },
             el('span', { class: c2.excedido ? 'excedido' : '' }, `${c2.regular} / ${params.limitePontos} pts`),

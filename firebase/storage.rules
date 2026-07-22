@@ -47,6 +47,17 @@ service firebase.storage {
                             && tipoOk();
       allow delete:         if isSeng() || isCampusDe(campus);
     }
+    // Fotos de perfil (Meu espaço v1.20): perfis/{uid}.jpg — gravável só pelo
+    // próprio usuário; leitura por qualquer autenticado (exibição interna).
+    match /perfis/{arquivo} {
+      allow read:           if request.auth != null;
+      allow create, update: if request.auth != null
+                            && arquivo == request.auth.uid + '.jpg'
+                            && request.resource.contentType == 'image/jpeg'
+                            && request.resource.size < 300 * 1024;
+      allow delete:         if request.auth != null
+                            && (arquivo == request.auth.uid + '.jpg' || role() == 'admin');
+    }
     // Tudo o mais: negado.
     match /{allPaths=**} { allow read, write: if false; }
   }

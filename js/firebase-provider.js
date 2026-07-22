@@ -347,6 +347,29 @@ export class FirebaseProvider {
   async uploadThumbDemanda(demandaId, campus, blob, baseNome) {
     return this._uploadThumb(`demandas/${campus}/${demandaId}`, blob, baseNome);
   }
+  // --- Meu espaço (v1.20): foto de perfil e autoatendimento do profissional ---
+  async uploadFotoPerfil(blob) {
+    const st = this._St;
+    const path = `perfis/${this.user.uid}.jpg`;
+    const ref = st.ref(this.storage, path);
+    await st.uploadBytesResumable(ref, blob, { contentType: 'image/jpeg' });
+    return await st.getDownloadURL(ref);
+  }
+  async removerFotoPerfil() {
+    const st = this._St;
+    try { await st.deleteObject(st.ref(this.storage, `perfis/${this.user.uid}.jpg`)); }
+    catch (e) { if (e?.code !== 'storage/object-not-found') throw e; }
+  }
+  // Atualização restrita do PRÓPRIO profissional (foto/ausências) — as Rules
+  // limitam os campos e exigem o vínculo por e-mail.
+  async atualizarMeuProfissional(patch, evento) {
+    const fs = this._F;
+    const prof = this.profissionalDoUsuario();
+    if (!prof) throw new Error('Nenhum profissional vinculado ao seu e-mail.');
+    await fs.updateDoc(fs.doc(this.db, 'profissionais', prof.id), patch);
+    await this._log(evento || 'Perfil do profissional atualizado', prof.nome, Object.keys(patch).join(', '));
+  }
+
   async _uploadThumb(prefixo, blob, baseNome) {
     const st = this._St;
     const nome = String(baseNome || 'thumb').replace(/[^\w.\-]+/g, '_').slice(-60);

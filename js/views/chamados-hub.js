@@ -7,6 +7,7 @@ import { el, frag } from '../ui.js';
 import { store } from '../store.js';
 import { viewDashboard, aplicarFiltrosExternos } from './dashboard.js';
 import { viewChamados } from './chamados.js';
+import { viewArquivo } from './arquivo.js';
 
 let recorte = 'fila'; // persiste durante a sessão de navegação
 
@@ -31,7 +32,7 @@ export function viewChamadosHub(rerender) {
     }
     history.replaceState(null, '', location.pathname + location.search + '#/chamados');
   }
-  if (!user && recorte !== 'fila') recorte = 'fila';
+  if (!user && recorte === 'triagem') recorte = 'fila'; // arquivo de demandas é público
 
   const pill = (id, txt) => el('button', {
     class: `sla-pill hub-pill${recorte === id ? ' hub-on' : ''}`,
@@ -44,10 +45,10 @@ export function viewChamadosHub(rerender) {
   const barra = el('div', { class: 'hub-barra' },
     pill('fila', 'Fila e atendimento'),
     user ? pill('triagem', user.role === 'campus' ? 'Chamados da unidade' : 'Triagem de chamados') : null,
-    user ? pill('arquivo', 'Arquivados') : null);
+    pill('arquivo', 'Arquivados'));
 
   const corpo = (recorte === 'triagem' && user) ? viewChamados(rerender, 'ativos')
-    : (recorte === 'arquivo' && user) ? viewChamados(rerender, 'arquivo')
+    : recorte === 'arquivo' ? viewArquivo(rerender)
     : viewDashboard(rerender);
   return frag(barra, corpo);
 }

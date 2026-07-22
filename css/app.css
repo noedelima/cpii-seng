@@ -630,3 +630,21 @@ ul.ajuda-sumario li, ol.ajuda-sumario li { margin: .2em 0; break-inside: avoid; 
 .detalhe-badges { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
 td .fase-badge { margin-left: 6px; }
 details.triagem-bloco > summary { cursor: pointer; }
+
+/* --- Meu espaço (v1.20): avatar, foto de perfil e minhas atividades ---------- */
+.avatar { border-radius: 50%; object-fit: cover; flex: none; vertical-align: middle; }
+.avatar-ini { display: inline-flex; align-items: center; justify-content: center;
+  color: #fff; font-weight: 700; letter-spacing: .02em; user-select: none; }
+.prof-ident { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.prof-nome .avatar { margin-right: 4px; }
+.foto-linha { display: flex; align-items: center; gap: 16px; }
+.foto-previa .avatar { box-shadow: var(--sombra); }
+.foto-acoes { display: flex; gap: 8px; flex-wrap: wrap; }
+.ativ-lista { display: flex; flex-direction: column; gap: 6px; }
+.ativ-item { display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  border: 1px solid var(--borda); border-radius: var(--raio-sm); padding: 8px 11px;
+  text-decoration: none; color: var(--texto); font-size: .84rem;
+  transition: border-color var(--transicao), background var(--transicao); }
+.ativ-item:hover { border-color: var(--ouro); background: var(--linha-hover); }
+.ativ-titulo { font-weight: 600; min-width: 0; flex: 1 1 100%; }
+.ativ-meta { color: var(--texto-2); font-size: .74rem; }
