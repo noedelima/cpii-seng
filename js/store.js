@@ -280,6 +280,18 @@ class DemoProvider {
     this._save();
   }
 
+  // --- Tarefas da seção (v1.22 — modo demonstração) ---
+  listTarefas() { return this.user ? (this.db.tarefas || []) : []; }
+  async criarTarefa(t) {
+    const id = 't' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    this.db.tarefas = [...(this.db.tarefas || []), { ...t, id, criadoEm: Date.now(), atualizadoEm: Date.now() }];
+    this._log('Tarefa criada', t.titulo); this._save(); return id;
+  }
+  async atualizarTarefa(id, patch, evento) {
+    this.db.tarefas = (this.db.tarefas || []).map(t => t.id === id ? { ...t, ...patch, atualizadoEm: Date.now() } : t);
+    this._log(evento || 'Tarefa atualizada', id); this._save();
+  }
+
   // --- Profissionais ---
   listProfissionais() { return this.user ? this.db.profissionais : []; }
   getTransparencia() { return calcularTransparencia(this.db.chamados || [], slaChamado, STATUS_CHAMADO_ABERTO); }

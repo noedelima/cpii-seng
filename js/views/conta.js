@@ -9,6 +9,7 @@ import { fiscaisDe } from '../calc.js';
 import { avatar, reduzirFoto } from '../avatar.js';
 import { store } from '../store.js';
 import { campiDoUsuario, can } from '../auth.js';
+import { cardTarefas } from './tarefas.js';
 import { api } from '../api.js';
 
 export function viewConta() {
@@ -171,7 +172,8 @@ export function viewConta() {
           prof ? linha('Profissional vinculado', `${prof.nome} — ${prof.cargo} · ${prof.area}`) : null,
           apiLinha,
         ),
-        cartaoAtividades),
+        cartaoAtividades,
+        (prof && can(user, 'verInterno')) ? cardTarefas(s, user, null, { apenasProf: prof.id }) : null),
       el('div', { class: 'col' },
         cartaoFoto,
         cartaoAusencias,

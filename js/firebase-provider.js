@@ -18,6 +18,7 @@ export class FirebaseProvider {
     this._internas = {};
     this._profissionais = [];
     this._usuarios = [];
+    this._tarefas = [];
     this._logs = [];
     this._notificacoes = [];
     this._diretorio = [];
@@ -85,7 +86,7 @@ export class FirebaseProvider {
           this._assinarPrivados();
         } else {
           this.user = null;
-          this._internas = {}; this._profissionais = []; this._usuarios = [];
+          this._internas = {}; this._profissionais = []; this._usuarios = []; this._tarefas = [];
           this._notificacoes = []; this._diretorio = []; this._chamados = [];
         }
         this._emit();
@@ -122,6 +123,12 @@ export class FirebaseProvider {
       const campi = (Array.isArray(this.user.campi) && this.user.campi.length) ? this.user.campi : (this.user.campus ? [this.user.campus] : []);
       if (campi.length) this._unsubPriv.push(fs.onSnapshot(fs.query(fs.collection(this.db, 'chamados'), fs.where('campus', 'in', campi.slice(0, 10))), (snap) => {
         this._chamados = snap.docs.map(d => ({ id: d.id, ...d.data() })); this._emit();
+      }, () => {}));
+    }
+    // Tarefas da seção (v1.22): Eng/Chefe/Admin — erro silencioso p/ demais (rules).
+    if (['engenharia', 'admin', 'chefe'].includes(this.user?.role)) {
+      this._unsubPriv.push(fs.onSnapshot(fs.collection(this.db, 'tarefas'), (snap) => {
+        this._tarefas = snap.docs.map(d => ({ id: d.id, ...d.data() })); this._emit();
       }, () => {}));
     }
     if (['admin', 'chefe'].includes(this.user?.role)) {
@@ -368,6 +375,21 @@ export class FirebaseProvider {
     if (!prof) throw new Error('Nenhum profissional vinculado ao seu e-mail.');
     await fs.updateDoc(fs.doc(this.db, 'profissionais', prof.id), patch);
     await this._log(evento || 'Perfil do profissional atualizado', prof.nome, Object.keys(patch).join(', '));
+  }
+
+  // --- Tarefas da seção (v1.22) ---------------------------------------------
+  listTarefas() { return this._tarefas; }
+  async criarTarefa(t) {
+    const fs = this._F;
+    const id = 't' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    await fs.setDoc(fs.doc(this.db, 'tarefas', id), { ...t, criadoEm: Date.now(), atualizadoEm: Date.now() });
+    await this._log('Tarefa criada', t.titulo);
+    return id;
+  }
+  async atualizarTarefa(id, patch, evento) {
+    const fs = this._F;
+    await fs.updateDoc(fs.doc(this.db, 'tarefas', id), { ...patch, atualizadoEm: Date.now() });
+    await this._log(evento || 'Tarefa atualizada', id, Object.keys(patch).join(', '));
   }
 
   async _uploadThumb(prefixo, blob, baseNome) {

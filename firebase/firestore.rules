@@ -220,6 +220,20 @@ service cloud.firestore {
             || (request.resource.data.ausencias is list && request.resource.data.ausencias.size() <= 50));
     }
 
+    // ---------- tarefas da seção (kanban interno — v1.22) ----------------------
+    // Trabalho que não é demanda/chamado. Interno à SENG (Eng/Chefe/Admin).
+    function tarefaValida(t) {
+      return t.titulo is string && t.titulo.size() > 0 && t.titulo.size() <= 140
+          && t.situacao in ['aberta', 'andamento', 'concluida', 'cancelada']
+          && (!('descricao' in t) || (t.descricao is string && t.descricao.size() <= 2000))
+          && (!('responsaveis' in t) || (t.responsaveis is list && t.responsaveis.size() <= 10));
+    }
+    match /tarefas/{id} {
+      allow read: if isEng();
+      allow create, update: if isEng() && tarefaValida(request.resource.data);
+      allow delete: if isChefe();
+    }
+
     // ---------- usuários — leitura p/ chefia (vínculo de profissionais);
     //            gestão pelo admin; sempre ao menos um admin --------------------
     match /usuarios/{uid} {

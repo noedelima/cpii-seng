@@ -7,6 +7,7 @@ import { avatar } from '../avatar.js';
 import { cargaProfissionais, limitePlanejamento, refIndividual } from '../calc.js';
 import { store } from '../store.js';
 import { can } from '../auth.js';
+import { cardTarefas } from './tarefas.js';
 
 export function viewProfissionais(rerender) {
   const s = store();
@@ -167,6 +168,7 @@ export function viewProfissionais(rerender) {
           el('strong', {}, area),
           el('span', {}, `${usoPlanejamento[area] || 0} / ${limites[area]} participações`))))),
     cardDisp,
+    cardTarefas(s, user, rerender),
     formWrap,
     el('div', { class: 'prof-lista' }, cards));
 }
