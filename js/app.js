@@ -11,6 +11,7 @@ import { viewChamadosHub } from './views/chamados-hub.js';
 import { viewLogin } from './views/login.js';
 import { viewDemanda } from './views/demanda.js';
 import { viewProfissionais } from './views/profissionais.js';
+import { viewAgenda } from './views/agenda.js';
 import { viewAdmin } from './views/admin.js';
 import { viewConta } from './views/conta.js';
 import { viewAjuda } from './views/ajuda.js';
@@ -42,6 +43,7 @@ function renderHeader() {
   const nav = el('nav', { class: 'nav', 'aria-label': 'Navegação principal' },
     navlink('#/chamados', 'Chamados'),
     user && can(user, 'verInterno') ? navlink('#/equipe', 'Equipe') : null,
+    user && ['engenharia', 'chefe', 'admin'].includes(user.role) ? navlink('#/agenda', 'Agenda') : null,
     user && (can(user, 'usuarios') || can(user, 'params')) ? navlink('#/admin', 'Administração') : null,
     navlink('#/ajuda', 'Ajuda'),
   );
@@ -90,6 +92,7 @@ const rotas = [
   { re: /^#\/nova$/, view: () => { location.hash = '#/chamado-novo'; return document.createDocumentFragment(); }, titulo: null },
   { re: /^#\/demanda\/([\w-]+)$/, view: viewDemanda, titulo: (m) => `Demanda ${m[1]}` },
   { re: /^#\/equipe$/, view: viewProfissionais, titulo: 'Equipe' },
+  { re: /^#\/agenda$/, view: viewAgenda, titulo: 'Agenda' },
   { re: /^#\/profissionais$/, view: viewProfissionais, titulo: 'Equipe' }, // rota antiga (compat)
   { re: /^#\/admin$/, view: viewAdmin, titulo: 'Administração' },
   { re: /^#\/conta$/, view: viewConta, titulo: 'Minha conta' },

@@ -8,7 +8,7 @@ export const APP = {
   orgao: 'Colégio Pedro II',
   setor: 'Seção de Engenharia — SENG/DECOF',
   portaria: 'Portaria nº 7503/REITORIA/CPII, de 24/11/2025',
-  versao: '1.23.0',
+  versao: '1.24.0',
 };
 
 // --- Parâmetros ajustáveis pelo Administrador (defaults) ---------------------
@@ -39,14 +39,25 @@ export const CAMPI = [
   { id: 'CNI',    nome: 'Niterói' },
   { id: 'CREI',   nome: 'Realengo I' },
   { id: 'CREII',  nome: 'Realengo II' },
-  { id: 'CREIR',  nome: 'CREIR' },
+  { id: 'CREIII', nome: 'Realengo III' }, // ex-CREIR, promovido a Campus (2026)
   { id: 'CSCI',   nome: 'São Cristóvão I' },
   { id: 'CSCII',  nome: 'São Cristóvão II' },
   { id: 'CSCIII', nome: 'São Cristóvão III' },
   { id: 'CTI',    nome: 'Tijuca I' },
   { id: 'CTII',   nome: 'Tijuca II' },
 ];
-export const campusNome = (id) => (CAMPI.find(c => c.id === id) || {}).nome || id;
+// Alias histórico: registros antigos gravados com a sigla CREIR (antes da
+// promoção a Campus Realengo III) resolvem para o nome novo.
+const ALIAS_CAMPUS = { CREIR: 'CREIII' };
+export const campusNome = (id) => (CAMPI.find(c => c.id === (ALIAS_CAMPUS[id] || id)) || {}).nome || id;
+
+// --- Agenda da Seção (v1.24) — eventos manuais do calendário interno ----------
+export const TIPOS_EVENTO_AGENDA = [
+  { id: 'feriado', nome: 'Feriado' },
+  { id: 'recesso', nome: 'Recesso' },
+  { id: 'evento',  nome: 'Evento / marco' },
+];
+export const tipoEventoAgendaNome = (id) => (TIPOS_EVENTO_AGENDA.find(t => t.id === id) || {}).nome || id;
 
 // --- Status do ciclo de vida -------------------------------------------------
 export const STATUS = [

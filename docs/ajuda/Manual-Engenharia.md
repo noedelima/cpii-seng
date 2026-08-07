@@ -539,6 +539,10 @@ Ela está no **arquivo morto** por 30 dias (visível ao Chefe/Admin no fim da fi
 - **Alocação com aviso** — nos seletores de fiscais/planejamento/responsáveis, quem está ausente (ou entra em ausência em até 15 dias) aparece sinalizado — sem bloqueio, a decisão é da Chefia.
 - **Tarefas da seção (kanban)** — quadro com colunas *Abertas · Em andamento · Concluídas*: arraste os cartões entre colunas (ou use as setas ← →), crie tarefas rápidas com responsável e prazo (vencidas ficam destacadas) e cancele pela Chefia (✕). Tarefas cobrem o trabalho que **não é demanda nem chamado** e **não pontuam pelo art. 11** — a contagem é separada.
 
+### Agenda da Seção (aba Agenda — somente SENG)
+
+Calendário mensal **interno da Engenharia** (sem visualização pelo CODIR ou pelos campi) que reúne tudo com distribuição temporal: **ausências da equipe**, **prazos de tarefas**, **SLAs dos chamados ativos** (com link para o dossiê) e os **eventos da seção** — feriados, recessos e marcos, cadastrados pela Chefia na própria página (e removíveis por ela). Navegue pelos meses com as setas; a lista “No mês” detalha cada item em ordem cronológica.
+
 ### Arquivados (aba Chamados)
 
 O recorte **Arquivados** é o histórico universal dos encerrados, com dois sub-recortes: **Demandas** (concluídas, canceladas e não enquadradas — público, com filtro por desfecho) e **Chamados** (interno). A fila e a triagem listam **apenas itens ativos**.
