@@ -12,6 +12,7 @@ const { PROJECT_ID } = require('./auth');
 
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const SCOPE = 'https://www.googleapis.com/auth/identitytoolkit';
+const SCOPE_DATASTORE = 'https://www.googleapis.com/auth/datastore';
 
 function saConfig() {
   const raw = process.env.FB_SA_JSON || '';
@@ -25,14 +26,15 @@ const claimsDisponiveis = () => !!saConfig();
 
 const b64url = (obj) => Buffer.from(JSON.stringify(obj)).toString('base64url');
 
-let cache = { at: 0, token: null };
-async function accessToken() {
+const caches = {}; // por escopo
+async function accessToken(scope = SCOPE) {
+  const cache = caches[scope] || (caches[scope] = { at: 0, token: null });
   if (cache.token && Date.now() - cache.at < 50 * 60e3) return cache.token;
   const sa = saConfig();
   if (!sa) throw new Error('FB_SA_JSON ausente — claims não configuradas');
   const now = Math.floor(Date.now() / 1000);
   const semAssinatura = b64url({ alg: 'RS256', typ: 'JWT' }) + '.' +
-    b64url({ iss: sa.client_email, scope: SCOPE, aud: TOKEN_URL, iat: now, exp: now + 3600 });
+    b64url({ iss: sa.client_email, scope, aud: TOKEN_URL, iat: now, exp: now + 3600 });
   const assinatura = crypto.createSign('RSA-SHA256')
     .update(semAssinatura).sign(sa.private_key).toString('base64url');
   const r = await fetch(TOKEN_URL, {
@@ -45,8 +47,23 @@ async function accessToken() {
   });
   if (!r.ok) throw new Error('oauth ' + r.status + ': ' + (await r.text()).slice(0, 200));
   const data = await r.json();
-  cache = { at: Date.now(), token: data.access_token };
+  cache.at = Date.now(); cache.token = data.access_token;
   return cache.token;
+}
+
+// Custom token do Firebase (para signInWithCustomToken no cliente) — JWT RS256
+// assinado localmente pela service account; sem chamadas de rede.
+// Base da futura autenticação por Matrícula/Senha de rede (AD/LDAP — ADR-003).
+const AUD_CUSTOM = 'https://identitytoolkit.googleapis.com/google.identity.identitytoolkit.v1.IdentityToolkit';
+function customToken(uid, claims) {
+  const sa = saConfig();
+  if (!sa) throw new Error('FB_SA_JSON ausente');
+  const now = Math.floor(Date.now() / 1000);
+  const corpo = { iss: sa.client_email, sub: sa.client_email, aud: AUD_CUSTOM, iat: now, exp: now + 3600, uid };
+  if (claims && Object.keys(claims).length) corpo.claims = claims;
+  const semAssinatura = b64url({ alg: 'RS256', typ: 'JWT' }) + '.' + b64url(corpo);
+  const assinatura = crypto.createSign('RSA-SHA256').update(semAssinatura).sign(sa.private_key).toString('base64url');
+  return semAssinatura + '.' + assinatura;
 }
 
 // Define (substitui) as custom claims do usuário no Firebase Auth.
@@ -64,4 +81,4 @@ async function setCustomClaims(uid, claims) {
   return claims;
 }
 
-module.exports = { claimsDisponiveis, setCustomClaims };
+module.exports = { claimsDisponiveis, setCustomClaims, accessToken, customToken, SCOPE_DATASTORE };

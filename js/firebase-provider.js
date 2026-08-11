@@ -121,9 +121,18 @@ export class FirebaseProvider {
       }, () => {}));
     } else if (rl === 'campus') {
       const campi = (Array.isArray(this.user.campi) && this.user.campi.length) ? this.user.campi : (this.user.campus ? [this.user.campus] : []);
-      if (campi.length) this._unsubPriv.push(fs.onSnapshot(fs.query(fs.collection(this.db, 'chamados'), fs.where('campus', 'in', campi.slice(0, 10))), (snap) => {
-        this._chamados = snap.docs.map(d => ({ id: d.id, ...d.data() })); this._emit();
-      }, () => {}));
+      // O operador `in` do Firestore aceita até 10 valores: consultas em blocos
+      // para perfis com muitos campi — TODOS os campi valem (nenhum é descartado).
+      if (campi.length) {
+        const blocos = [];
+        for (let i = 0; i < campi.length; i += 10) blocos.push(campi.slice(i, i + 10));
+        const porBloco = blocos.map(() => []);
+        blocos.forEach((bloco, ix) => this._unsubPriv.push(
+          fs.onSnapshot(fs.query(fs.collection(this.db, 'chamados'), fs.where('campus', 'in', bloco)), (snap) => {
+            porBloco[ix] = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            this._chamados = porBloco.flat(); this._emit();
+          }, () => {})));
+      }
     }
     // Tarefas da seção (v1.22): Eng/Chefe/Admin — erro silencioso p/ demais (rules).
     if (['engenharia', 'admin', 'chefe'].includes(this.user?.role)) {
@@ -503,6 +512,11 @@ export class FirebaseProvider {
     if (!uid) {
       if (this._usuarios.some(x => (x.email || '').toLowerCase() === u.email.toLowerCase()))
         throw new Error('Já existe usuário com este e-mail.');
+    }
+    // Matrícula = identificador principal (SUAP): única entre os usuários.
+    if (u.matricula && this._usuarios.some(x => x.uid !== uid && x.matricula === u.matricula))
+      throw new Error('Já existe usuário com esta matrícula.');
+    if (!uid) {
       uid = await this._criarCredencial(u.email, u.senha);
     }
     if (existente && existente.role === 'admin') {

@@ -236,14 +236,22 @@ service cloud.firestore {
 
     // ---------- usuários — leitura p/ chefia (vínculo de profissionais);
     //            gestão pelo admin; sempre ao menos um admin --------------------
+    // Matrícula SUAP — identificador principal do usuário (v1.25): somente
+    // dígitos (4–12). Unicidade garantida na aplicação (admin) — aqui, o formato.
+    function matriculaValida(d) {
+      return !('matricula' in d) || d.matricula == null
+          || (d.matricula is string && d.matricula.matches('[0-9]{4,12}'));
+    }
     match /usuarios/{uid} {
       allow read: if isChefe() || (signedIn() && request.auth.uid == uid);
       allow create: if isAdmin()
         && request.resource.data.role in ['campus','engenharia','chefe','codir','admin']
-        && request.resource.data.nome is string && request.resource.data.nome.size() <= 80;
+        && request.resource.data.nome is string && request.resource.data.nome.size() <= 80
+        && matriculaValida(request.resource.data);
       allow update: if isAdmin()
         && request.resource.data.role in ['campus','engenharia','chefe','codir','admin']
         && request.resource.data.nome is string && request.resource.data.nome.size() <= 80
+        && matriculaValida(request.resource.data)
         // Revogação/desativação de administrador: só por OUTRO administrador
         // (garante que sempre reste ao menos um — o revogador).
         && ( resource.data.role != 'admin'

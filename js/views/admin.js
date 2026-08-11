@@ -8,6 +8,7 @@ import { can } from '../auth.js';
 
 let filtroLog = '';
 let abaAtual = null;
+let filtroUsu = { busca: '', role: '', campus: '', situacao: '' };
 
 export function viewAdmin(rerender) {
   const s = store();
@@ -94,9 +95,32 @@ function secaoParams(s, params) {
 
 // ---------------------------------------------------------------------------
 function secaoUsuarios(s, user, rerender) {
-  const usuarios = s.listUsuarios();
+  const usuarios = [...s.listUsuarios()]
+    .sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR', { sensitivity: 'base' }));
   const formWrap = el('div', {});
   const adminsAtivos = usuarios.filter(x => x.role === 'admin' && x.ativo !== false);
+
+  const campiDe = (u) => (u.campi && u.campi.length) ? u.campi : (u.campus ? [u.campus] : []);
+  const f = filtroUsu;
+  const txt = f.busca.trim().toLowerCase();
+  const filtrados = usuarios.filter(u =>
+    (!txt || `${u.nome} ${u.email} ${u.matricula || ''}`.toLowerCase().includes(txt))
+    && (!f.role || u.role === f.role)
+    && (!f.campus || campiDe(u).includes(f.campus))
+    && (!f.situacao || (f.situacao === 'ativo' ? u.ativo !== false : u.ativo === false)));
+  const temFiltro = txt || f.role || f.campus || f.situacao;
+
+  const inBusca = el('input', {
+    type: 'search', placeholder: 'Nome, e-mail ou matrícula…', value: f.busca,
+    'aria-label': 'Buscar usuários',
+    oninput: debounce((e) => { filtroUsu = { ...filtroUsu, busca: e.target.value }; rerender(); }, 220),
+  });
+  const selFRole = select(ROLES, { value: f.role, placeholder: 'Perfil: todos', onchange: (e) => { filtroUsu = { ...filtroUsu, role: e.target.value }; rerender(); } });
+  const selFCampus = select(CAMPI, { value: f.campus, placeholder: 'Campus: todos', onchange: (e) => { filtroUsu = { ...filtroUsu, campus: e.target.value }; rerender(); } });
+  const selFSit = select([{ id: 'ativo', nome: 'Ativos' }, { id: 'inativo', nome: 'Inativos' }], { value: f.situacao, placeholder: 'Situação: todas', onchange: (e) => { filtroUsu = { ...filtroUsu, situacao: e.target.value }; rerender(); } });
+  const filtros = el('div', { class: 'filtros' },
+    inBusca, selFRole, selFCampus, selFSit,
+    temFiltro ? el('button', { class: 'btn ghost sm', type: 'button', onclick: () => { filtroUsu = { busca: '', role: '', campus: '', situacao: '' }; rerender(); } }, 'Limpar filtros') : null);
 
   function abrirForm(u = {}) {
     const ehProprioAdmin = u.uid && u.uid === user.uid && u.role === 'admin';
@@ -104,6 +128,7 @@ function secaoUsuarios(s, user, rerender) {
     const travaAdmin = ehProprioAdmin || ultimoAdmin;
     const inNome = el('input', { type: 'text', required: true, maxlength: 80, value: u.nome || '' });
     const inEmail = el('input', { type: 'email', required: true, maxlength: 120, value: u.email || '', ...(u.uid ? { disabled: true } : {}) });
+    const inMatricula = el('input', { type: 'text', inputmode: 'numeric', pattern: '[0-9]{4,12}', maxlength: 12, value: u.matricula || '', ...(u.uid ? {} : { required: true }), placeholder: 'Somente números' });
     const selRole = select(ROLES, { value: u.role || '', required: true, ...(travaAdmin ? { disabled: true } : {}) });
     const campiAtuais = u.campi && u.campi.length ? u.campi : (u.campus ? [u.campus] : []);
     const campiChecks = CAMPI.map(c => {
@@ -124,9 +149,12 @@ function secaoUsuarios(s, user, rerender) {
         const papel = travaAdmin ? 'admin' : selRole.value;
         const campiSel = campiChecks.map(l => l.querySelector('input')).filter(c => c.checked).map(c => c.value);
         try {
+          const mat = inMatricula.value.trim();
+          if (mat && !/^\d{4,12}$/.test(mat)) { toast('Matrícula: somente números (4 a 12 dígitos).', 'erro'); return; }
           await s.salvarUsuario({
             ...(u.uid ? { uid: u.uid } : {}),
             nome: inNome.value.trim(), email: inEmail.value.trim(),
+            matricula: mat || null,
             role: papel,
             campi: papel === 'campus' ? campiSel : [],
             campus: papel === 'campus' ? (campiSel[0] || null) : null,
@@ -138,6 +166,7 @@ function secaoUsuarios(s, user, rerender) {
         } catch (err) { toast(err.message, 'erro'); }
       } },
         el('div', { class: 'form-linha' }, campo('Nome *', inNome), campo('E-mail *', inEmail, 'Se for da Engenharia, use o mesmo e-mail do cadastro de profissionais — o vínculo é automático.')),
+        campo(u.uid ? 'Matrícula' : 'Matrícula *', inMatricula, 'Identificador principal — a mesma matrícula do SUAP. Será o login quando a autenticação migrar para a rede institucional.'),
         el('div', { class: 'form-linha' }, campo('Perfil *', selRole, 'Campus: solicita. Engenharia: trata. Chefe: gerencia. CODIR: aprova e ajusta prioridade. Administrador: tudo.'), campo('Campi (perfil Campus)', el('div', { class: 'chips' }, campiChecks), 'Marque um ou mais — vale só para o perfil Campus; o cadastrador atua nos campi marcados.')),
         inSenha ? campo('Senha inicial *', inSenha, 'A pessoa troca depois em "Minha conta".') : null,
         el('label', { class: 'chip-check' }, ckAtivo, ' Ativo'),
@@ -149,17 +178,20 @@ function secaoUsuarios(s, user, rerender) {
 
   return frag(el('section', { class: 'card' },
     el('div', { class: 'card-cab' },
-      el('h2', {}, `Usuários (${usuarios.length})`),
+      el('h2', {}, `Usuários `, el('span', { class: 'sub' }, temFiltro ? `(${filtrados.length} de ${usuarios.length})` : `(${usuarios.length})`)),
       el('button', { class: 'btn primario sm', onclick: () => abrirForm() }, '+ Novo usuário')),
+    filtros,
     el('div', { class: 'tabela-wrap' }, el('table', { class: 'tabela' },
-      el('thead', {}, el('tr', {}, el('th', {}, 'Nome'), el('th', {}, 'E-mail'), el('th', {}, 'Perfil'), el('th', {}, 'Campus'), el('th', {}, 'Situação'), el('th', {}, ''))),
-      el('tbody', {}, usuarios.map(u => el('tr', {},
+      el('thead', {}, el('tr', {}, el('th', {}, 'Nome'), el('th', {}, 'Matrícula'), el('th', {}, 'E-mail'), el('th', {}, 'Perfil'), el('th', {}, 'Campus'), el('th', {}, 'Situação'), el('th', {}, ''))),
+      el('tbody', {}, filtrados.length ? filtrados.map(u => el('tr', {},
         el('td', {}, u.nome),
+        el('td', { class: 'mono' }, u.matricula || '—'),
         el('td', { class: 'mono' }, u.email),
         el('td', {}, roleNome(u.role)),
-        el('td', {}, (u.campi && u.campi.length) ? u.campi.map(campusNome).join(', ') : (u.campus ? campusNome(u.campus) : '—')),
+        el('td', {}, campiDe(u).length ? campiDe(u).map(campusNome).join(', ') : '—'),
         el('td', {}, u.ativo === false ? 'Inativo' : 'Ativo'),
-        el('td', {}, el('button', { class: 'btn ghost sm', onclick: () => abrirForm(u) }, 'Editar')))))))),
+        el('td', {}, el('button', { class: 'btn ghost sm', onclick: () => abrirForm(u) }, 'Editar'))))
+        : el('tr', {}, el('td', { colspan: 7, class: 'vazio' }, 'Nenhum usuário com esses filtros.')))))),
     formWrap);
 }
 

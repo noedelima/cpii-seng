@@ -321,6 +321,8 @@ class DemoProvider {
     const existente = i >= 0 ? this.db.usuarios[i] : null;
     if (u.email && this.db.usuarios.some(x => x.uid !== u.uid && x.email.toLowerCase() === u.email.toLowerCase()))
       throw new Error('Já existe usuário com este e-mail.');
+    if (u.matricula && this.db.usuarios.some(x => x.uid !== u.uid && x.matricula === u.matricula))
+      throw new Error('Já existe usuário com esta matrícula.');
     if (existente && existente.role === 'admin') {
       const perdeAdmin = (u.role && u.role !== 'admin') || u.ativo === false;
       if (perdeAdmin) {

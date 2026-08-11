@@ -313,6 +313,8 @@ Em **Administração**, o cartão **Parâmetros do sistema** controla o cálculo
 
 **Perfil necessário: Administrador.** A página de **Administração** é organizada em **abas**: **Usuários**, **Parâmetros do sistema** e **Log de auditoria** — clique na aba desejada para alternar.
 
+**Localizar usuários (v1.25).** A lista vem em **ordem alfabética** e tem **filtros**: busca por **nome, e-mail ou matrícula**, e seleções de **Perfil**, **Campus** e **Situação** (ativos/inativos) — combináveis; o botão **Limpar filtros** restaura a lista completa.
+
 **Cadastrar um novo usuário**
 
 1. Em **Administração**, no cartão **Usuários**, clique em **+ Novo usuário**.
@@ -327,9 +329,10 @@ Em **Administração**, o cartão **Parâmetros do sistema** controla o cálculo
 |----|-------|----------------|
 | ① | **Nome** | Nome completo da pessoa. |
 | ② | **E-mail** | Para a SENG, use o **mesmo e-mail** que será o do profissional — o vínculo é automático. |
-| ③ | **Perfil** | Campus, Engenharia, Chefe de Seção, CODIR ou Administrador. |
-| ④ | **Campi** | Apenas para o perfil **Campus** — marque **uma ou mais** unidades. O cadastrador atua em todos os campi marcados (ex.: **CREIR + Realengo I**, quando há gestão compartilhada). |
-| ⑤ | **Senha inicial** | Mínimo de 6 caracteres; a pessoa troca depois em “Minha conta”. |
+| ③ | **Matrícula** | A **matrícula SUAP** (somente números) — identificador principal do usuário; obrigatória nos cadastros novos e única no sistema. Será o **login** quando a autenticação migrar para a rede institucional (mesma senha do SUAP). |
+| ④ | **Perfil** | Campus, Engenharia, Chefe de Seção, CODIR ou Administrador. |
+| ⑤ | **Campi** | Apenas para o perfil **Campus** — marque **uma ou mais** unidades; o cadastrador atua em **todos** os campi marcados (ex.: **Realengo I + Realengo III**, quando há gestão compartilhada). |
+| ⑥ | **Senha inicial** | Mínimo de 6 caracteres; a pessoa troca depois em “Minha conta”. |
 
 3. Clique em **Salvar**. A credencial e o perfil são criados de uma só vez (sem console externo).
 
