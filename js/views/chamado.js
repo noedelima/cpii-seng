@@ -86,6 +86,7 @@ export function viewChamado(rerender, id) {
       linhaMeta('Aberto em', fmtDataHora(c.aberturaEm)),
       linhaMeta('Prazo (SLA)', c.prazoLimite ? fmtData(c.prazoLimite) : '—'),
       linhaMeta('Solicitante', c.autor?.nome),
+      c.processoSuap ? linhaMeta('Processo SUAP', c.processoSuap) : null,
       c.desfecho ? linhaMeta('Desfecho da triagem', desfechoNome(c.desfecho)) : null,
       c.resolucao?.setor ? linhaMeta('Encaminhado a', c.resolucao.setor) : null),
     el('h3', { class: 'sub-titulo' }, 'Descrição'),
@@ -94,6 +95,37 @@ export function viewChamado(rerender, id) {
     c.resolucao?.parecerTriagem ? el('p', { class: 'ch-descricao' }, c.resolucao.parecerTriagem) : null,
     (c.resolucao?.texto && !c.demandaId) ? el('h3', { class: 'sub-titulo' }, 'Resolução / orientação') : null,
     (c.resolucao?.texto && !c.demandaId) ? el('p', { class: 'ch-descricao' }, c.resolucao.texto) : null);
+
+  // -------- editar dados da solicitação (campus dono e SENG) — v1.26 --------
+  // Correção de erros da abertura: assunto, localização, urgência, processo
+  // SUAP e descrição. Para o solicitante (qualquer perfil do campus dono),
+  // disponível até o início do atendimento; tudo fica no histórico.
+  let cartaoEditar = null;
+  const podeEditarDadosCh = !terminal && !c.demandaId
+    && (ehSeng || (ehDono && ['aberto', 'triagem', 'diligencia'].includes(c.status)));
+  if (podeEditarDadosCh) {
+    const inAssunto = el('input', { type: 'text', maxlength: 140, required: true, value: c.assunto || '' });
+    const inLocal = el('input', { type: 'text', maxlength: 160, value: c.local || '' });
+    const selUrg = select(URGENCIA_CHAMADO, { value: c.urgencia || 'media', placeholder: null });
+    const inSuap = el('input', { type: 'text', maxlength: 40, value: c.processoSuap || '', placeholder: 'Ex.: 23000.001234.2026-11' });
+    const inDesc = el('textarea', { rows: 5, maxlength: 4000 }, c.descricao || '');
+    const formEd = el('form', { class: 'form-grid', onsubmit: async (e) => {
+      e.preventDefault();
+      if (!inAssunto.value.trim() || !inDesc.value.trim()) { toast('Assunto e descrição são obrigatórios.', 'erro'); return; }
+      await acao({ assunto: inAssunto.value.trim(), local: inLocal.value.trim(), urgencia: selUrg.value,
+        processoSuap: inSuap.value.trim(), descricao: inDesc.value.trim() },
+        'Dados da solicitação atualizados', 'chamado-atualizado');
+    } },
+      campo('Assunto *', inAssunto),
+      el('div', { class: 'form-linha' }, campo('Localização', inLocal), campo('Urgência', selUrg)),
+      campo('Processo SUAP', inSuap, 'Opcional — informe ou corrija o número do processo relacionado.'),
+      campo('Descrição *', inDesc),
+      el('div', { class: 'form-acoes' }, el('button', { class: 'btn primario' }, 'Salvar dados')));
+    cartaoEditar = el('section', { class: 'card' },
+      el('h2', {}, 'Editar dados da solicitação'),
+      el('p', { class: 'sub' }, 'Para corrigir informações da abertura (processo SUAP, descrição etc.) — disponível até o início do atendimento; as alterações ficam registradas no histórico.'),
+      el('details', { class: 'editar-dados' }, el('summary', {}, 'Abrir edição dos dados'), formEd));
+  }
 
   // Chamado já convertido em demanda — com desfazer (correção de conversão
   // acidental): a demanda vai ao arquivo morto e o chamado retorna à triagem.
@@ -168,7 +200,7 @@ export function viewChamado(rerender, id) {
 
   return frag(topo, stepper,
     el('div', { class: 'detalhe-grid' },
-      el('div', { class: 'col' }, dados, linhaTempo),
+      el('div', { class: 'col' }, dados, cartaoEditar, linhaTempo),
       el('div', { class: 'col' }, respostaCampus, acaoMomento, cartaoDemanda, cartaoPessoas, anexos)));
 }
 

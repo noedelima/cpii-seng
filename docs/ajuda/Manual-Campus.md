@@ -41,7 +41,7 @@ O sistema é o **canal único e on-line** para o campus solicitar e acompanhar o
 - A fila de demandas é **pública e transparente**, e a **priorização é padronizada** (GUT, valor e prazo — Portaria 7503/2025).
 - Todo o **histórico** fica registrado (quem fez o quê e quando), com **prazo de triagem (SLA)** por categoria.
 
-**O que você consegue fazer no sistema:** consultar a fila e baixar o relatório (sem login); **abrir chamados** do seu campus; **anexar fotos/plantas/PDF**; acompanhar o andamento; responder diligências; e trocar a sua senha.
+**O que você consegue fazer no sistema:** consultar a fila e baixar o relatório (sem login); **abrir chamados** do seu campus; **corrigir os dados da abertura** (assunto, localização, urgência, processo SUAP e descrição) enquanto o chamado não entra em atendimento; **anexar fotos/plantas/PDF**; acompanhar o andamento; responder diligências; e trocar a sua senha.
 
 ---
 
@@ -181,6 +181,8 @@ Quando falta uma informação para a triagem, a SENG coloca o chamado **Em dilig
 
 1. Em **Chamados** (recorte **Chamados da unidade**), localize o que está **Em diligência** (ou abra pelo aviso no sino).
 2. Abra o chamado. No cartão **Diligência — resposta do campus**, escreva a informação solicitada.
+
+> **Errou algo na abertura?** Qualquer usuário do campus solicitante pode corrigir os dados do chamado — **assunto, localização, urgência, processo SUAP e descrição** — no cartão **Editar dados da solicitação** (logo abaixo dos dados), enquanto o chamado estiver **Aberto, Em triagem ou Em diligência**. As alterações ficam registradas no histórico.
 3. Se ajudar, **anexe fotos** no cartão Anexos.
 4. Clique em **Responder diligência**. O chamado **retorna para triagem** e a SENG retoma a análise. Seu complemento fica no histórico e nos comentários.
 

@@ -39,9 +39,11 @@ export function viewAgenda(rerender) {
       itens.push({ tipo: 'chamado', ini: c.prazoLimite, fim: c.prazoLimite, cls: 'ag-chamado',
         rotulo: `SLA ${c.id} — ${c.assunto || ''} (${campusNome(c.campus)})`, href: `#/chamado/${c.id}` });
   });
+  // v1.26: o chip/lista mostram SOMENTE o título informado (o tipo segue
+  // distinguível pela cor e aparece no tooltip).
   (params.eventosAgenda || []).forEach(ev => itens.push({
     tipo: 'evento', ini: ev.inicio, fim: ev.fim || ev.inicio, cls: `ag-${ev.tipo}`,
-    rotulo: `${tipoEventoAgendaNome(ev.tipo)}: ${ev.titulo}`, ev }));
+    rotulo: ev.titulo, dica: `${tipoEventoAgendaNome(ev.tipo)}: ${ev.titulo}`, ev }));
 
   // ---- grade do mês ----------------------------------------------------------
   const ano = mesRef.getFullYear(), mes = mesRef.getMonth();
@@ -55,7 +57,7 @@ export function viewAgenda(rerender) {
     const ehHoje = MESMO_DIA(hoje.getTime(), d);
     celulas.push(el('div', { class: `ag-cel${ehHoje ? ' ag-hoje' : ''}${[0, 6].includes(d.getDay()) ? ' ag-fds' : ''}` },
       el('span', { class: 'ag-dia' }, String(dia)),
-      doDia.slice(0, 3).map(x => el(x.href ? 'a' : 'span', { class: `ag-chip ${x.cls}`, ...(x.href ? { href: x.href } : {}), title: x.rotulo },
+      doDia.slice(0, 3).map(x => el(x.href ? 'a' : 'span', { class: `ag-chip ${x.cls}`, ...(x.href ? { href: x.href } : {}), title: x.dica || x.rotulo },
         x.rotulo.length > 18 ? x.rotulo.slice(0, 17) + '…' : x.rotulo)),
       doDia.length > 3 ? el('span', { class: 'sub' }, `+${doDia.length - 3}`) : null));
   }

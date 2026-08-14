@@ -101,6 +101,8 @@ service cloud.firestore {
           && c.categoria is string
           && c.status in ['aberto','triagem','diligencia','atendimento','obra','encaminhado','resolvido','improcedente','duplicado','cancelado']
           && (!('anexos' in c) || (c.anexos is list && c.anexos.size() <= 20))
+          && (!('local' in c) || (c.local is string && c.local.size() <= 160))
+          && (!('processoSuap' in c) || (c.processoSuap is string && c.processoSuap.size() <= 40))
           && (!('historico' in c) || (c.historico is list && c.historico.size() <= 400))
           && (!('obsInterna' in c) || (c.obsInterna is list && c.obsInterna.size() <= 300))
           && (!('obsExterna' in c) || (c.obsExterna is list && c.obsExterna.size() <= 300))
@@ -324,8 +326,10 @@ service cloud.firestore {
           // Campus dono: complementar/responder diligência, comentar (externa) e anexar.
           // prazoLimite/diligenciaDesde: recomposição do SLA pausado ao responder a
           // diligência (workflow v2) — o prazo só pode ser estendido, nunca reduzido.
+          // v1.26: o campus dono também corrige dados da abertura (assunto,
+          // localização, urgência e processo SUAP) até o início do atendimento.
           || ( isCampusDe(resource.data.campus)
-               && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['descricao','status','obsExterna','comentarios','anexos','historico','atualizadoEm','prazoLimite','diligenciaDesde'])
+               && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['descricao','assunto','local','urgencia','processoSuap','status','obsExterna','comentarios','anexos','historico','atualizadoEm','prazoLimite','diligenciaDesde'])
                && request.resource.data.get('prazoLimite', 0) >= resource.data.get('prazoLimite', 0)
                && request.resource.data.status in ['aberto','triagem','diligencia'] )
           // Campus dono: comentar também com o chamado EM ATENDIMENTO

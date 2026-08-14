@@ -6,6 +6,9 @@
 import { el, campo, select, toast, confirmar, fmtData, abreviarNome } from '../ui.js';
 import { avatar } from '../avatar.js';
 import { can } from '../auth.js';
+import { selecaoPessoas } from '../alocacao.js';
+
+let tarefaEmEdicao = null; // edição de responsáveis no próprio cartão (v1.26)
 
 export const SITUACOES_TAREFA = [
   { id: 'aberta', nome: 'Abertas' },
@@ -26,6 +29,20 @@ export function cardTarefas(s, user, rerender, { apenasProf = null } = {}) {
   };
 
   const cartao = (t) => {
+    // v1.26 — editar responsáveis (um ou mais) no próprio cartão
+    if (t.id === tarefaEmEdicao) {
+      const selEd = selecaoPessoas({ itens: profs.map(p => ({ id: p.id, nome: abreviarNome(p.nome) })), atuais: t.responsaveis || [], vazio: 'Ninguém atribuído.' });
+      return el('div', { class: 'kb-card' },
+        el('div', { class: 'kb-titulo' }, t.titulo),
+        selEd.node,
+        el('div', { class: 'kb-acoes' },
+          el('button', { class: 'kb-seta', title: 'Salvar responsáveis', onclick: async () => {
+            tarefaEmEdicao = null;
+            await s.atualizarTarefa(t.id, { responsaveis: selEd.get() }, `Responsáveis da tarefa "${t.titulo}" atualizados`);
+            toast('Responsáveis atualizados.');
+          } }, '✓'),
+          el('button', { class: 'kb-seta', title: 'Cancelar edição', onclick: () => { tarefaEmEdicao = null; rerender(); } }, '✕')));
+    }
     const vencida = t.prazo && t.prazo < Date.now() && t.situacao !== 'concluida';
     const idx = SITUACOES_TAREFA.findIndex(x => x.id === t.situacao);
     const node = el('div', { class: 'kb-card', draggable: 'true' },
@@ -35,6 +52,7 @@ export function cardTarefas(s, user, rerender, { apenasProf = null } = {}) {
         (t.responsaveis || []).length ? el('span', { class: 'sub' }, t.responsaveis.map(pid => abreviarNome(nomeProf(pid))).join(', ')) : null,
         t.prazo ? el('span', { class: `sub${vencida ? ' ref-acima' : ''}` }, ` · até ${fmtData(t.prazo)}`) : null),
       el('div', { class: 'kb-acoes' },
+        el('button', { class: 'kb-seta', title: 'Editar responsáveis', onclick: () => { tarefaEmEdicao = t.id; rerender(); } }, '👥'),
         idx > 0 ? el('button', { class: 'kb-seta', title: 'Mover para a coluna anterior', onclick: () => mover(t, SITUACOES_TAREFA[idx - 1].id) }, '←') : null,
         idx < SITUACOES_TAREFA.length - 1 ? el('button', { class: 'kb-seta', title: 'Mover para a próxima coluna', onclick: () => mover(t, SITUACOES_TAREFA[idx + 1].id) }, '→') : null,
         can(user, 'excluir') ? el('button', { class: 'kb-seta perigo', title: 'Cancelar tarefa', onclick: async () => {
@@ -62,17 +80,17 @@ export function cardTarefas(s, user, rerender, { apenasProf = null } = {}) {
 
   // criação rápida
   const inTitulo = el('input', { type: 'text', maxlength: 140, placeholder: 'Nova tarefa…' });
-  const selResp = select(profs.map(p => ({ id: p.id, nome: abreviarNome(p.nome) })), { placeholder: 'Responsável…' });
+  const selResp = selecaoPessoas({ itens: profs.map(p => ({ id: p.id, nome: abreviarNome(p.nome) })), vazio: 'Sem responsável (dá para atribuir depois).' });
   const inPrazo = el('input', { type: 'date' });
-  const criar = el('div', { class: 'kb-nova' }, inTitulo, selResp, inPrazo,
+  const criar = el('div', { class: 'kb-nova' }, inTitulo, selResp.node, inPrazo,
     el('button', { class: 'btn sm', onclick: async () => {
       if (!inTitulo.value.trim()) { toast('Dê um título à tarefa.', 'erro'); return; }
       await s.criarTarefa({ titulo: inTitulo.value.trim(), situacao: 'aberta',
-        responsaveis: selResp.value ? [selResp.value] : [],
+        responsaveis: selResp.get(),
         prazo: inPrazo.value ? new Date(inPrazo.value + 'T23:59:59').getTime() : null,
         criadoPor: user.nome });
-      inTitulo.value = ''; selResp.value = ''; inPrazo.value = '';
       toast('Tarefa criada.');
+      rerender();
     } }, 'Criar'));
 
   return el('section', { class: 'card' },
