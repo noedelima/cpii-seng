@@ -43,7 +43,7 @@ function renderHeader() {
   const nav = el('nav', { class: 'nav', 'aria-label': 'Navegação principal' },
     navlink('#/chamados', 'Chamados'),
     user && can(user, 'verInterno') ? navlink('#/equipe', 'Equipe') : null,
-    user && ['engenharia', 'chefe', 'admin'].includes(user.role) ? navlink('#/agenda', 'Agenda') : null,
+    user && ['engenharia', 'estagiario', 'administrativo', 'chefe', 'admin'].includes(user.role) ? navlink('#/agenda', 'Agenda') : null,
     user && (can(user, 'usuarios') || can(user, 'params')) ? navlink('#/admin', 'Administração') : null,
     navlink('#/ajuda', 'Ajuda'),
   );

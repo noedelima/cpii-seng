@@ -180,7 +180,8 @@ export function cargaProfissionais(demandas, internas, profissionais, params, ch
 // Limite do art. 13: equipes de planejamento ≤ 2 × profissionais ativos da especialidade
 export function limitePlanejamento(profissionais) {
   // Art. 13: 2× os profissionais DISPONÍVEIS da especialidade (capacidade real).
-  const disp = disponiveis(profissionais);
+  // Perfis de apoio (v1.27) não contam para o limite técnico.
+  const disp = disponiveis(profissionais).filter(p => !ehApoio(p));
   const porArea = {};
   for (const p of disp) porArea[p.area] = (porArea[p.area] || 0) + 1;
   const limites = {};
@@ -190,18 +191,21 @@ export function limitePlanejamento(profissionais) {
 
 // --- Capacidade dinâmica (v1.21) ---------------------------------------------
 // Disponíveis = ativos sem ausência vigente no instante consultado.
-import { ausenciaAtual } from './config.js';
+import { ausenciaAtual, ehApoio } from './config.js';
 export function disponiveis(profissionais, ts = Date.now()) {
   return profissionais.filter(p => p.ativo !== false && !ausenciaAtual(p, ts));
 }
 // Limites setoriais: override manual quando informado; senão, referência por
 // profissional × disponíveis no momento (decisão D4 do plano Equipe).
 export function capacidadeSetorial(profissionais, params) {
-  const n = disponiveis(profissionais).length;
+  // v1.27: perfis de apoio (Estágio/Apoio Administrativo) integram a equipe,
+  // mas não entram na capacidade TÉCNICA (limites de chamados/planejamentos).
+  const tecnicos = profissionais.filter(p => !ehApoio(p));
+  const n = disponiveis(tecnicos).length;
   const auto = (manual, porProf) => (manual == null || manual === '' ? porProf * n : +manual);
   return {
     disponiveis: n,
-    total: profissionais.filter(p => p.ativo !== false).length,
+    total: tecnicos.filter(p => p.ativo !== false).length,
     refChamadosSetor: auto(params.refChamadosSetor, params.refChamadosProf),
     refPlanejSetor: auto(params.refPlanejSetor, params.refPlanejProf),
     autoChamados: params.refChamadosSetor == null || params.refChamadosSetor === '',

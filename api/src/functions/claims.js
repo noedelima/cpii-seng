@@ -14,7 +14,7 @@ const { json, withAuth } = require('../shared/http');
 const { docGet, logAudit } = require('../shared/firestore');
 const { claimsDisponiveis, setCustomClaims } = require('../shared/adminAuth');
 
-const ROLES = ['campus', 'engenharia', 'chefe', 'codir', 'admin'];
+const ROLES = ['campus', 'engenharia', 'estagiario', 'administrativo', 'chefe', 'codir', 'admin'];
 
 // Perfil (doc /usuarios) → claims mínimas. Inativo ou perfil inválido → {}
 // (token sem claims = negado pelas Storage rules).

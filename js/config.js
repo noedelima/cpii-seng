@@ -8,7 +8,7 @@ export const APP = {
   orgao: 'Colégio Pedro II',
   setor: 'Seção de Engenharia — SENG/DECOF',
   portaria: 'Portaria nº 7503/REITORIA/CPII, de 24/11/2025',
-  versao: '1.26.0',
+  versao: '1.27.0',
 };
 
 // --- Parâmetros ajustáveis pelo Administrador (defaults) ---------------------
@@ -243,8 +243,13 @@ export const ESPECIALIDADES = [
   'Engenharia Mecânica', 'Segurança do Trabalho',
 ];
 
-export const CARGOS = ['Engenheiro(a)', 'Arquiteto(a)'];
-export const AREAS  = ['Arquitetura', 'Civil', 'Elétrica', 'Mecânica', 'Segurança do Trabalho'];
+export const CARGOS = ['Engenheiro(a)', 'Arquiteto(a)', 'Estagiário(a)', 'Assistente em Administração'];
+export const AREAS  = ['Arquitetura', 'Civil', 'Elétrica', 'Mecânica', 'Segurança do Trabalho', 'Estágio', 'Apoio Administrativo'];
+// Áreas de APOIO (v1.27): integram a equipe (tarefas, agenda, disponibilidade),
+// mas ficam FORA dos limites técnicos (capacidade dinâmica, art. 13) e da
+// alocação técnica (fiscais, equipes de planejamento e atendimento de chamados).
+export const AREAS_APOIO = ['Estágio', 'Apoio Administrativo'];
+export const ehApoio = (p) => AREAS_APOIO.includes(p?.area);
 
 // --- Ausências (Meu espaço — controle informativo; o registro oficial é o SouGov) --
 export const TIPOS_AUSENCIA = [
@@ -273,6 +278,8 @@ export function notaAusencia(p, diasAviso = 15) {
 export const ROLES = [
   { id: 'campus',     nome: 'Campus (solicitante)' },
   { id: 'engenharia', nome: 'Engenharia' },
+  { id: 'estagiario', nome: 'Estagiário (SENG)' },
+  { id: 'administrativo', nome: 'Administrativo (SENG)' },
   { id: 'chefe',      nome: 'Chefe de Seção' },
   { id: 'codir',      nome: 'CODIR (aprovação e ajuste)' },
   { id: 'admin',      nome: 'Administrador' },

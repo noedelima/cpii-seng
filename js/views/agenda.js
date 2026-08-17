@@ -18,7 +18,7 @@ const NO_DIA = (ini, fim, d) => { const i0 = new Date(d.getFullYear(), d.getMont
 export function viewAgenda(rerender) {
   const s = store();
   const user = s.user;
-  if (!user || !['engenharia', 'chefe', 'admin'].includes(user.role)) { location.hash = '#/'; return frag(); }
+  if (!user || !['engenharia', 'estagiario', 'administrativo', 'chefe', 'admin'].includes(user.role)) { location.hash = '#/'; return frag(); }
 
   if (!mesRef) { const h = new Date(); mesRef = new Date(h.getFullYear(), h.getMonth(), 1); }
   const params = s.getParams();

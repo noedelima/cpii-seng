@@ -4,6 +4,7 @@
 import { el, frag, campo, select, toast, confirmar, badgeStatus, fmtMoeda, fmtNum, fmtData, fmtDataHora, abreviarNome } from '../ui.js';
 import { campusNome, statusNome, TIPOS_DEMANDA, PROJETO_EXISTE, PRAZOS, TIPOS_ATIVIDADE, ESPECIALIDADES, ESCALA_G, ESCALA_U, ESCALA_T, precisaEtapaProjeto, DIAS_ARQUIVO_MORTO, FASES_DEMANDA, faseNome, faseCurta, ARTEFATOS_PLANEJAMENTO, MOTIVOS_SUSPENSAO, motivoSuspensaoNome, PROJETO_ORIGEM, RESULTADOS_CERTAME, notaAusencia } from '../config.js';
 import { selecaoPessoas } from '../alocacao.js';
+import { ehApoio } from '../config.js';
 import { renderStepper } from '../stepper.js';
 import { prioridade, pontosArt11, faixaValorLabel, cargaProfissionais, fiscaisDe } from '../calc.js';
 import { store } from '../store.js';
@@ -353,7 +354,7 @@ export function viewDemanda(rerender, id) {
     // Alocação de profissionais (chefe)
     if (can(user, 'alocar')) {
       const carga = cargaProfissionais(s.listDemandas(), internas, profissionais, params);
-      const ativos = profissionais.filter(p => p.ativo !== false);
+      const ativos = profissionais.filter(p => p.ativo !== false && !ehApoio(p)); // alocação técnica
       const { titulares: titAtuais, substitutos: subAtuais } = fiscaisDe(interna);
       const rotuloFiscal = (p) => abreviarNome(p.nome) + ` — ${p.area} (${carga[p.id].regular}/${params.limitePontos})` + notaAusencia(p);
       const selTit = selecaoPessoas({ itens: ativos, atuais: titAtuais, rotulo: rotuloFiscal, vazio: 'Nenhum fiscal titular incluído.' });

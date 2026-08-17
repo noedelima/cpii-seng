@@ -24,8 +24,10 @@ service firebase.storage {
     function meusCampi() { return request.auth != null ? request.auth.token.get('campi', []) : []; }
     // Espelham as rules do Firestore: interno (inclui CODIR) lê tudo; anexa e
     // remove a SENG (eng/chefe/admin) ou o campus dono; CODIR lê, não anexa.
-    function isInterno() { return role() in ['engenharia', 'chefe', 'codir', 'admin']; }
+    function isInterno() { return role() in ['engenharia', 'chefe', 'codir', 'admin', 'estagiario', 'administrativo']; }
     function isSeng() { return role() in ['engenharia', 'chefe', 'admin']; }
+    // Apoio (v1.27): anexa como a equipe; a remoção segue restrita à SENG técnica.
+    function isEquipe() { return role() in ['engenharia', 'chefe', 'admin', 'estagiario', 'administrativo']; }
     function isCampusDe(c) { return role() == 'campus' && c in meusCampi(); }
     function tipoOk() {
       return request.resource.contentType.matches('image/(jpeg|png|webp|heic|heif)')
@@ -34,7 +36,7 @@ service firebase.storage {
     // anexos de chamados: chamados/{campus}/{chamadoId}/{arquivo}
     match /chamados/{campus}/{chamadoId}/{arquivo} {
       allow read:           if isInterno() || isCampusDe(campus);
-      allow create, update: if (isSeng() || isCampusDe(campus))
+      allow create, update: if (isEquipe() || isCampusDe(campus))
                             && request.resource.size < 10 * 1024 * 1024
                             && tipoOk();
       allow delete:         if isSeng() || isCampusDe(campus);
@@ -42,7 +44,7 @@ service firebase.storage {
     // anexos de demandas (unificação dos workflows): demandas/{campus}/{demandaId}/{arquivo}
     match /demandas/{campus}/{demandaId}/{arquivo} {
       allow read:           if isInterno() || isCampusDe(campus);
-      allow create, update: if (isSeng() || isCampusDe(campus))
+      allow create, update: if (isEquipe() || isCampusDe(campus))
                             && request.resource.size < 10 * 1024 * 1024
                             && tipoOk();
       allow delete:         if isSeng() || isCampusDe(campus);

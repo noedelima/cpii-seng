@@ -114,7 +114,7 @@ export class FirebaseProvider {
     }, () => {}));
     // chamados: interno vê todos; campus vê os do(s) seu(s) campus.
     const rl = this.user?.role;
-    if (['engenharia', 'chefe', 'codir', 'admin'].includes(rl)) {
+    if (['engenharia', 'estagiario', 'administrativo', 'chefe', 'codir', 'admin'].includes(rl)) {
       this._unsubPriv.push(fs.onSnapshot(fs.collection(this.db, 'chamados'), (snap) => {
         this._chamados = snap.docs.map(d => ({ id: d.id, ...d.data() })); this._emit();
         this._talvezSincronizarTransparencia();
@@ -135,7 +135,7 @@ export class FirebaseProvider {
       }
     }
     // Tarefas da seção (v1.22): Eng/Chefe/Admin — erro silencioso p/ demais (rules).
-    if (['engenharia', 'admin', 'chefe'].includes(this.user?.role)) {
+    if (['engenharia', 'estagiario', 'administrativo', 'admin', 'chefe'].includes(this.user?.role)) {
       this._unsubPriv.push(fs.onSnapshot(fs.collection(this.db, 'tarefas'), (snap) => {
         this._tarefas = snap.docs.map(d => ({ id: d.id, ...d.data() })); this._emit();
       }, () => {}));

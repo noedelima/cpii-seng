@@ -167,7 +167,7 @@ function secaoUsuarios(s, user, rerender) {
       } },
         el('div', { class: 'form-linha' }, campo('Nome *', inNome), campo('E-mail *', inEmail, 'Se for da Engenharia, use o mesmo e-mail do cadastro de profissionais — o vínculo é automático.')),
         campo(u.uid ? 'Matrícula' : 'Matrícula *', inMatricula, 'Identificador principal — a mesma matrícula do SUAP. Será o login quando a autenticação migrar para a rede institucional.'),
-        el('div', { class: 'form-linha' }, campo('Perfil *', selRole, 'Campus: solicita. Engenharia: trata. Chefe: gerencia. CODIR: aprova e ajusta prioridade. Administrador: tudo.'), campo('Campi (perfil Campus)', el('div', { class: 'chips' }, campiChecks), 'Marque um ou mais — vale só para o perfil Campus; o cadastrador atua nos campi marcados.')),
+        el('div', { class: 'form-linha' }, campo('Perfil *', selRole, 'Campus: solicita. Engenharia: trata. Estagiário/Administrativo: apoio interno da SENG. Chefe: gerencia. CODIR: aprova e ajusta prioridade. Administrador: tudo.'), campo('Campi (perfil Campus)', el('div', { class: 'chips' }, campiChecks), 'Marque um ou mais — vale só para o perfil Campus; o cadastrador atua nos campi marcados.')),
         inSenha ? campo('Senha inicial *', inSenha, 'A pessoa troca depois em "Minha conta".') : null,
         el('label', { class: 'chip-check' }, ckAtivo, ' Ativo'),
         el('div', { class: 'form-acoes' },

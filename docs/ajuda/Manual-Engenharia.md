@@ -58,6 +58,7 @@ As capacidades de cada perfil espelham a Portaria e são validadas **também nas
 |--------|------|
 | **Campus** | **Abrir chamados** do seu campus (com anexos); acompanhar; complementar em diligência. |
 | **Engenharia** | **Triar chamados** (definir desfecho e converter em obra); abrir e acompanhar demandas de **qualquer campus**; ver dados internos, **avaliar (GUT)** e aplicar status de triagem (Em análise, Em diligência, Aguardando CODIR). |
+| **Estagiário / Administrativo (SENG)** | Perfis internos de **apoio à equipe** (v1.27): veem chamados e dados internos, participam do **kanban de tarefas**, da **Agenda** e do **Meu espaço** (foto/ausências), **comentam e anexam documentos** — sem triagem, avaliação, status ou alocação técnica. No cadastro da Equipe, entram nas áreas **Estágio** ou **Apoio Administrativo**, fora dos limites técnicos de capacidade. |
 | **Chefe de Seção** | Tudo da Engenharia + **status total**, **alocação de fiscais**, exclusão, **profissionais** e **parâmetros**. |
 | **CODIR** | Ver dados internos + **aprovar** e definir **fator de ajuste** (após a análise GUT). |
 | **Administrador** | Executa **todas** as ações + gestão de **usuários** e **log de auditoria** (tudo registrado). |
@@ -330,7 +331,7 @@ Em **Administração**, o cartão **Parâmetros do sistema** controla o cálculo
 | ① | **Nome** | Nome completo da pessoa. |
 | ② | **E-mail** | Para a SENG, use o **mesmo e-mail** que será o do profissional — o vínculo é automático. |
 | ③ | **Matrícula** | A **matrícula SUAP** (somente números) — identificador principal do usuário; obrigatória nos cadastros novos e única no sistema. Será o **login** quando a autenticação migrar para a rede institucional (mesma senha do SUAP). |
-| ④ | **Perfil** | Campus, Engenharia, Chefe de Seção, CODIR ou Administrador. |
+| ④ | **Perfil** | Campus, Engenharia, Estagiário (SENG), Administrativo (SENG), Chefe de Seção, CODIR ou Administrador. |
 | ⑤ | **Campi** | Apenas para o perfil **Campus** — marque **uma ou mais** unidades; o cadastrador atua em **todos** os campi marcados (ex.: **Realengo I + Realengo III**, quando há gestão compartilhada). |
 | ⑥ | **Senha inicial** | Mínimo de 6 caracteres; a pessoa troca depois em “Minha conta”. |
 

@@ -92,7 +92,7 @@ class DemoProvider {
   listChamados() {
     if (!this.user) return [];
     const r = this.user.role;
-    if (['engenharia', 'chefe', 'codir', 'admin'].includes(r)) return this.db.chamados;
+    if (['engenharia', 'estagiario', 'administrativo', 'chefe', 'codir', 'admin'].includes(r)) return this.db.chamados;
     if (r === 'campus') {
       const campi = (Array.isArray(this.user.campi) && this.user.campi.length) ? this.user.campi : (this.user.campus ? [this.user.campus] : []);
       return this.db.chamados.filter(c => campi.includes(c.campus));
@@ -202,7 +202,7 @@ class DemoProvider {
 
   // --- Dados internos (alocação) — como nas rules: só perfis internos leem ---
   getInternas() {
-    return ['engenharia', 'chefe', 'codir', 'admin'].includes(this.user?.role) ? this.db.internas : {};
+    return ['engenharia', 'estagiario', 'administrativo', 'chefe', 'codir', 'admin'].includes(this.user?.role) ? this.db.internas : {};
   }
   async setInterna(id, patch) {
     this.db.internas[id] = { ...(this.db.internas[id] || {}), ...patch };

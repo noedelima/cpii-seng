@@ -2,7 +2,7 @@
 // Profissionais da SENG — cadastro, carga de pontos (art. 12) e art. 13
 // =============================================================================
 import { el, frag, campo, select, toast, fmtData } from '../ui.js';
-import { CARGOS, AREAS, tipoAusenciaNome, ausenciaAtual, proximaAusencia } from '../config.js';
+import { CARGOS, AREAS, AREAS_APOIO, tipoAusenciaNome, ausenciaAtual, proximaAusencia } from '../config.js';
 import { avatar } from '../avatar.js';
 import { cargaProfissionais, limitePlanejamento, refIndividual } from '../calc.js';
 import { store } from '../store.js';
@@ -80,7 +80,7 @@ export function viewProfissionais(rerender) {
     if (!opcoes.length) {
       formWrap.replaceChildren(el('section', { class: 'card form-prof' },
         el('h2', {}, 'Novo profissional'),
-        el('p', { class: 'nota' }, 'Todos os usuários elegíveis já estão cadastrados como profissionais — ou ainda não há usuários. Cadastre primeiro o usuário em Administração → Novo usuário (perfis Engenharia, Chefe ou Administrador) e volte aqui para atribuir cargo e especialidade.'),
+        el('p', { class: 'nota' }, 'Todos os usuários elegíveis já estão cadastrados como profissionais — ou ainda não há usuários. Cadastre primeiro o usuário em Administração → Novo usuário (perfis Engenharia, Estagiário, Administrativo, Chefe ou Administrador) e volte aqui para atribuir cargo e área.'),
         el('div', { class: 'form-acoes' }, el('button', { class: 'btn ghost', onclick: () => formWrap.replaceChildren() }, 'Fechar'))));
       formWrap.scrollIntoView({ behavior: 'smooth' });
       return;
@@ -138,9 +138,10 @@ export function viewProfissionais(rerender) {
       meses.map(m => el('th', { class: 'num' }, m.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '') + '/' + String(m.getFullYear()).slice(2))))),
     el('tbody', {}, areas.map(a2 => {
       const doGrupo = ativosDisp.filter(p => p.area === a2);
+      const apoio = AREAS_APOIO.includes(a2); // v1.27: sem alerta de cobertura
       return el('tr', {}, el('td', {}, a2), meses.map(m => {
         const n = dispNoMes(doGrupo, m);
-        return el('td', { class: `num${n <= 1 ? ' ref-acima' : ''}`, title: n <= 1 ? 'Disciplina com cobertura crítica no período' : '' }, `${n}/${doGrupo.length}`);
+        return el('td', { class: `num${!apoio && n <= 1 ? ' ref-acima' : ''}`, title: !apoio && n <= 1 ? 'Disciplina com cobertura crítica no período' : '' }, `${n}/${doGrupo.length}`);
       }));
     }))));
   const futuras = ativosDisp.flatMap(p => (p.ausencias || [])

@@ -19,6 +19,10 @@ service cloud.firestore {
     function isEng()   { return ativo() && (role() == 'engenharia' || role() == 'chefe' || role() == 'admin'); }
     function isCodir() { return ativo() && (role() == 'codir' || role() == 'admin'); }
     function isInterno() { return isEng() || isCodir(); }
+    // Equipe de APOIO da SENG (v1.27): Estagiário e Administrativo — veem o
+    // ambiente interno e colaboram (tarefas, comentários, anexos), sem
+    // autoridade técnica (triagem, avaliação, status, alocação).
+    function isApoio() { return ativo() && role() in ['estagiario', 'administrativo']; }
     // Campus pode estar vinculado a vários campi (lista `campi`); compat com o campo único `campus`.
     function isCampusDe(campusId) {
       return ativo() && role() == 'campus'
@@ -177,10 +181,10 @@ service cloud.firestore {
         || ( editaDados() && ( isInterno() || isCampusDe(resource.data.campus) ) )
         // Observações (histórico de comentários, públicas). Só alteram o próprio campo.
         // Interna (Engenharia): Eng/Chefe/Admin. Externa (Solicitante/CODIR): campus dono / CODIR / Admin.
-        || ( isEng() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['obsInterna','historico','atualizadoEm']) )
+        || ( (isEng() || isApoio()) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['obsInterna','historico','atualizadoEm']) )
         || ( (isCampusDe(resource.data.campus) || isCodir()) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['obsExterna','historico','atualizadoEm']) )
         // Linha do tempo unificada: fio único de comentários + anexos — Eng, CODIR e campus dono.
-        || ( (isEng() || isCodir() || isCampusDe(resource.data.campus))
+        || ( (isEng() || isApoio() || isCodir() || isCampusDe(resource.data.campus))
              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['comentarios','anexos','historico','atualizadoEm']) )
         // Workflow v2: durante o atendimento, a equipe técnica (Eng/Chefe/Admin)
         // atualiza fase, checklist de artefatos, certame e origem do projeto —
@@ -197,7 +201,7 @@ service cloud.firestore {
 
     // ---------- dados internos (alocação) — nunca públicos ---------------------
     match /internas/{id} {
-      allow read: if isInterno();
+      allow read: if isInterno() || isApoio();
       // Chefe/Admin: alocação completa. Engenharia: apenas a observação técnica interna.
       allow write: if isChefe()
         || ( isEng() && (
@@ -208,7 +212,7 @@ service cloud.firestore {
 
     // ---------- profissionais — leitura interna, escrita chefe/admin ------------
     match /profissionais/{id} {
-      allow read: if isInterno();
+      allow read: if isInterno() || isApoio();
       allow write: if isChefe()
         && request.resource.data.nome is string && request.resource.data.nome.size() <= 80
         && (!('email' in request.resource.data) || request.resource.data.email is string);
@@ -231,8 +235,8 @@ service cloud.firestore {
           && (!('responsaveis' in t) || (t.responsaveis is list && t.responsaveis.size() <= 10));
     }
     match /tarefas/{id} {
-      allow read: if isEng();
-      allow create, update: if isEng() && tarefaValida(request.resource.data);
+      allow read: if isEng() || isApoio();
+      allow create, update: if (isEng() || isApoio()) && tarefaValida(request.resource.data);
       allow delete: if isChefe();
     }
 
@@ -247,11 +251,11 @@ service cloud.firestore {
     match /usuarios/{uid} {
       allow read: if isChefe() || (signedIn() && request.auth.uid == uid);
       allow create: if isAdmin()
-        && request.resource.data.role in ['campus','engenharia','chefe','codir','admin']
+        && request.resource.data.role in ['campus','engenharia','estagiario','administrativo','chefe','codir','admin']
         && request.resource.data.nome is string && request.resource.data.nome.size() <= 80
         && matriculaValida(request.resource.data);
       allow update: if isAdmin()
-        && request.resource.data.role in ['campus','engenharia','chefe','codir','admin']
+        && request.resource.data.role in ['campus','engenharia','estagiario','administrativo','chefe','codir','admin']
         && request.resource.data.nome is string && request.resource.data.nome.size() <= 80
         && matriculaValida(request.resource.data)
         // Revogação/desativação de administrador: só por OUTRO administrador
@@ -314,7 +318,7 @@ service cloud.firestore {
     // Não é público: leem a SENG (interno) e o campus dono. Escrita direto ou pela
     // camada de API (sob o token do usuário) — as rules valem igual.
     match /chamados/{id} {
-      allow read: if isInterno() || (resource != null && isCampusDe(resource.data.campus));
+      allow read: if isInterno() || isApoio() || (resource != null && isCampusDe(resource.data.campus));
       allow create: if chamadoValido(request.resource.data)
         && request.resource.data.status == 'aberto'
         && ( isEng() || isCampusDe(request.resource.data.campus) );
@@ -336,6 +340,10 @@ service cloud.firestore {
           // (consultoria/laudo em curso) — sem mudar status nem outros campos.
           || ( isCampusDe(resource.data.campus)
                && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['obsExterna','comentarios','historico','atualizadoEm'])
+               && request.resource.data.status == resource.data.status )
+          // Apoio (v1.27): comentários, anexos e observações internas — sem status.
+          || ( isApoio()
+               && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['obsInterna','comentarios','anexos','historico','atualizadoEm'])
                && request.resource.data.status == resource.data.status )
         );
       allow delete: if isChefe();

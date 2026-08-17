@@ -10,7 +10,7 @@ import { renderLinhaTempo } from '../timeline.js';
 import {
   statusChamadoNome, statusChamadoCor, categoriaChamado, categoriaChamadoNome, campusNome,
   URGENCIA_CHAMADO, DESFECHO_CHAMADO, SETORES_ENCAMINHAMENTO, STATUS_CHAMADO_ABERTO, slaChamado, patchSlaDiligencia,
-  TIPOS_DEMANDA, PROJETO_EXISTE, PRAZOS, ESPECIALIDADES, precisaEtapaProjeto, DIAS_ARQUIVO_MORTO, notaAusencia,
+  TIPOS_DEMANDA, PROJETO_EXISTE, PRAZOS, ESPECIALIDADES, precisaEtapaProjeto, DIAS_ARQUIVO_MORTO, notaAusencia, ehApoio,
 } from '../config.js';
 import { store } from '../store.js';
 import { can, ehCampusDe } from '../auth.js';
@@ -264,7 +264,7 @@ function camposObra(c) {
 // ----------------------------------------------------------------------------
 function renderAcaoMomento(c, s, user, terminal, acao, rerender) {
   const secao = el('section', { class: 'card acao-momento' }, el('h2', {}, 'Ação do momento'));
-  const profs = (s.listProfissionais() || []).filter(p => p.ativo !== false);
+  const profs = (s.listProfissionais() || []).filter(p => p.ativo !== false && !ehApoio(p)); // atendimento técnico
   const rotProf = (p) => `${p.nome} (${p.area})` + notaAusencia(p);
 
   // Encerrados (obra/encaminhado/improcedente/duplicado/cancelado): sem ações.

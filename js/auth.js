@@ -9,6 +9,10 @@ import { STATUS_TRAVADOS, TRANSICOES, TRANSICOES_REVERSAO, STATUS_EDITAVEL_DADOS
 const CAPS = {
   campus:     ['criar', 'complementar'],
   engenharia: ['criar', 'complementar', 'verInterno', 'avaliar', 'statusBasico'],
+  // Perfis internos de APOIO da SENG (v1.27): veem o ambiente da equipe e
+  // colaboram (tarefas, comentários, anexos) — sem triagem/avaliação/status.
+  estagiario:     ['criar', 'complementar', 'verInterno'],
+  administrativo: ['criar', 'complementar', 'verInterno'],
   chefe:      ['criar', 'complementar', 'verInterno', 'avaliar', 'statusBasico',
                'statusTotal', 'alocar', 'excluir', 'profissionais', 'pontosManual', 'params'],
   codir:      ['verInterno', 'codir', 'ajuste'],
