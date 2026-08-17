@@ -356,7 +356,7 @@ export function viewDemanda(rerender, id) {
       const carga = cargaProfissionais(s.listDemandas(), internas, profissionais, params);
       const ativos = profissionais.filter(p => p.ativo !== false && !ehApoio(p)); // alocação técnica
       const { titulares: titAtuais, substitutos: subAtuais } = fiscaisDe(interna);
-      const rotuloFiscal = (p) => abreviarNome(p.nome) + ` — ${p.area} (${carga[p.id].regular}/${params.limitePontos})` + notaAusencia(p);
+      const rotuloFiscal = (p) => abreviarNome(p.nome) + ` — ${p.area} (${carga[p.id].regular}/${carga[p.id].limite})` + notaAusencia(p);
       const selTit = selecaoPessoas({ itens: ativos, atuais: titAtuais, rotulo: rotuloFiscal, vazio: 'Nenhum fiscal titular incluído.' });
       const selSub = selecaoPessoas({ itens: ativos, atuais: subAtuais, rotulo: rotuloFiscal, vazio: 'Nenhum fiscal substituto incluído.' });
       const selEq  = selecaoPessoas({ itens: ativos, atuais: interna.equipePlanejamento || [], rotulo: (p) => abreviarNome(p.nome) + notaAusencia(p), vazio: 'Nenhum integrante incluído.' });
@@ -377,7 +377,7 @@ export function viewDemanda(rerender, id) {
           const estouro = novos.find(pid => {
             const c = carga[pid]; if (!c) return false;
             const addPts = (d.status === 'atendimento') ? (pontosArt11(d.aval, params.valorRef) ?? 0) : 0;
-            return !d.aval?.especial && c.regular + addPts > params.limitePontos;
+            return !d.aval?.especial && c.regular + addPts > c.limite;
           });
           if (estouro) {
             const okEst = await confirmar('Limite de 6 pontos excedido', `${(profissionais.find(p => p.id === estouro) || {}).nome} ultrapassará o limite do art. 12 com esta alocação. Prosseguir mesmo assim?`, { ok: 'Alocar mesmo assim', perigo: true });

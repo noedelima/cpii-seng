@@ -139,14 +139,14 @@ export function viewInicio() {
           el('div', { class: 'prof-nome' }, avatar(p.nome, p.fotoUrl, 26), ' ', p.nome, p.ativo === false ? el('span', { class: 'sub' }, ' (inativo)') : null),
           el('div', { class: 'sub' }, `${p.cargo} · ${p.area}`),
           el('div', { class: 'prof-pontos' },
-            el('span', { class: c2.excedido ? 'excedido' : '' }, `${c2.regular} / ${params.limitePontos} pts`),
+            el('span', { class: c2.excedido ? 'excedido' : '' }, `${c2.regular} / ${c2.limite} pts`),
             c2.emergencial ? el('span', { class: 'tag-emergencial' }, `+${c2.emergencial} emerg.`) : null,
             (() => { const ref = refIndividual(p, 'refPlanej', params.refPlanejProf);
               return c2.planejamento ? el('span', { class: `sub${c2.planejamento > ref ? ' ref-acima' : ''}`, title: c2.planejamento > ref ? `Acima do limite de referência (${ref})` : '' }, ` · ${c2.planejamento} planej.`) : null; })(),
             (() => { const ref = refIndividual(p, 'refChamados', params.refChamadosProf);
               return (c2.chamados || []).length ? el('span', { class: `sub${c2.chamados.length > ref ? ' ref-acima' : ''}`, title: c2.chamados.length > ref ? `Acima do limite de referência (${ref})` : '' }, ` · ${c2.chamados.length} chamado${c2.chamados.length === 1 ? '' : 's'}`) : null; })()),
           el('div', { class: 'pontos-barra' },
-            el('div', { class: `pontos-fill ${c2.excedido ? 'cheia' : c2.regular >= params.limitePontos ? 'limite' : ''}`, style: `width:${Math.min(100, (c2.regular / params.limitePontos) * 100)}%` })));
+            el('div', { class: `pontos-fill ${c2.excedido ? 'cheia' : c2.regular >= c2.limite ? 'limite' : ''}`, style: `width:${Math.min(100, (c2.regular / Math.max(1, c2.limite)) * 100)}%` })));
       });
       // Referências setoriais (indicativas): total de chamados em atendimento e
       // de participações em planejamento, comparados aos limites de referência.

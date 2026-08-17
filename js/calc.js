@@ -171,8 +171,11 @@ export function cargaProfissionais(demandas, internas, profissionais, params, ch
     const m = mapa[k];
     m.total = m.titular + m.substituto; // art. 12: titular + substituição
     m.regular = m.total - m.emergencial;
-    m.disponivel = Math.max(0, params.limitePontos - m.regular);
-    m.excedido = m.regular > params.limitePontos;
+    // v1.27.1: limite do art. 12 personalizável por profissional (refPontos —
+    // jornada reduzida, estágio etc.); vazio = parâmetro global da Portaria.
+    m.limite = refIndividual(m.prof, 'refPontos', params.limitePontos);
+    m.disponivel = Math.max(0, m.limite - m.regular);
+    m.excedido = m.regular > m.limite;
   }
   return mapa;
 }

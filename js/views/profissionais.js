@@ -56,7 +56,7 @@ export function viewProfissionais(rerender) {
         stat('Planejamento', c.planejamento, c.planejamento > refIndividual(p, 'refPlanej', params.refPlanejProf)), stat('Disponível', c.disponivel),
         stat('Chamados', (c.chamados || []).length, (c.chamados || []).length > refIndividual(p, 'refChamados', params.refChamadosProf))),
       el('div', { class: 'pontos-barra grande' },
-        el('div', { class: `pontos-fill ${c.excedido ? 'cheia' : c.regular >= params.limitePontos ? 'limite' : ''}`, style: `width:${Math.min(100, (c.regular / params.limitePontos) * 100)}%` })),
+        el('div', { class: `pontos-fill ${c.excedido ? 'cheia' : c.regular >= c.limite ? 'limite' : ''}`, style: `width:${Math.min(100, (c.regular / Math.max(1, c.limite)) * 100)}%` })),
       (det.length || detCh.length)
         ? el('ul', { class: 'prof-demandas' }, ...det, ...detCh)
         : el('p', { class: 'sub' }, 'Sem demandas nem chamados em atendimento.'));
@@ -93,6 +93,7 @@ export function viewProfissionais(rerender) {
     const inObs = el('input', { type: 'text', maxlength: 120, value: p.obs || '', placeholder: 'Ex.: em licença até 09/2026' });
     const inRefCh = el('input', { type: 'number', min: 0, max: 50, value: p.refChamados ?? '', placeholder: 'padrão' });
     const inRefPl = el('input', { type: 'number', min: 0, max: 20, value: p.refPlanej ?? '', placeholder: 'padrão' });
+    const inRefPts = el('input', { type: 'number', min: 0, max: 20, value: p.refPontos ?? '', placeholder: `padrão (${params.limitePontos})` });
     formWrap.replaceChildren(el('section', { class: 'card form-prof' },
       el('h2', {}, p.id ? `Editar — ${p.nome}` : 'Novo profissional'),
       el('form', { class: 'form-grid', onsubmit: async (e) => {
@@ -105,7 +106,8 @@ export function viewProfissionais(rerender) {
         }
         try {
           await s.salvarProfissional({ ...(p.id ? { id: p.id } : {}), nome, email, cargo: selCargo.value, area: selArea.value, ativo: ckAtivo.checked, obs: inObs.value.trim(),
-            refChamados: inRefCh.value === '' ? null : +inRefCh.value, refPlanej: inRefPl.value === '' ? null : +inRefPl.value });
+            refChamados: inRefCh.value === '' ? null : +inRefCh.value, refPlanej: inRefPl.value === '' ? null : +inRefPl.value,
+            refPontos: inRefPts.value === '' ? null : +inRefPts.value });
           toast('Profissional salvo.');
           formWrap.replaceChildren();
         } catch (err) { toast(err.message, 'erro'); }
@@ -115,7 +117,8 @@ export function viewProfissionais(rerender) {
         campo('Observação', inObs),
         el('div', { class: 'form-linha' },
           campo('Limite individual — chamados', inRefCh, 'Vazio = padrão do sistema. Indicativo, sem bloqueio.'),
-          campo('Limite individual — planejamentos', inRefPl, 'Vazio = padrão do sistema. Indicativo, sem bloqueio.')),
+          campo('Limite individual — planejamentos', inRefPl, 'Vazio = padrão do sistema. Indicativo, sem bloqueio.'),
+          campo('Limite individual — pontos (art. 12)', inRefPts, 'Vazio = limite da Portaria (parâmetro do sistema). Use para jornada reduzida ou estágio (ex.: 0).')),
         el('label', { class: 'chip-check' }, ckAtivo, ' Ativo (disponível para alocação)'),
         el('div', { class: 'form-acoes' },
           el('button', { class: 'btn ghost', type: 'button', onclick: () => formWrap.replaceChildren() }, 'Fechar'),
@@ -169,7 +172,7 @@ export function viewProfissionais(rerender) {
     el('section', { class: 'hero' },
       el('div', {},
         el('h1', {}, 'Equipe da Seção de Engenharia'),
-        el('p', { class: 'sub' }, `Limite de ${params.limitePontos} pontos simultâneos por profissional (art. 12). Equipes de planejamento limitadas a 2× os profissionais da especialidade (art. 13).`)),
+        el('p', { class: 'sub' }, `Limite padrão de ${params.limitePontos} pontos simultâneos por profissional (art. 12) — personalizável no cadastro de cada profissional (jornada reduzida, estágio). Equipes de planejamento limitadas a 2× os profissionais da especialidade (art. 13).`)),
       podeEditar ? el('button', { class: 'btn primario', onclick: () => abrirForm() }, '+ Novo profissional') : null),
     el('section', { class: 'card' },
       el('h2', {}, 'Equipes de planejamento por especialidade (art. 13)'),
