@@ -124,7 +124,7 @@ export function viewInicio() {
     if (grupos.length) gTempos = el('section', { class: 'card' },
       el('h2', {}, 'Tempos por etapa ', el('span', { class: 'sub' }, '(dias)')),
       boxplotV(grupos, { aria: 'Distribuição dos tempos por etapa de chamados e demandas, em dias' }),
-      el('p', { class: 'nota' }, 'Somente etapas concluídas; caixa = quartis, traço = mediana (passe o mouse para o resumo por etapa). Visível apenas à equipe.'));
+      el('p', { class: 'nota' }, 'Somente etapas concluídas; caixa = quartis, traço = mediana, círculos = valores atípicos — outliers (passe o mouse para o resumo por etapa). Visível apenas à equipe.'));
   }
 
   // ---- próximas da fila (top 5) ---------------------------------------------------

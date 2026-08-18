@@ -42,7 +42,7 @@ export function boxplotV(grupos, { alt = 220, aria = '', unidade = 'd' } = {}) {
   const fmt = (v) => v >= 10 ? Math.round(v) : Math.round(v * 10) / 10;
   const todos = grupos.flatMap(g => g.itens);
   const maxV = Math.max(0.5, ...todos.flatMap(d => d.valores));
-  const slot = 64, mEsq = 36, mDir = 10, sepW = 26;
+  const slot = 64, mEsq = 34, mDir = 10, sepW = 26;
   const larg = mEsq + todos.length * slot + (grupos.length - 1) * sepW + mDir;
   const yTop = 16, yBot = alt - 60;
   const y = (v) => yBot - (v / maxV) * (yBot - yTop);
@@ -50,31 +50,42 @@ export function boxplotV(grupos, { alt = 220, aria = '', unidade = 'd' } = {}) {
   // eixo Y (0, metade, máximo) com linhas de referência discretas
   [0, maxV / 2, maxV].forEach(v => {
     svg.append(sv('line', { x1: mEsq, y1: y(v), x2: larg - mDir, y2: y(v), stroke: 'var(--borda)', 'stroke-width': 0.6, 'stroke-dasharray': '3 4' }));
-    svg.append(sv('text', { x: mEsq - 5, y: y(v) + 3, 'text-anchor': 'end', 'font-size': 9, fill: 'var(--texto-2)' }, `${fmt(v)}${unidade}`));
+    svg.append(sv('text', { x: mEsq - 5, y: y(v) + 3, 'text-anchor': 'end', 'font-size': 8, fill: 'var(--texto-2)' }, `${fmt(v)}${unidade}`));
   });
   let cxBase = mEsq;
   grupos.forEach((g, gi) => {
     const cores = g.cor || ['var(--ouro-claro)', 'var(--acento)'][gi % 2];
     const x0 = cxBase;
     g.itens.forEach((d, i) => {
-      const s2 = { n: d.valores.length, min: Math.min(...d.valores), q1: q(d.valores, 0.25), med: q(d.valores, 0.5), q3: q(d.valores, 0.75), max: Math.max(...d.valores) };
+      // Boxplot de Tukey: whiskers até o último valor DENTRO das cercas
+      // (quartis ± 1,5×IQR); o que fica fora é OUTLIER (pontos individuais).
+      const vals = [...d.valores].sort((a, b) => a - b);
+      const q1 = q(vals, 0.25), med = q(vals, 0.5), q3 = q(vals, 0.75);
+      const iqr = q3 - q1;
+      const cercaLo = q1 - 1.5 * iqr, cercaHi = q3 + 1.5 * iqr;
+      const dentro = vals.filter(v => v >= cercaLo && v <= cercaHi);
+      const wLo = dentro.length ? dentro[0] : q1;
+      const wHi = dentro.length ? dentro[dentro.length - 1] : q3;
+      const outliers = vals.filter(v => v < cercaLo || v > cercaHi);
+      const topo = Math.max(wHi, ...outliers, med);
       const cx = cxBase + i * slot + slot / 2;
       const bw = 26;
       const gEl = sv('g', {},
-        sv('line', { x1: cx, y1: y(s2.min), x2: cx, y2: y(s2.q1), stroke: 'var(--texto-2)', 'stroke-width': 1 }),
-        sv('line', { x1: cx, y1: y(s2.q3), x2: cx, y2: y(s2.max), stroke: 'var(--texto-2)', 'stroke-width': 1 }),
-        sv('line', { x1: cx - 6, y1: y(s2.min), x2: cx + 6, y2: y(s2.min), stroke: 'var(--texto-2)', 'stroke-width': 1 }),
-        sv('line', { x1: cx - 6, y1: y(s2.max), x2: cx + 6, y2: y(s2.max), stroke: 'var(--texto-2)', 'stroke-width': 1 }),
-        sv('rect', { x: cx - bw / 2, y: y(s2.q3), width: bw, height: Math.max(1.5, y(s2.q1) - y(s2.q3)), rx: 2, fill: cores, 'fill-opacity': 0.85, stroke: 'var(--borda-forte)', 'stroke-width': 0.6 }),
-        sv('line', { x1: cx - bw / 2 - 1, y1: y(s2.med), x2: cx + bw / 2 + 1, y2: y(s2.med), stroke: 'var(--primario)', 'stroke-width': 2 }),
-        sv('text', { x: cx, y: y(s2.max) - 4, 'text-anchor': 'middle', 'font-size': 9, fill: 'var(--texto)' }, `${fmt(s2.med)}${unidade}`));
-      gEl.append(sv('title', {}, `${g.nome} — ${d.rotulo}: mediana ${fmt(s2.med)}${unidade} · quartis ${fmt(s2.q1)}–${fmt(s2.q3)}${unidade} · amplitude ${fmt(s2.min)}–${fmt(s2.max)}${unidade} · ${s2.n} registro(s)`));
+        sv('line', { x1: cx, y1: y(wLo), x2: cx, y2: y(q1), stroke: 'var(--texto-2)', 'stroke-width': 1 }),
+        sv('line', { x1: cx, y1: y(q3), x2: cx, y2: y(wHi), stroke: 'var(--texto-2)', 'stroke-width': 1 }),
+        sv('line', { x1: cx - 6, y1: y(wLo), x2: cx + 6, y2: y(wLo), stroke: 'var(--texto-2)', 'stroke-width': 1 }),
+        sv('line', { x1: cx - 6, y1: y(wHi), x2: cx + 6, y2: y(wHi), stroke: 'var(--texto-2)', 'stroke-width': 1 }),
+        sv('rect', { x: cx - bw / 2, y: y(q3), width: bw, height: Math.max(1.5, y(q1) - y(q3)), rx: 2, fill: cores, 'fill-opacity': 0.85, stroke: 'var(--borda-forte)', 'stroke-width': 0.6 }),
+        sv('line', { x1: cx - bw / 2 - 1, y1: y(med), x2: cx + bw / 2 + 1, y2: y(med), stroke: 'var(--primario)', 'stroke-width': 2 }),
+        outliers.map(v => sv('circle', { cx, cy: y(v), r: 2.2, fill: 'none', stroke: 'var(--primario)', 'stroke-width': 1, 'fill-opacity': 0 })),
+        sv('text', { x: cx, y: y(topo) - 4, 'text-anchor': 'middle', 'font-size': 8, fill: 'var(--texto)' }, `${fmt(med)}${unidade}`));
+      gEl.append(sv('title', {}, `${g.nome} — ${d.rotulo}: mediana ${fmt(med)}${unidade} · quartis ${fmt(q1)}–${fmt(q3)}${unidade} · whiskers ${fmt(wLo)}–${fmt(wHi)}${unidade}${outliers.length ? ` · ${outliers.length} outlier(s) até ${fmt(Math.max(...outliers))}${unidade}` : ''} · ${vals.length} registro(s)`));
       svg.append(gEl);
-      const tx = sv('text', { x: cx + 4, y: yBot + 10, 'text-anchor': 'end', 'font-size': 9, fill: 'var(--texto-2)', transform: `rotate(-32 ${cx + 4} ${yBot + 10})` }, `${d.rotulo} (${s2.n})`);
+      const tx = sv('text', { x: cx + 4, y: yBot + 10, 'text-anchor': 'end', 'font-size': 8, fill: 'var(--texto-2)', transform: `rotate(-32 ${cx + 4} ${yBot + 10})` }, `${d.rotulo} (${vals.length})`);
       svg.append(tx);
     });
     const wGrupo = g.itens.length * slot;
-    svg.append(sv('text', { x: x0 + wGrupo / 2, y: alt - 5, 'text-anchor': 'middle', 'font-size': 10, 'font-weight': 'bold', fill: 'var(--texto)' }, g.nome));
+    svg.append(sv('text', { x: x0 + wGrupo / 2, y: alt - 5, 'text-anchor': 'middle', 'font-size': 9, 'font-weight': 'bold', fill: 'var(--texto)' }, g.nome));
     cxBase += wGrupo;
     if (gi < grupos.length - 1) {
       svg.append(sv('line', { x1: cxBase + sepW / 2, y1: yTop - 4, x2: cxBase + sepW / 2, y2: alt - 14, stroke: 'var(--borda)', 'stroke-width': 1, 'stroke-dasharray': '4 4' }));
