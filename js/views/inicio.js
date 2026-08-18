@@ -9,7 +9,7 @@ import { CAMPI, ESPECIALIDADES, FASES_DEMANDA, campusNome } from '../config.js';
 import { ordenarFila, prioridade, cargaProfissionais, capacidadeSetorial, refIndividual, distribuicaoTempos } from '../calc.js';
 import { store } from '../store.js';
 import { can } from '../auth.js';
-import { barrasH, linhasMensais, legenda, donut, boxplotH } from '../graficos.js';
+import { barrasH, linhasMensais, legenda, donut, boxplotV } from '../graficos.js';
 import { avatar } from '../avatar.js';
 
 export function viewInicio() {
@@ -112,16 +112,19 @@ export function viewInicio() {
       : el('p', { class: 'sub' }, 'Os totais de chamados são publicados pela Engenharia e aparecerão aqui em breve.'),
     el('p', { class: 'nota' }, 'Contagens agregadas — sem assuntos nem nomes. Em diligência = aguardando complemento do campus solicitante.'));
 
-  // Tempos por etapa (interno — v1.28): distribuição dos períodos CONCLUÍDOS em
-  // cada etapa, reconstruídos do histórico (boxplot: mín, quartis, mediana, máx).
-  let gTempoCh = null, gTempoDe = null;
+  // Tempos por etapa (interno — v1.28.1): card único de largura total com
+  // boxplots VERTICAIS de chamados e demandas no mesmo eixo (dias) —
+  // períodos CONCLUÍDOS reconstruídos do histórico.
+  let gTempos = null;
   if (user && can(user, 'verInterno')) {
     const dist = distribuicaoTempos(typeof s.listChamados === 'function' ? s.listChamados() : [], todas);
-    const notaBox = () => el('p', { class: 'nota' }, 'Somente etapas concluídas; caixa = quartis, traço = mediana (passe o mouse para o resumo). Visível apenas à equipe.');
-    if (dist.chamados.length) gTempoCh = card('Tempos por etapa — chamados (dias)',
-      boxplotH(dist.chamados, { rotuloW: 138, aria: 'Distribuição dos tempos por etapa dos chamados, em dias' }), notaBox());
-    if (dist.demandas.length) gTempoDe = card('Tempos por etapa — demandas (dias)',
-      boxplotH(dist.demandas, { rotuloW: 138, aria: 'Distribuição dos tempos por etapa das demandas, em dias' }), notaBox());
+    const grupos = [];
+    if (dist.chamados.length) grupos.push({ nome: 'Chamados', itens: dist.chamados });
+    if (dist.demandas.length) grupos.push({ nome: 'Demandas', itens: dist.demandas });
+    if (grupos.length) gTempos = el('section', { class: 'card' },
+      el('h2', {}, 'Tempos por etapa ', el('span', { class: 'sub' }, '(dias)')),
+      boxplotV(grupos, { aria: 'Distribuição dos tempos por etapa de chamados e demandas, em dias' }),
+      el('p', { class: 'nota' }, 'Somente etapas concluídas; caixa = quartis, traço = mediana (passe o mouse para o resumo por etapa). Visível apenas à equipe.'));
   }
 
   // ---- próximas da fila (top 5) ---------------------------------------------------
@@ -183,6 +186,7 @@ export function viewInicio() {
   }
 
   return frag(hero, kpis, painelProfs,
-    el('div', { class: 'graf-grid' }, gLinha, gStatus, gCh, gAtv, gCampus, gEsp, gTempoCh, gTempoDe),
+    el('div', { class: 'graf-grid' }, gLinha, gStatus, gCh, gAtv, gCampus, gEsp),
+    gTempos,
     tblFila);
 }

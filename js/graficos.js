@@ -34,35 +34,53 @@ export function barrasH(dados, { rotuloW = 92, larg = 320, alturaBarra = 13, gap
   return svg;
 }
 
-// Boxplot horizontal: dados = [{ rotulo, valores: [números] }] — mín, quartis,
-// mediana e máx por linha (tooltip com o resumo). Usado nos tempos por etapa.
-export function boxplotH(dados, { rotuloW = 128, larg = 360, alturaLinha = 26, aria = '', unidade = 'd' } = {}) {
+// Boxplot VERTICAL em grupos (v1.28.1): grupos = [{ nome, cor?, itens: [{ rotulo,
+// valores: [números] }] }] — todos no MESMO eixo (ex.: dias). Uma caixa por
+// etapa, grupos lado a lado com separador; tooltip com o resumo completo.
+export function boxplotV(grupos, { alt = 220, aria = '', unidade = 'd' } = {}) {
   const q = (arr, p) => { const a = [...arr].sort((x, y) => x - y); const i = (a.length - 1) * p; const lo = Math.floor(i), hi = Math.ceil(i); return a[lo] + (a[hi] - a[lo]) * (i - lo); };
-  const stats = dados.map(d => ({ rotulo: d.rotulo, n: d.valores.length,
-    min: Math.min(...d.valores), q1: q(d.valores, 0.25), med: q(d.valores, 0.5), q3: q(d.valores, 0.75), max: Math.max(...d.valores) }));
-  const maxV = Math.max(0.5, ...stats.map(s => s.max));
-  const areaW = larg - rotuloW - 44;
-  const x = (v) => rotuloW + (v / maxV) * areaW;
-  const h = dados.length * alturaLinha + 16;
-  const svg = sv('svg', { viewBox: `0 0 ${larg} ${h}`, width: '100%', role: 'img', 'aria-label': aria });
   const fmt = (v) => v >= 10 ? Math.round(v) : Math.round(v * 10) / 10;
-  stats.forEach((s2, i) => {
-    const cy = i * alturaLinha + 14;
-    const boxH = 10;
-    svg.append(sv('text', { x: rotuloW - 6, y: cy + 3, 'text-anchor': 'end', 'font-size': 10, fill: 'var(--texto-2)' }, `${s2.rotulo} (${s2.n})`));
-    const g = sv('g', {},
-      sv('line', { x1: x(s2.min), y1: cy, x2: x(s2.q1), y2: cy, stroke: 'var(--texto-2)', 'stroke-width': 1 }),
-      sv('line', { x1: x(s2.q3), y1: cy, x2: x(s2.max), y2: cy, stroke: 'var(--texto-2)', 'stroke-width': 1 }),
-      sv('line', { x1: x(s2.min), y1: cy - 4, x2: x(s2.min), y2: cy + 4, stroke: 'var(--texto-2)', 'stroke-width': 1 }),
-      sv('line', { x1: x(s2.max), y1: cy - 4, x2: x(s2.max), y2: cy + 4, stroke: 'var(--texto-2)', 'stroke-width': 1 }),
-      sv('rect', { x: x(s2.q1), y: cy - boxH / 2, width: Math.max(1.5, x(s2.q3) - x(s2.q1)), height: boxH, rx: 2, fill: 'var(--ouro-claro)', stroke: 'var(--borda-forte)', 'stroke-width': 0.6 }),
-      sv('line', { x1: x(s2.med), y1: cy - boxH / 2 - 1, x2: x(s2.med), y2: cy + boxH / 2 + 1, stroke: 'var(--primario)', 'stroke-width': 2 }));
-    g.append(sv('title', {}, `${s2.rotulo}: mediana ${fmt(s2.med)}${unidade} · quartis ${fmt(s2.q1)}–${fmt(s2.q3)}${unidade} · amplitude ${fmt(s2.min)}–${fmt(s2.max)}${unidade} · ${s2.n} registro(s)`));
-    svg.append(g);
-    svg.append(sv('text', { x: Math.min(x(s2.max) + 5, larg - 24), y: cy + 3, 'font-size': 9, fill: 'var(--texto)' }, `${fmt(s2.med)}${unidade}`));
+  const todos = grupos.flatMap(g => g.itens);
+  const maxV = Math.max(0.5, ...todos.flatMap(d => d.valores));
+  const slot = 64, mEsq = 36, mDir = 10, sepW = 26;
+  const larg = mEsq + todos.length * slot + (grupos.length - 1) * sepW + mDir;
+  const yTop = 16, yBot = alt - 60;
+  const y = (v) => yBot - (v / maxV) * (yBot - yTop);
+  const svg = sv('svg', { viewBox: `0 0 ${larg} ${alt}`, width: '100%', role: 'img', 'aria-label': aria });
+  // eixo Y (0, metade, máximo) com linhas de referência discretas
+  [0, maxV / 2, maxV].forEach(v => {
+    svg.append(sv('line', { x1: mEsq, y1: y(v), x2: larg - mDir, y2: y(v), stroke: 'var(--borda)', 'stroke-width': 0.6, 'stroke-dasharray': '3 4' }));
+    svg.append(sv('text', { x: mEsq - 5, y: y(v) + 3, 'text-anchor': 'end', 'font-size': 9, fill: 'var(--texto-2)' }, `${fmt(v)}${unidade}`));
   });
-  svg.append(sv('text', { x: rotuloW, y: h - 2, 'font-size': 8, fill: 'var(--texto-2)' }, `0${unidade}`));
-  svg.append(sv('text', { x: larg - 4, y: h - 2, 'text-anchor': 'end', 'font-size': 8, fill: 'var(--texto-2)' }, `${fmt(maxV)}${unidade}`));
+  let cxBase = mEsq;
+  grupos.forEach((g, gi) => {
+    const cores = g.cor || ['var(--ouro-claro)', 'var(--acento)'][gi % 2];
+    const x0 = cxBase;
+    g.itens.forEach((d, i) => {
+      const s2 = { n: d.valores.length, min: Math.min(...d.valores), q1: q(d.valores, 0.25), med: q(d.valores, 0.5), q3: q(d.valores, 0.75), max: Math.max(...d.valores) };
+      const cx = cxBase + i * slot + slot / 2;
+      const bw = 26;
+      const gEl = sv('g', {},
+        sv('line', { x1: cx, y1: y(s2.min), x2: cx, y2: y(s2.q1), stroke: 'var(--texto-2)', 'stroke-width': 1 }),
+        sv('line', { x1: cx, y1: y(s2.q3), x2: cx, y2: y(s2.max), stroke: 'var(--texto-2)', 'stroke-width': 1 }),
+        sv('line', { x1: cx - 6, y1: y(s2.min), x2: cx + 6, y2: y(s2.min), stroke: 'var(--texto-2)', 'stroke-width': 1 }),
+        sv('line', { x1: cx - 6, y1: y(s2.max), x2: cx + 6, y2: y(s2.max), stroke: 'var(--texto-2)', 'stroke-width': 1 }),
+        sv('rect', { x: cx - bw / 2, y: y(s2.q3), width: bw, height: Math.max(1.5, y(s2.q1) - y(s2.q3)), rx: 2, fill: cores, 'fill-opacity': 0.85, stroke: 'var(--borda-forte)', 'stroke-width': 0.6 }),
+        sv('line', { x1: cx - bw / 2 - 1, y1: y(s2.med), x2: cx + bw / 2 + 1, y2: y(s2.med), stroke: 'var(--primario)', 'stroke-width': 2 }),
+        sv('text', { x: cx, y: y(s2.max) - 4, 'text-anchor': 'middle', 'font-size': 9, fill: 'var(--texto)' }, `${fmt(s2.med)}${unidade}`));
+      gEl.append(sv('title', {}, `${g.nome} — ${d.rotulo}: mediana ${fmt(s2.med)}${unidade} · quartis ${fmt(s2.q1)}–${fmt(s2.q3)}${unidade} · amplitude ${fmt(s2.min)}–${fmt(s2.max)}${unidade} · ${s2.n} registro(s)`));
+      svg.append(gEl);
+      const tx = sv('text', { x: cx + 4, y: yBot + 10, 'text-anchor': 'end', 'font-size': 9, fill: 'var(--texto-2)', transform: `rotate(-32 ${cx + 4} ${yBot + 10})` }, `${d.rotulo} (${s2.n})`);
+      svg.append(tx);
+    });
+    const wGrupo = g.itens.length * slot;
+    svg.append(sv('text', { x: x0 + wGrupo / 2, y: alt - 5, 'text-anchor': 'middle', 'font-size': 10, 'font-weight': 'bold', fill: 'var(--texto)' }, g.nome));
+    cxBase += wGrupo;
+    if (gi < grupos.length - 1) {
+      svg.append(sv('line', { x1: cxBase + sepW / 2, y1: yTop - 4, x2: cxBase + sepW / 2, y2: alt - 14, stroke: 'var(--borda)', 'stroke-width': 1, 'stroke-dasharray': '4 4' }));
+      cxBase += sepW;
+    }
+  });
   return svg;
 }
 
