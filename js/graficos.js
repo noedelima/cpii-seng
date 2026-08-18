@@ -34,6 +34,38 @@ export function barrasH(dados, { rotuloW = 92, larg = 320, alturaBarra = 13, gap
   return svg;
 }
 
+// Boxplot horizontal: dados = [{ rotulo, valores: [números] }] — mín, quartis,
+// mediana e máx por linha (tooltip com o resumo). Usado nos tempos por etapa.
+export function boxplotH(dados, { rotuloW = 128, larg = 360, alturaLinha = 26, aria = '', unidade = 'd' } = {}) {
+  const q = (arr, p) => { const a = [...arr].sort((x, y) => x - y); const i = (a.length - 1) * p; const lo = Math.floor(i), hi = Math.ceil(i); return a[lo] + (a[hi] - a[lo]) * (i - lo); };
+  const stats = dados.map(d => ({ rotulo: d.rotulo, n: d.valores.length,
+    min: Math.min(...d.valores), q1: q(d.valores, 0.25), med: q(d.valores, 0.5), q3: q(d.valores, 0.75), max: Math.max(...d.valores) }));
+  const maxV = Math.max(0.5, ...stats.map(s => s.max));
+  const areaW = larg - rotuloW - 44;
+  const x = (v) => rotuloW + (v / maxV) * areaW;
+  const h = dados.length * alturaLinha + 16;
+  const svg = sv('svg', { viewBox: `0 0 ${larg} ${h}`, width: '100%', role: 'img', 'aria-label': aria });
+  const fmt = (v) => v >= 10 ? Math.round(v) : Math.round(v * 10) / 10;
+  stats.forEach((s2, i) => {
+    const cy = i * alturaLinha + 14;
+    const boxH = 10;
+    svg.append(sv('text', { x: rotuloW - 6, y: cy + 3, 'text-anchor': 'end', 'font-size': 10, fill: 'var(--texto-2)' }, `${s2.rotulo} (${s2.n})`));
+    const g = sv('g', {},
+      sv('line', { x1: x(s2.min), y1: cy, x2: x(s2.q1), y2: cy, stroke: 'var(--texto-2)', 'stroke-width': 1 }),
+      sv('line', { x1: x(s2.q3), y1: cy, x2: x(s2.max), y2: cy, stroke: 'var(--texto-2)', 'stroke-width': 1 }),
+      sv('line', { x1: x(s2.min), y1: cy - 4, x2: x(s2.min), y2: cy + 4, stroke: 'var(--texto-2)', 'stroke-width': 1 }),
+      sv('line', { x1: x(s2.max), y1: cy - 4, x2: x(s2.max), y2: cy + 4, stroke: 'var(--texto-2)', 'stroke-width': 1 }),
+      sv('rect', { x: x(s2.q1), y: cy - boxH / 2, width: Math.max(1.5, x(s2.q3) - x(s2.q1)), height: boxH, rx: 2, fill: 'var(--ouro-claro)', stroke: 'var(--borda-forte)', 'stroke-width': 0.6 }),
+      sv('line', { x1: x(s2.med), y1: cy - boxH / 2 - 1, x2: x(s2.med), y2: cy + boxH / 2 + 1, stroke: 'var(--primario)', 'stroke-width': 2 }));
+    g.append(sv('title', {}, `${s2.rotulo}: mediana ${fmt(s2.med)}${unidade} · quartis ${fmt(s2.q1)}–${fmt(s2.q3)}${unidade} · amplitude ${fmt(s2.min)}–${fmt(s2.max)}${unidade} · ${s2.n} registro(s)`));
+    svg.append(g);
+    svg.append(sv('text', { x: Math.min(x(s2.max) + 5, larg - 24), y: cy + 3, 'font-size': 9, fill: 'var(--texto)' }, `${fmt(s2.med)}${unidade}`));
+  });
+  svg.append(sv('text', { x: rotuloW, y: h - 2, 'font-size': 8, fill: 'var(--texto-2)' }, `0${unidade}`));
+  svg.append(sv('text', { x: larg - 4, y: h - 2, 'text-anchor': 'end', 'font-size': 8, fill: 'var(--texto-2)' }, `${fmt(maxV)}${unidade}`));
+  return svg;
+}
+
 // Linhas mensais: series = [{ nome, cor, pontos: [{ mes: 'jan', valor }] }]
 export function linhasMensais(series, { larg = 360, alt = 120, aria = '' } = {}) {
   const svg = sv('svg', { viewBox: `0 0 ${larg} ${alt}`, width: '100%', role: 'img', 'aria-label': aria });

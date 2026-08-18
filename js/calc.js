@@ -114,6 +114,11 @@ export function calcularTransparencia(chamados, slaChamado, STATUS_ABERTO) {
   return {
     ativos: ativos.length,
     emTriagem: chs.filter(c => ['aberto', 'triagem', 'diligencia'].includes(c.status)).length,
+    // v1.28 — detalhamento por etapa: aguardando triagem, com a SENG e com o
+    // campus (diligência) — evita a leitura de que tudo "está parado na SENG".
+    abertos: chs.filter(c => c.status === 'aberto').length,
+    emTriagemSeng: chs.filter(c => c.status === 'triagem').length,
+    emDiligencia: chs.filter(c => c.status === 'diligencia').length,
     emAtendimento: chs.filter(c => c.status === 'atendimento').length,
     resolvidosAno: chs.filter(c => c.status === 'resolvido' && new Date(c.atualizadoEm || 0).getFullYear() === anoAtual).length,
     slaPrazo: prazo, slaVencendo: vencendo, slaVencido: vencido,
@@ -194,7 +199,7 @@ export function limitePlanejamento(profissionais) {
 
 // --- Capacidade dinâmica (v1.21) ---------------------------------------------
 // Disponíveis = ativos sem ausência vigente no instante consultado.
-import { ausenciaAtual, ehApoio } from './config.js';
+import { ausenciaAtual, ehApoio, STATUS } from './config.js';
 export function disponiveis(profissionais, ts = Date.now()) {
   return profissionais.filter(p => p.ativo !== false && !ausenciaAtual(p, ts));
 }
@@ -217,3 +222,71 @@ export function capacidadeSetorial(profissionais, params) {
 }
 // Limite individual: personalizado pela Chefia no cadastro (vazio = padrão).
 export const refIndividual = (p, campo, padrao) => (p && p[campo] != null && p[campo] !== '' ? +p[campo] : padrao);
+
+// --- Tempos por etapa (v1.28) ------------------------------------------------
+// Reconstrução dos intervalos de status a partir do HISTÓRICO padronizado
+// (eventos gerados pelo próprio Portal). Conta apenas intervalos FECHADOS —
+// a etapa em curso não entra na distribuição.
+const idPorNome = {};
+for (const st of STATUS) idPorNome[st.nome] = st.id;
+
+const EV_CHAMADO = [
+  [/^Triagem iniciada/i, 'triagem'],
+  [/^Triagem retomada/i, 'triagem'],
+  [/^Complemento enviado pelo campus/i, 'triagem'],
+  [/^Conversão desfeita/i, 'triagem'],
+  [/^Diligência solicitada/i, 'diligencia'],
+  [/^Chamado resolvido/i, 'resolvido'],
+  [/^Desfecho: Encaminhar à fila de Obras/i, 'obra'],
+  [/^Encaminhado a:/i, 'encaminhado'],
+  [/^Desfecho: Improcedente/i, 'improcedente'],
+  [/^Desfecho: Duplicado/i, 'duplicado'],
+  [/^Desfecho:/i, 'atendimento'], // consultoria/laudo (demais desfechos casaram acima)
+];
+function statusEventoChamado(acao) {
+  for (const [re, st] of EV_CHAMADO) if (re.test(acao)) return st;
+  return null;
+}
+function statusEventoDemanda(acao) {
+  const m = acao.match(/Status alterado para “(.+?)”/)
+    || acao.match(/Reversão de status: .*→ “(.+?)”/)
+    || acao.match(/— status “(.+?)”/);
+  if (m) return idPorNome[m[1]] || null;
+  if (/^Aprovada pelo CODIR/.test(acao)) return 'fila';
+  if (/^Aprovação do CODIR desfeita/.test(acao)) return 'codir';
+  if (/^Não aprovada pelo CODIR — devolvida/.test(acao)) return 'analise';
+  if (/^Não aprovada pelo CODIR — encerrada/.test(acao)) return 'cancelado';
+  if (/^Demanda suspensa/.test(acao)) return 'suspenso';
+  if (/^Recebimento definitivo/.test(acao)) return 'concluido';
+  if (/^Demanda enviada ao arquivo morto/.test(acao)) return 'excluido';
+  return null;
+}
+function somaIntervalos(inicioTs, historico, statusInicial, extrator) {
+  const somas = {};
+  let t0 = inicioTs, atual = statusInicial;
+  const evs = [...(historico || [])].filter(h => h && h.ts).sort((a, b) => a.ts - b.ts);
+  for (const h of evs) {
+    const novo = extrator(String(h.acao || ''));
+    if (!novo || novo === atual) continue;
+    if (t0) somas[atual] = (somas[atual] || 0) + Math.max(0, h.ts - t0);
+    t0 = h.ts; atual = novo;
+  }
+  return somas; // o intervalo vigente (aberto) fica de fora
+}
+export function distribuicaoTempos(chamados = [], demandas = []) {
+  const dia = 86400000;
+  const acumula = (mapa, somas) => { for (const [st, ms] of Object.entries(somas)) (mapa[st] = mapa[st] || []).push(ms / dia); };
+  const mCh = {};
+  for (const c of chamados) if (c.aberturaEm) acumula(mCh, somaIntervalos(c.aberturaEm, c.historico, 'aberto', statusEventoChamado));
+  const mDe = {};
+  for (const d of demandas) if (d.criadoEm) acumula(mDe, somaIntervalos(d.criadoEm, d.historico, 'recebido', statusEventoDemanda));
+  const monta = (mapa, ordem, rotulos) => ordem
+    .map(st => ({ rotulo: rotulos[st], valores: (mapa[st] || []).filter(v => v >= 0) }))
+    .filter(x => x.valores.length);
+  return {
+    chamados: monta(mCh, ['aberto', 'triagem', 'diligencia', 'atendimento'],
+      { aberto: 'Aguardando triagem', triagem: 'Em triagem (SENG)', diligencia: 'Em diligência (campus)', atendimento: 'Em atendimento' }),
+    demandas: monta(mDe, ['recebido', 'analise', 'diligencia', 'codir', 'fila', 'atendimento'],
+      { recebido: 'Recebida', analise: 'Em análise', diligencia: 'Em diligência', codir: 'No CODIR', fila: 'Na fila', atendimento: 'Em atendimento' }),
+  };
+}

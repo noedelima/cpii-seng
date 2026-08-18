@@ -6,10 +6,10 @@
 // =============================================================================
 import { el, frag, fmtNum } from '../ui.js';
 import { CAMPI, ESPECIALIDADES, FASES_DEMANDA, campusNome } from '../config.js';
-import { ordenarFila, prioridade, cargaProfissionais, capacidadeSetorial, refIndividual } from '../calc.js';
+import { ordenarFila, prioridade, cargaProfissionais, capacidadeSetorial, refIndividual, distribuicaoTempos } from '../calc.js';
 import { store } from '../store.js';
 import { can } from '../auth.js';
-import { barrasH, linhasMensais, legenda, donut } from '../graficos.js';
+import { barrasH, linhasMensais, legenda, donut, boxplotH } from '../graficos.js';
 import { avatar } from '../avatar.js';
 
 export function viewInicio() {
@@ -99,14 +99,30 @@ export function viewInicio() {
     ? donut(porEsp, { aria: 'Demandas ativas por especialidade' })
     : el('p', { class: 'sub' }, 'Sem demandas ativas.'));
 
+  // v1.28: etapas detalhadas — diligência (com o campus) separada da triagem
+  // (com a SENG). Fallback para o doc de transparência antigo (sem os campos).
   const gCh = card('Chamados por etapa',
     t ? barrasH([
-      { rotulo: 'Em triagem', valor: t.emTriagem, onClick: user ? irPara('recorte=triagem') : null },
+      t.abertos != null ? { rotulo: 'Aguardando triagem', valor: t.abertos, onClick: user ? irPara('recorte=triagem') : null } : null,
+      { rotulo: t.emTriagemSeng != null ? 'Em triagem (SENG)' : 'Em triagem', valor: t.emTriagemSeng ?? t.emTriagem, onClick: user ? irPara('recorte=triagem') : null },
+      t.emDiligencia != null ? { rotulo: 'Em diligência (campus)', valor: t.emDiligencia, onClick: user ? irPara('recorte=triagem') : null } : null,
       { rotulo: 'Em atendimento', valor: t.emAtendimento, onClick: irPara('tipo=chamado') },
       { rotulo: `Resolvidos em ${anoAtual}`, valor: t.resolvidosAno, onClick: user ? irPara('recorte=arquivo') : null },
-    ], { rotuloW: 128, aria: 'Chamados por etapa' })
+    ].filter(Boolean), { rotuloW: 148, aria: 'Chamados por etapa' })
       : el('p', { class: 'sub' }, 'Os totais de chamados são publicados pela Engenharia e aparecerão aqui em breve.'),
-    el('p', { class: 'nota' }, 'Contagens agregadas — sem assuntos nem nomes.'));
+    el('p', { class: 'nota' }, 'Contagens agregadas — sem assuntos nem nomes. Em diligência = aguardando complemento do campus solicitante.'));
+
+  // Tempos por etapa (interno — v1.28): distribuição dos períodos CONCLUÍDOS em
+  // cada etapa, reconstruídos do histórico (boxplot: mín, quartis, mediana, máx).
+  let gTempoCh = null, gTempoDe = null;
+  if (user && can(user, 'verInterno')) {
+    const dist = distribuicaoTempos(typeof s.listChamados === 'function' ? s.listChamados() : [], todas);
+    const notaBox = () => el('p', { class: 'nota' }, 'Somente etapas concluídas; caixa = quartis, traço = mediana (passe o mouse para o resumo). Visível apenas à equipe.');
+    if (dist.chamados.length) gTempoCh = card('Tempos por etapa — chamados (dias)',
+      boxplotH(dist.chamados, { rotuloW: 138, aria: 'Distribuição dos tempos por etapa dos chamados, em dias' }), notaBox());
+    if (dist.demandas.length) gTempoDe = card('Tempos por etapa — demandas (dias)',
+      boxplotH(dist.demandas, { rotuloW: 138, aria: 'Distribuição dos tempos por etapa das demandas, em dias' }), notaBox());
+  }
 
   // ---- próximas da fila (top 5) ---------------------------------------------------
   const fila5 = ordenarFila(todas.filter(d => d.status === 'fila'), params).slice(0, 5);
@@ -167,6 +183,6 @@ export function viewInicio() {
   }
 
   return frag(hero, kpis, painelProfs,
-    el('div', { class: 'graf-grid' }, gLinha, gStatus, gCh, gAtv, gCampus, gEsp),
+    el('div', { class: 'graf-grid' }, gLinha, gStatus, gCh, gAtv, gCampus, gEsp, gTempoCh, gTempoDe),
     tblFila);
 }
