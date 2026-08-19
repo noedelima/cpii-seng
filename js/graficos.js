@@ -37,58 +37,71 @@ export function barrasH(dados, { rotuloW = 92, larg = 320, alturaBarra = 13, gap
 // Boxplot VERTICAL em grupos (v1.28.1): grupos = [{ nome, cor?, itens: [{ rotulo,
 // valores: [números] }] }] — todos no MESMO eixo (ex.: dias). Uma caixa por
 // etapa, grupos lado a lado com separador; tooltip com o resumo completo.
-export function boxplotV(grupos, { alt = 220, aria = '', unidade = 'd' } = {}) {
+export function boxplotV(grupos, { alt = 250, aria = '', unidade = 'd' } = {}) {
   const q = (arr, p) => { const a = [...arr].sort((x, y) => x - y); const i = (a.length - 1) * p; const lo = Math.floor(i), hi = Math.ceil(i); return a[lo] + (a[hi] - a[lo]) * (i - lo); };
   const fmt = (v) => v >= 10 ? Math.round(v) : Math.round(v * 10) / 10;
+  const quebra = (t) => { const p = t.split(' '); if (p.length === 1) return [t];
+    let l1 = '', i = 0; const alvo = Math.ceil(t.length / 2);
+    while (i < p.length - 1 && (l1 + ' ' + p[i]).trim().length <= alvo + 2) { l1 = (l1 + ' ' + p[i]).trim(); i++; }
+    const l2 = p.slice(i).join(' ');
+    return l2 ? [l1 || p[0], l2] : [l1]; };
   const todos = grupos.flatMap(g => g.itens);
   const maxV = Math.max(0.5, ...todos.flatMap(d => d.valores));
-  const slot = 64, mEsq = 34, mDir = 10, sepW = 26;
+  const slot = 86, mEsq = 38, mDir = 12, sepW = 30;
   const larg = mEsq + todos.length * slot + (grupos.length - 1) * sepW + mDir;
-  const yTop = 16, yBot = alt - 60;
+  const yTop = 16, yBot = alt - 52;
   const y = (v) => yBot - (v / maxV) * (yBot - yTop);
   const svg = sv('svg', { viewBox: `0 0 ${larg} ${alt}`, width: '100%', role: 'img', 'aria-label': aria });
-  // eixo Y (0, metade, máximo) com linhas de referência discretas
-  [0, maxV / 2, maxV].forEach(v => {
-    svg.append(sv('line', { x1: mEsq, y1: y(v), x2: larg - mDir, y2: y(v), stroke: 'var(--borda)', 'stroke-width': 0.6, 'stroke-dasharray': '3 4' }));
-    svg.append(sv('text', { x: mEsq - 5, y: y(v) + 3, 'text-anchor': 'end', 'font-size': 8, fill: 'var(--texto-2)' }, `${fmt(v)}${unidade}`));
+  // faixa de fundo sutil da área do gráfico
+  svg.append(sv('rect', { x: mEsq, y: yTop - 8, width: larg - mEsq - mDir, height: yBot - yTop + 16, rx: 6, fill: 'var(--borda)', 'fill-opacity': 0.14 }));
+  // linhas de referência (0 a máx em quartos)
+  [0, 0.25, 0.5, 0.75, 1].forEach(f => {
+    const v = maxV * f;
+    svg.append(sv('line', { x1: mEsq + 4, y1: y(v), x2: larg - mDir - 4, y2: y(v), stroke: 'var(--borda)', 'stroke-width': 0.5, 'stroke-dasharray': '2 5' }));
+    svg.append(sv('text', { x: mEsq - 5, y: y(v) + 2.5, 'text-anchor': 'end', 'font-size': 8, fill: 'var(--texto-2)' }, `${fmt(v)}${unidade}`));
   });
   let cxBase = mEsq;
   grupos.forEach((g, gi) => {
-    const cores = g.cor || ['var(--ouro-claro)', 'var(--acento)'][gi % 2];
+    const cor = g.cor || ['var(--ouro-claro)', 'var(--acento)'][gi % 2];
     const x0 = cxBase;
     g.itens.forEach((d, i) => {
-      // Boxplot de Tukey: whiskers até o último valor DENTRO das cercas
-      // (quartis ± 1,5×IQR); o que fica fora é OUTLIER (pontos individuais).
+      // Boxplot de Tukey: whiskers até o último valor dentro das cercas
+      // (quartis ± 1,5×IQR); o que fica fora vira OUTLIER (ponto individual).
       const vals = [...d.valores].sort((a, b) => a - b);
       const q1 = q(vals, 0.25), med = q(vals, 0.5), q3 = q(vals, 0.75);
       const iqr = q3 - q1;
-      const cercaLo = q1 - 1.5 * iqr, cercaHi = q3 + 1.5 * iqr;
-      const dentro = vals.filter(v => v >= cercaLo && v <= cercaHi);
+      const dentro = vals.filter(v => v >= q1 - 1.5 * iqr && v <= q3 + 1.5 * iqr);
       const wLo = dentro.length ? dentro[0] : q1;
       const wHi = dentro.length ? dentro[dentro.length - 1] : q3;
-      const outliers = vals.filter(v => v < cercaLo || v > cercaHi);
+      const outliers = vals.filter(v => v < q1 - 1.5 * iqr || v > q3 + 1.5 * iqr);
       const topo = Math.max(wHi, ...outliers, med);
       const cx = cxBase + i * slot + slot / 2;
-      const bw = 26;
+      const bw = 30;
       const gEl = sv('g', {},
-        sv('line', { x1: cx, y1: y(wLo), x2: cx, y2: y(q1), stroke: 'var(--texto-2)', 'stroke-width': 1 }),
-        sv('line', { x1: cx, y1: y(q3), x2: cx, y2: y(wHi), stroke: 'var(--texto-2)', 'stroke-width': 1 }),
-        sv('line', { x1: cx - 6, y1: y(wLo), x2: cx + 6, y2: y(wLo), stroke: 'var(--texto-2)', 'stroke-width': 1 }),
-        sv('line', { x1: cx - 6, y1: y(wHi), x2: cx + 6, y2: y(wHi), stroke: 'var(--texto-2)', 'stroke-width': 1 }),
-        sv('rect', { x: cx - bw / 2, y: y(q3), width: bw, height: Math.max(1.5, y(q1) - y(q3)), rx: 2, fill: cores, 'fill-opacity': 0.85, stroke: 'var(--borda-forte)', 'stroke-width': 0.6 }),
-        sv('line', { x1: cx - bw / 2 - 1, y1: y(med), x2: cx + bw / 2 + 1, y2: y(med), stroke: 'var(--primario)', 'stroke-width': 2 }),
-        outliers.map(v => sv('circle', { cx, cy: y(v), r: 2.2, fill: 'none', stroke: 'var(--primario)', 'stroke-width': 1, 'fill-opacity': 0 })),
-        sv('text', { x: cx, y: y(topo) - 4, 'text-anchor': 'middle', 'font-size': 8, fill: 'var(--texto)' }, `${fmt(med)}${unidade}`));
+        sv('line', { x1: cx, y1: y(wLo), x2: cx, y2: y(q1), stroke: 'var(--texto-2)', 'stroke-width': 1, 'stroke-linecap': 'round' }),
+        sv('line', { x1: cx, y1: y(q3), x2: cx, y2: y(wHi), stroke: 'var(--texto-2)', 'stroke-width': 1, 'stroke-linecap': 'round' }),
+        sv('line', { x1: cx - 4, y1: y(wLo), x2: cx + 4, y2: y(wLo), stroke: 'var(--texto-2)', 'stroke-width': 1.4, 'stroke-linecap': 'round' }),
+        sv('line', { x1: cx - 4, y1: y(wHi), x2: cx + 4, y2: y(wHi), stroke: 'var(--texto-2)', 'stroke-width': 1.4, 'stroke-linecap': 'round' }),
+        sv('rect', { x: cx - bw / 2, y: y(q3), width: bw, height: Math.max(2.5, y(q1) - y(q3)), rx: 3, fill: cor, 'fill-opacity': 0.92, stroke: 'var(--borda-forte)', 'stroke-width': 0.7 }),
+        sv('line', { x1: cx - bw / 2 + 3, y1: y(med), x2: cx + bw / 2 - 3, y2: y(med), stroke: 'var(--primario)', 'stroke-width': 2.4, 'stroke-linecap': 'round' }),
+        outliers.map((v, oi) => sv('circle', { cx: cx + ((oi % 3) - 1) * 4, cy: y(v), r: 2.4, fill: cor, 'fill-opacity': 0.9, stroke: 'var(--borda-forte)', 'stroke-width': 0.6 })),
+        sv('text', { x: cx, y: y(topo) - 5, 'text-anchor': 'middle', 'font-size': 8.5, 'font-weight': 'bold', fill: 'var(--texto)' }, `${fmt(med)}${unidade}`));
       gEl.append(sv('title', {}, `${g.nome} — ${d.rotulo}: mediana ${fmt(med)}${unidade} · quartis ${fmt(q1)}–${fmt(q3)}${unidade} · whiskers ${fmt(wLo)}–${fmt(wHi)}${unidade}${outliers.length ? ` · ${outliers.length} outlier(s) até ${fmt(Math.max(...outliers))}${unidade}` : ''} · ${vals.length} registro(s)`));
       svg.append(gEl);
-      const tx = sv('text', { x: cx + 4, y: yBot + 10, 'text-anchor': 'end', 'font-size': 8, fill: 'var(--texto-2)', transform: `rotate(-32 ${cx + 4} ${yBot + 10})` }, `${d.rotulo} (${vals.length})`);
+      // rótulo horizontal em até 2 linhas + contagem
+      const linhas = quebra(d.rotulo);
+      const tx = sv('text', { x: cx, y: yBot + 12, 'text-anchor': 'middle', 'font-size': 8.5, fill: 'var(--texto-2)' });
+      linhas.forEach((l, li) => tx.append(sv('tspan', { x: cx, dy: li === 0 ? 0 : 9 }, l)));
+      tx.append(sv('tspan', { x: cx, dy: 9, 'font-size': 8, fill: 'var(--texto-2)' }, `(${vals.length})`));
       svg.append(tx);
     });
     const wGrupo = g.itens.length * slot;
-    svg.append(sv('text', { x: x0 + wGrupo / 2, y: alt - 5, 'text-anchor': 'middle', 'font-size': 9, 'font-weight': 'bold', fill: 'var(--texto)' }, g.nome));
+    // nome do grupo com traço na cor correspondente (legenda de cor)
+    svg.append(sv('line', { x1: x0 + wGrupo / 2 - 26, y1: alt - 8.5, x2: x0 + wGrupo / 2 - 14, y2: alt - 8.5, stroke: cor, 'stroke-width': 4, 'stroke-linecap': 'round' }));
+    svg.append(sv('text', { x: x0 + wGrupo / 2 + 4, y: alt - 5, 'text-anchor': 'middle', 'font-size': 9.5, 'font-weight': 'bold', fill: 'var(--texto)' }, g.nome));
     cxBase += wGrupo;
     if (gi < grupos.length - 1) {
-      svg.append(sv('line', { x1: cxBase + sepW / 2, y1: yTop - 4, x2: cxBase + sepW / 2, y2: alt - 14, stroke: 'var(--borda)', 'stroke-width': 1, 'stroke-dasharray': '4 4' }));
+      svg.append(sv('line', { x1: cxBase + sepW / 2, y1: yTop - 6, x2: cxBase + sepW / 2, y2: yBot + 8, stroke: 'var(--borda)', 'stroke-width': 1, 'stroke-dasharray': '4 4' }));
       cxBase += sepW;
     }
   });

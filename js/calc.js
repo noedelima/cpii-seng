@@ -271,7 +271,11 @@ function somaIntervalos(inicioTs, historico, statusInicial, extrator) {
     if (t0) somas[atual] = (somas[atual] || 0) + Math.max(0, h.ts - t0);
     t0 = h.ts; atual = novo;
   }
-  return somas; // o intervalo vigente (aberto) fica de fora
+  // v1.28.3: a etapa VIGENTE entra com o tempo já decorrido — sem isso, uma
+  // diligência ainda não respondida ficaria invisível, mascarando tempo que
+  // está com o campus, não com a SENG.
+  if (t0) somas[atual] = (somas[atual] || 0) + Math.max(0, Date.now() - t0);
+  return somas;
 }
 export function distribuicaoTempos(chamados = [], demandas = []) {
   const dia = 86400000;
