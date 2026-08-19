@@ -41,7 +41,12 @@ export function viewDashboard(rerender) {
     !ARQUIVADAS.includes(d.status) &&
     (!filtros.campus || d.campus === filtros.campus) &&
     (!filtros.status || d.status === filtros.status) &&
-    (!filtros.tipo || d.aval?.tipoAtividade === filtros.tipo) &&
+    // Portaria 3608/2026 (v1.29): "Planejamento" deixou de ser só um tipo de
+    // demanda (equipe do art. 13) — é também FASE do atendimento. O filtro
+    // captura os dois casos, sem ocultar demandas em atendimento na fase.
+    (!filtros.tipo || (filtros.tipo === 'planejamento'
+      ? (d.aval?.tipoAtividade === 'planejamento' || (d.status === 'atendimento' && d.fase === 'planejamento'))
+      : d.aval?.tipoAtividade === filtros.tipo)) &&
     (!filtros.esp || (d.especialidades || []).includes(filtros.esp)) &&
     (!filtros.fase || (filtros.fase === 'sem-fase' ? (d.status === 'atendimento' && !d.fase) : d.fase === filtros.fase)) &&
     (!filtros.ano || anoRef(d) === +filtros.ano) &&
@@ -86,7 +91,7 @@ export function viewDashboard(rerender) {
   const selStatus = select(STATUS.filter(st => !ARQUIVADAS.includes(st.id) && st.id !== 'excluido'),
     { value: filtros.status, placeholder: 'Todos os status', 'aria-label': 'Filtrar por status' });
   selStatus.addEventListener('change', () => { filtros.status = selStatus.value; rerender(); });
-  const selTipoF = select([...TIPOS_ATIVIDADE, { id: 'chamado', nome: 'Chamado (consultoria/laudo)' }], { value: filtros.tipo, placeholder: 'Todos os tipos de atividade', 'aria-label': 'Filtrar por tipo de atividade' });
+  const selTipoF = select([...TIPOS_ATIVIDADE.map(t => t.id === 'planejamento' ? { id: t.id, nome: 'Planejamento (equipe ou fase do atendimento)' } : t), { id: 'chamado', nome: 'Chamado (consultoria/laudo)' }], { value: filtros.tipo, placeholder: 'Todos os tipos de atividade', 'aria-label': 'Filtrar por tipo de atividade' });
   selTipoF.addEventListener('change', () => { filtros.tipo = selTipoF.value; rerender(); });
   const selEsp = select(ESPECIALIDADES, { value: filtros.esp, placeholder: 'Todas as especialidades', 'aria-label': 'Filtrar por especialidade' });
   selEsp.addEventListener('change', () => { filtros.esp = selEsp.value; rerender(); });
