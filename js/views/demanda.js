@@ -4,7 +4,7 @@
 import { el, frag, campo, select, toast, confirmar, badgeStatus, fmtMoeda, fmtNum, fmtData, fmtDataHora, abreviarNome } from '../ui.js';
 import { campusNome, statusNome, TIPOS_DEMANDA, PROJETO_EXISTE, PRAZOS, TIPOS_ATIVIDADE, ESPECIALIDADES, ESCALA_G, ESCALA_U, ESCALA_T, precisaEtapaProjeto, DIAS_ARQUIVO_MORTO, FASES_DEMANDA, faseNome, faseCurta, ARTEFATOS_PLANEJAMENTO, MOTIVOS_SUSPENSAO, motivoSuspensaoNome, PROJETO_ORIGEM, RESULTADOS_CERTAME, notaAusencia } from '../config.js';
 import { selecaoPessoas } from '../alocacao.js';
-import { ehApoio } from '../config.js';
+import { ehApoio, faseCurtaDe } from '../config.js';
 import { renderStepper } from '../stepper.js';
 import { prioridade, pontosArt11, faixaValorLabel, cargaProfissionais, fiscaisDe } from '../calc.js';
 import { store } from '../store.js';
@@ -44,7 +44,7 @@ export function viewDemanda(rerender, id) {
         el('h2', { class: 'detalhe-objeto' }, d.objeto || '—')),
       el('div', { class: 'detalhe-badges' },
         badgeStatus(d.status),
-        (d.status === 'atendimento' && d.fase) ? el('span', { class: 'fase-badge' }, faseCurta(d.fase)) : null,
+        (d.status === 'atendimento' && d.fase) ? el('span', { class: 'fase-badge' }, faseCurtaDe(d)) : null,
         (user && d.chamadoOrigem) ? el('a', { class: 'fase-badge', href: `#/chamado/${d.chamadoOrigem}`, title: 'Abrir o chamado de origem' }, `origem: ${d.chamadoOrigem}`) : null)),
     linha('Campus', campusNome(d.campus)),
     linha('Localização', d.local || '—'),
@@ -56,7 +56,7 @@ export function viewDemanda(rerender, id) {
     linha('Valor estimado', fmtMoeda(d.valorEstimado)),
     linha('Prazo estimado', d.prazoEstimado ? nomeDe(PRAZOS, d.prazoEstimado) : '—'),
     linha('Processo SUAP', d.processoSuap || '—'),
-    (d.status === 'atendimento' && d.fase) ? linha('Fase do atendimento', faseNome(d.fase)) : null,
+    (d.status === 'atendimento' && d.fase) ? linha('Fase do atendimento', faseCurtaDe(d) === 'Elaboração do projeto' ? 'Elaboração do projeto (interna — sem licitação da etapa de projeto)' : faseNome(d.fase)) : null,
     d.projetoOrigem ? linha('Origem do projeto', nomeDe(PROJETO_ORIGEM, d.projetoOrigem)) : null,
     linha('Emergencial (solicitado)', d.emergencial ? 'Sim — art. 11, §5º' : 'Não'),
     linha('Registrada em', fmtDataHora(d.criadoEm) + (d.solicitante?.nome && user ? ` por ${d.solicitante.nome}` : '')),
@@ -526,13 +526,18 @@ export function viewDemanda(rerender, id) {
 // ----------------------------------------------------------------------------
 function stepperDemanda(d, user) {
   const temChamado = !!(user && d.chamadoOrigem);
+  // Etapa de projeto INTERNO (v1.29.1): sem licitação — os passos de fase
+  // viram Planejamento → Elaboração do projeto (reentra no CODIR como obra).
+  const fasesCiclo = ehProjetoInterno(d)
+    ? [{ id: 'planejamento', curto: 'Planejamento' }, { id: 'execucao', curto: 'Elaboração do projeto' }]
+    : FASES_DEMANDA;
   const rotulos = [
     ...(temChamado ? ['Chamado'] : []),
     'Recebida', 'Análise (GUT)', 'CODIR', 'Fila',
-    ...FASES_DEMANDA.map(f => f.curto),
+    ...fasesCiclo.map(f => f.curto),
   ];
   const off = temChamado ? 1 : 0;
-  const idxFase = FASES_DEMANDA.findIndex(f => f.id === d.fase);
+  const idxFase = fasesCiclo.findIndex(f => f.id === d.fase);
   let pos = null; // índice do passo ATUAL
   if (d.status === 'recebido') pos = off;
   else if (['analise', 'diligencia'].includes(d.status)) pos = off + 1;
@@ -628,7 +633,13 @@ function pedirTexto(titulo, texto, rotulo, rotuloOk, { opcional = false } = {}) 
 // Cartão “Fase atual” — a ação do momento no atendimento (workflow v2):
 // planejamento (checklist de artefatos) → licitação (resultado do certame) →
 // execução → recebimento. Certame deserto/fracassado devolve ao planejamento.
+// Etapa de PROJETO com origem INTERNA (v1.29.1): NÃO há licitação da etapa de
+// projeto — o ciclo é planejamento → elaboração (fase “execução”); concluída a
+// elaboração, a demanda retorna ao CODIR como obra (nova deliberação).
 // ----------------------------------------------------------------------------
+const ehEtapaProjeto = (d) => d.etapa === 'projeto' || (['projeto', 'projeto-obra'].includes(d.tipoDemanda) && d.etapa !== 'obra');
+const ehProjetoInterno = (d) => ehEtapaProjeto(d) && d.projetoOrigem === 'interno';
+
 function cartaoFaseAtual(d, s, user, interna) {
   const salvar = async (patch, evento) => {
     try { await s.atualizarDemanda(d.id, patch, evento); toast('Atualizado.'); }
@@ -655,15 +666,37 @@ function cartaoFaseAtual(d, s, user, interna) {
   };
 
   if (!d.fase) {
+    const interno = ehProjetoInterno(d);
     filhos.push(el('h2', {}, 'Fase atual'));
-    filhos.push(el('p', { class: 'sub' }, 'Atendimento ainda sem fase classificada. Defina a fase para acompanhar o ciclo da contratação (planejamento → licitação → execução → recebimento).'));
-    filhos.push(el('div', { class: 'chips' }, FASES_DEMANDA.map(f =>
+    filhos.push(el('p', { class: 'sub' }, interno
+      ? 'Atendimento sem fase classificada. Projeto de elaboração INTERNA (SENG): não há licitação da etapa de projeto — o ciclo é planejamento → elaboração; concluída a elaboração, a demanda retorna ao CODIR como obra.'
+      : 'Atendimento ainda sem fase classificada. Defina a fase para acompanhar o ciclo da contratação (planejamento → licitação → execução → recebimento).'));
+    const opcoesFase = interno
+      ? [{ id: 'planejamento', curto: 'Planejamento', nome: 'Planejamento (projeto interno)' },
+         { id: 'execucao', curto: 'Elaboração do projeto', nome: 'Elaboração interna do projeto' }]
+      : FASES_DEMANDA;
+    filhos.push(el('div', { class: 'chips' }, opcoesFase.map(f =>
       el('button', { class: 'btn ghost sm', onclick: () => salvar({ fase: f.id }, `Fase do atendimento definida: ${f.nome}`) }, f.curto))));
     filhos.push(blocoProjetoOrigem());
     return el('section', { class: 'card acao-momento' }, filhos);
   }
 
-  if (d.fase === 'planejamento') {
+  if (d.fase === 'planejamento' && ehProjetoInterno(d)) {
+    filhos.push(el('h2', {}, `Fase atual — ${faseNome('planejamento')}`));
+    filhos.push(el('p', { class: 'sub' }, 'Projeto de elaboração INTERNA: fase de levantamentos e definição de escopo — sem artefatos de contratação nem licitação nesta etapa. Concluído o preparo, avance para a elaboração do projeto.'));
+    filhos.push(blocoProjetoOrigem());
+    filhos.push(el('div', { class: 'form-acoes' },
+      el('button', { class: 'btn primario', onclick: async () => {
+        const ok = await confirmar('Concluir o planejamento?', 'A demanda avança para a elaboração interna do projeto (sem licitação da etapa de projeto).', { ok: 'Avançar para elaboração' });
+        if (!ok) return;
+        await salvar({ fase: 'execucao' }, 'Planejamento concluído — iniciada a elaboração interna do projeto');
+      } }, 'Concluir fase → elaboração do projeto'),
+      btnReverter('Desfazer classificação de fase', 'Desfazer a classificação?',
+        'A demanda volta a “sem fase definida” — use para corrigir uma classificação acidental.',
+        { fase: null }, 'Fase do atendimento removida (correção)')));
+  }
+
+  if (d.fase === 'planejamento' && !ehProjetoInterno(d)) {
     const arte = d.artefatos || {};
     const feitos = ARTEFATOS_PLANEJAMENTO.filter(a => arte[a.id]?.feito).length;
     filhos.push(el('h2', {}, `Fase atual — ${faseNome('planejamento')}`,
@@ -699,7 +732,15 @@ function cartaoFaseAtual(d, s, user, interna) {
         { fase: null }, 'Fase do atendimento removida (correção)')));
   }
 
-  if (d.fase === 'licitacao') {
+  if (d.fase === 'licitacao' && ehProjetoInterno(d)) {
+    filhos.push(el('h2', {}, `Fase atual — ${faseNome('licitacao')}`));
+    filhos.push(el('p', { class: 'aviso-certame' }, 'Projeto de origem INTERNA não passa por licitação da etapa de projeto. Reclassifique a fase:'));
+    filhos.push(el('div', { class: 'chips' },
+      el('button', { class: 'btn primario sm', onclick: () => salvar({ fase: 'execucao', certame: null }, 'Fase reclassificada — elaboração interna do projeto (sem licitação de projeto)') }, 'Ir para elaboração do projeto'),
+      el('button', { class: 'btn ghost sm', onclick: () => salvar({ fase: 'planejamento', certame: null }, 'Fase reclassificada — retorna ao planejamento (projeto interno)') }, 'Voltar ao planejamento')));
+  }
+
+  if (d.fase === 'licitacao' && !ehProjetoInterno(d)) {
     const ct = d.certame || {};
     const nomeResultado = (id) => (RESULTADOS_CERTAME.find(r => r.id === id) || {}).nome || id;
     // Deserto/fracassado: retorna ao planejamento e REABRE o item "Processo
@@ -728,10 +769,38 @@ function cartaoFaseAtual(d, s, user, interna) {
         'Fase revertida: Licitação → Planejamento (correção)')));
   }
 
-  if (d.fase === 'execucao') {
+  if (d.fase === 'execucao' && ehProjetoInterno(d)) {
+    filhos.push(el('h2', {}, 'Fase atual — Elaboração do projeto (interna)'));
+    filhos.push(el('p', { class: 'sub' }, 'Projeto em elaboração pela própria SENG — a alocação pontua pelo art. 11 (elaboração de projeto). Concluída a elaboração, a demanda retorna ao CODIR como OBRA (projeto existente), para repriorização.'));
+    const btnVoltar = btnReverter('Voltar ao planejamento (correção)', 'Desfazer o início da elaboração?',
+      'A demanda volta à fase de planejamento — use para corrigir um avanço acidental.',
+      { fase: 'planejamento' }, 'Fase revertida: Elaboração → Planejamento (correção)');
+    if (can(user, 'statusTotal')) {
+      filhos.push(el('div', { class: 'form-acoes' },
+        el('button', { class: 'btn primario', onclick: async () => {
+          const ok = await confirmar('Concluir a elaboração do projeto?', 'A demanda passará a “Aguardando aprovação do CODIR” como OBRA, com projeto existente. A aprovação anterior e o ciclo de fases do projeto são zerados (nova deliberação). Reavalie o GUT e o valor da obra antes do envio.', { ok: 'Concluir e enviar ao CODIR' });
+          if (!ok) return;
+          await salvar({
+            etapa: 'obra', tipoDemanda: 'obra', projetoExiste: 'completo', status: 'codir',
+            codirAprovado: false, fase: null, artefatos: null, certame: null,
+            cicloProjeto: { fase: d.fase || null, artefatos: d.artefatos || null, certame: d.certame || null, encerradoEm: Date.now() },
+          }, 'Elaboração interna concluída — retorna ao CODIR como obra (projeto existente) para repriorização');
+          await notificar(s, 'codir', d, interna);
+        } }, 'Concluir elaboração → obra ao CODIR'),
+        btnVoltar));
+    } else {
+      filhos.push(el('p', { class: 'nota' }, 'A conclusão da etapa de projeto (envio ao CODIR como obra) é registrada pela Chefia.'));
+      filhos.push(el('div', { class: 'form-acoes' }, btnVoltar));
+    }
+  }
+
+  if (d.fase === 'execucao' && !ehProjetoInterno(d)) {
     const ct = d.certame || {};
     filhos.push(el('h2', {}, `Fase atual — ${faseNome('execucao')}`));
     filhos.push(el('p', { class: 'sub' }, `Contrato em execução${ct.contratoEm ? ` desde ${fmtData(ct.contratoEm)}` : ''}. Acompanhamento pelos fiscais alocados; registros na linha do tempo.`));
+    // Etapa de projeto sem origem definida: definir “Interno (SENG)” aqui
+    // ativa o ciclo sem licitação (elaboração → CODIR) — v1.29.1.
+    if (ehEtapaProjeto(d)) filhos.push(blocoProjetoOrigem());
     filhos.push(el('div', { class: 'form-acoes' }, el('button', { class: 'btn primario', onclick: async () => {
       const ok = await confirmar('Concluir a execução?', 'A demanda avança para a fase de recebimento do objeto.', { ok: 'Avançar para recebimento' });
       if (!ok) return;
@@ -743,7 +812,14 @@ function cartaoFaseAtual(d, s, user, interna) {
         'Fase revertida: Execução → Licitação (correção do certame)')));
   }
 
-  if (d.fase === 'recebimento') {
+  if (d.fase === 'recebimento' && ehProjetoInterno(d)) {
+    filhos.push(el('h2', {}, `Fase atual — ${faseNome('recebimento')}`));
+    filhos.push(el('p', { class: 'aviso-certame' }, 'Projeto de origem INTERNA não tem recebimento de contrato na etapa de projeto. Reclassifique a fase:'));
+    filhos.push(el('div', { class: 'chips' },
+      el('button', { class: 'btn primario sm', onclick: () => salvar({ fase: 'execucao' }, 'Fase reclassificada — elaboração interna do projeto') }, 'Ir para elaboração do projeto')));
+  }
+
+  if (d.fase === 'recebimento' && !ehProjetoInterno(d)) {
     filhos.push(el('h2', {}, `Fase atual — ${faseNome('recebimento')}`));
     filhos.push(el('p', { class: 'sub' }, 'Recebimento provisório e definitivo do objeto (termos de recebimento). Após o recebimento definitivo, conclua a demanda.'));
     // Concluir é ação da Chefia/Administração (statusTotal) — as Security Rules

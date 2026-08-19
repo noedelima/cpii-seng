@@ -2,7 +2,7 @@
 // Dashboard público — resumo clicável, filtros, fila e exportação PDF efêmera
 // =============================================================================
 import { el, frag, fmtNum, fmtDataHora, badgeStatus, select, toast, debounce } from '../ui.js';
-import { STATUS, CAMPI, TIPOS_ATIVIDADE, ESPECIALIDADES, STATUS_ORDEM, DIAS_ARQUIVO_MORTO, DIAS_NOTIFICACAO, campusNome, statusNome, statusChamadoNome, statusChamadoCor, slaChamado, categoriaChamado, FASES_DEMANDA, faseCurta } from '../config.js';
+import { STATUS, CAMPI, TIPOS_ATIVIDADE, ESPECIALIDADES, STATUS_ORDEM, DIAS_ARQUIVO_MORTO, DIAS_NOTIFICACAO, campusNome, statusNome, statusChamadoNome, statusChamadoCor, slaChamado, categoriaChamado, FASES_DEMANDA, faseCurta, faseCurtaDe } from '../config.js';
 import { prioridade, pontosArt11, ordenarFila, cargaProfissionais, fiscaisDe } from '../calc.js';
 import { store } from '../store.js';
 import { can } from '../auth.js';
@@ -123,7 +123,7 @@ export function viewDashboard(rerender) {
       el('td', { class: 'objeto' }, el('strong', {}, d.objeto || '—'),
         d.emergencial || d.aval?.especial ? el('span', { class: 'tag-emergencial', title: 'Serviço emergencial (art. 11, §5º)' }, 'EMERGENCIAL') : null),
       el('td', {}, badgeStatus(d.status),
-        d.status === 'atendimento' && d.fase ? el('span', { class: 'fase-badge' }, faseCurta(d.fase)) : null),
+        d.status === 'atendimento' && d.fase ? el('span', { class: 'fase-badge' }, faseCurtaDe(d)) : null),
       el('td', { class: 'num' }, pr.gut == null ? '—' : String(pr.gut)),
       el('td', { class: 'num', title: d.ajuste?.valor ? `Inclui ajuste de ${fmtNum(d.ajuste.valor)} (CODIR)` : '' },
         pr.final == null ? '—' : fmtNum(pr.final), d.ajuste?.valor ? el('span', { class: 'mark-ajuste' }, '*') : null),

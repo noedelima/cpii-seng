@@ -8,7 +8,7 @@ export const APP = {
   orgao: 'Colégio Pedro II',
   setor: 'Seção de Engenharia — SENG/DECOF',
   portaria: 'Portaria nº 7503/REITORIA/CPII, de 24/11/2025',
-  versao: '1.29.0',
+  versao: '1.29.1',
 };
 
 // --- Parâmetros ajustáveis pelo Administrador (defaults) ---------------------
@@ -104,6 +104,11 @@ export const FASES_DEMANDA = [
 ];
 export const faseNome  = (id) => (FASES_DEMANDA.find(f => f.id === id) || {}).nome || id || '—';
 export const faseCurta = (id) => (FASES_DEMANDA.find(f => f.id === id) || {}).curto || id || '—';
+// Rótulo contextual da fase (v1.29.1): etapa de PROJETO com origem INTERNA não
+// licita nem executa contrato — a fase “execução” é a ELABORAÇÃO do projeto.
+export const faseCurtaDe = (d) => (d && d.fase === 'execucao' && d.projetoOrigem === 'interno'
+  && (d.etapa === 'projeto' || (['projeto', 'projeto-obra'].includes(d.tipoDemanda) && d.etapa !== 'obra')))
+  ? 'Elaboração do projeto' : faseCurta(d && d.fase);
 
 // Checklist de artefatos da fase de planejamento — fluxo da fase preparatória
 // (Lei nº 14.133/2021: ETP → riscos ∥ orçamento → TR/PB → lista de verificação).
