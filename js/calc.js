@@ -138,11 +138,19 @@ export function fiscaisDe(interna) {
   return { titulares: (tit || []).filter(Boolean), substitutos: (sub || []).filter(Boolean) };
 }
 
-export function cargaProfissionais(demandas, internas, profissionais, params, chamados = []) {
+export function cargaProfissionais(demandas, internas, profissionais, params, chamados = [], tarefas = []) {
   const mapa = {};
   for (const p of profissionais) {
     mapa[p.id] = { prof: p, titular: 0, substituto: 0, planejamento: 0,
-                   emergencial: 0, demandas: [], chamados: [] };
+                   emergencial: 0, demandas: [], chamados: [], tarefas: [] };
+  }
+  // Tarefas da seção ATIVAS (v1.28.4): contagem própria, sem limite — apenas
+  // para evidenciar o balanceamento interno de trabalho.
+  for (const t of tarefas || []) {
+    if (['concluida', 'cancelada'].includes(t.situacao)) continue;
+    for (const pid of (t.responsaveis || [])) {
+      if (pid && mapa[pid]) mapa[pid].tarefas.push({ id: t.id, titulo: t.titulo, situacao: t.situacao });
+    }
   }
   // Chamados (consultoria/laudo) em atendimento: contagem à parte, sem somar
   // nos pontos do art. 12 — a Portaria não pontua consultorias/laudos.

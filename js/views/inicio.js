@@ -148,10 +148,12 @@ export function viewInicio() {
   // ---- carga da equipe (autenticado interno) ---------------------------------------
   let painelProfs = null;
   if (user && can(user, 'verInterno')) {
-    const profissionais = s.listProfissionais();
+    const profissionais = [...s.listProfissionais()]
+      .sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR', { sensitivity: 'base' }));
     if (profissionais.length) {
       const carga = cargaProfissionais(todas, s.getInternas(), profissionais, params,
-        typeof s.listChamados === 'function' ? s.listChamados() : []);
+        typeof s.listChamados === 'function' ? s.listChamados() : [],
+        typeof s.listTarefas === 'function' ? s.listTarefas() : []);
       const cards = profissionais.filter(p => p.ativo !== false || carga[p.id].total > 0).map(p => {
         const c2 = carga[p.id];
         return el('a', { class: 'prof-card', href: '#/equipe', title: 'Ver detalhes na Equipe' },
@@ -163,7 +165,8 @@ export function viewInicio() {
             (() => { const ref = refIndividual(p, 'refPlanej', params.refPlanejProf);
               return c2.planejamento ? el('span', { class: `sub${c2.planejamento > ref ? ' ref-acima' : ''}`, title: c2.planejamento > ref ? `Acima do limite de referência (${ref})` : '' }, ` · ${c2.planejamento} planej.`) : null; })(),
             (() => { const ref = refIndividual(p, 'refChamados', params.refChamadosProf);
-              return (c2.chamados || []).length ? el('span', { class: `sub${c2.chamados.length > ref ? ' ref-acima' : ''}`, title: c2.chamados.length > ref ? `Acima do limite de referência (${ref})` : '' }, ` · ${c2.chamados.length} chamado${c2.chamados.length === 1 ? '' : 's'}`) : null; })()),
+              return (c2.chamados || []).length ? el('span', { class: `sub${c2.chamados.length > ref ? ' ref-acima' : ''}`, title: c2.chamados.length > ref ? `Acima do limite de referência (${ref})` : '' }, ` · ${c2.chamados.length} chamado${c2.chamados.length === 1 ? '' : 's'}`) : null; })(),
+            (c2.tarefas || []).length ? el('span', { class: 'sub', title: 'Tarefas da seção ativas (sem limite — balanceamento interno)' }, ` · ${c2.tarefas.length} tarefa${c2.tarefas.length === 1 ? '' : 's'}`) : null),
           el('div', { class: 'pontos-barra' },
             el('div', { class: `pontos-fill ${c2.excedido ? 'cheia' : c2.regular >= c2.limite ? 'limite' : ''}`, style: `width:${Math.min(100, (c2.regular / Math.max(1, c2.limite)) * 100)}%` })));
       });

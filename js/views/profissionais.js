@@ -15,9 +15,12 @@ export function viewProfissionais(rerender) {
   if (!user || !can(user, 'verInterno')) { location.hash = '#/login'; return frag(); }
 
   const params = s.getParams();
-  const profissionais = s.listProfissionais();
+  // v1.28.4: lista da Equipe em ordem alfabética.
+  const profissionais = [...s.listProfissionais()]
+    .sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR', { sensitivity: 'base' }));
   const carga = cargaProfissionais(s.listDemandas(), s.getInternas(), profissionais, params,
-    typeof s.listChamados === 'function' ? s.listChamados() : []);
+    typeof s.listChamados === 'function' ? s.listChamados() : [],
+    typeof s.listTarefas === 'function' ? s.listTarefas() : []);
   const podeEditar = can(user, 'profissionais');
 
   // ---- art. 13: equipes de planejamento em uso por especialidade -------------
@@ -37,6 +40,10 @@ export function viewProfissionais(rerender) {
     const detCh = (c.chamados || []).map(x => el('li', {},
       el('a', { href: `#/chamado/${x.id}` }, x.assunto || x.id), ' ',
       el('span', { class: 'sub' }, '(chamado em atendimento)')));
+    // Tarefas da seção ativas — contagem própria, sem limite (v1.28.4).
+    const detTa = (c.tarefas || []).map(x => el('li', {},
+      x.titulo, ' ',
+      el('span', { class: 'sub' }, `(tarefa ${x.situacao === 'andamento' ? 'em andamento' : 'aberta'})`)));
     return el('section', { class: `card prof-detalhe ${p.ativo === false ? 'inativo' : ''}` },
       el('div', { class: 'prof-cab' },
         el('div', { class: 'prof-ident' }, avatar(p.nome, p.fotoUrl, 44),
@@ -54,12 +61,13 @@ export function viewProfissionais(rerender) {
         stat('Titular', c.titular), stat('Substituto', c.substituto),
         stat('Total (art. 12)', c.total, c.excedido), stat('Emergencial', c.emergencial),
         stat('Planejamento', c.planejamento, c.planejamento > refIndividual(p, 'refPlanej', params.refPlanejProf)), stat('Disponível', c.disponivel),
-        stat('Chamados', (c.chamados || []).length, (c.chamados || []).length > refIndividual(p, 'refChamados', params.refChamadosProf))),
+        stat('Chamados', (c.chamados || []).length, (c.chamados || []).length > refIndividual(p, 'refChamados', params.refChamadosProf)),
+        stat('Tarefas', (c.tarefas || []).length)),
       el('div', { class: 'pontos-barra grande' },
         el('div', { class: `pontos-fill ${c.excedido ? 'cheia' : c.regular >= c.limite ? 'limite' : ''}`, style: `width:${Math.min(100, (c.regular / Math.max(1, c.limite)) * 100)}%` })),
-      (det.length || detCh.length)
-        ? el('ul', { class: 'prof-demandas' }, ...det, ...detCh)
-        : el('p', { class: 'sub' }, 'Sem demandas nem chamados em atendimento.'));
+      (det.length || detCh.length || detTa.length)
+        ? el('ul', { class: 'prof-demandas' }, ...det, ...detCh, ...detTa)
+        : el('p', { class: 'sub' }, 'Sem demandas, chamados ou tarefas em andamento.'));
   });
 
   // ---- formulário (novo/edição) ------------------------------------------------
