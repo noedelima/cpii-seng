@@ -202,7 +202,7 @@ export function viewDemanda(rerender, id) {
             el('label', { class: 'chip-check' }, ckTombado, ' Bem tombado confirmado (+1 ponto, §4º)'),
             el('label', { class: 'chip-check destaque-emergencial' }, ckEspecial, ' Serviço emergencial (art. 11, §5º)')),
           el('button', { class: 'btn primario', onclick: async () => {
-            await s.atualizarDemanda(d.id, { aval: {
+            const nova = {
               ...aval,
               g: selG.value ? +selG.value : (aval.g ?? null), u: selU.value ? +selU.value : (aval.u ?? null), t: selT.value ? +selT.value : (aval.t ?? null),
               tipoAtividade: selAtv.value || aval.tipoAtividade || null,
@@ -210,7 +210,12 @@ export function viewDemanda(rerender, id) {
               prazoConsiderado: selPrazo.value || aval.prazoConsiderado || null,
               tombadoConf: ckTombado.checked, especial: ckEspecial.checked,
               pontosManual: inPontosManual && inPontosManual.value !== '' ? +inPontosManual.value : null,
-            } }, 'Avaliação técnica atualizada');
+            };
+            // v1.29.2: o evento registra o RESUMO da avaliação — a linha do
+            // tempo mostra quando e por que a prioridade calculada mudou.
+            const prNova = prioridade({ ...d, aval: nova }, params);
+            await s.atualizarDemanda(d.id, { aval: nova },
+              `Avaliação técnica atualizada (G${nova.g ?? '—'}·U${nova.u ?? '—'}·T${nova.t ?? '—'} — GUT ${prNova.gut ?? '—'}; valor ${nova.valorConsiderado ? 'R$ ' + Number(nova.valorConsiderado).toLocaleString('pt-BR', { maximumFractionDigits: 0 }) : '—'}; prazo ${nova.prazoConsiderado || '—'} → prioridade ${prNova.prioridade == null ? '—' : fmtNum(prNova.prioridade)})`);
             toast('Avaliação salva.');
           } }, 'Salvar avaliação')));
     }
@@ -226,6 +231,18 @@ export function viewDemanda(rerender, id) {
     } else if (!podeAgora) {
       filhosCodir.push(el('p', { class: 'nota' }, 'Disponível após a análise GUT pela Engenharia (status “Aguardando aprovação do CODIR”).'));
     } else {
+      // Ajuste + justificativa criados ANTES das ações de aprovação: o que
+      // estiver digitado é levado JUNTO na aprovação (v1.29.2 — corrige a
+      // perda por rerender quando o Conselho preenche e aprova em seguida).
+      const inAjuste = el('input', { type: 'number', step: 0.01, min: -1, max: 1, value: d.ajuste?.valor ?? '', placeholder: '0,00' });
+      const inJust = el('input', { type: 'text', maxlength: 300, value: d.ajuste?.justificativa ?? '', placeholder: 'Justificativa da deliberação' });
+      const ajusteDigitado = () => {
+        const v = inAjuste.value === '' ? null : +inAjuste.value;
+        if (!v) return { patch: {}, sufixo: '' };
+        const just = inJust.value.trim();
+        return { patch: { ajuste: { valor: v, justificativa: just, solicitadoPor: 'CODIR' } },
+                 sufixo: ` — ajuste ${v > 0 ? '+' : ''}${v}${just ? `: ${just}` : ''}` };
+      };
       const ck = el('input', { type: 'checkbox', ...(d.codirAprovado ? { checked: true } : {}) });
       ck.addEventListener('change', async () => {
         // Desfazer a aprovação com a demanda já na fila a retira da fila
@@ -237,9 +254,10 @@ export function viewDemanda(rerender, id) {
           toast('Demanda devolvida para aprovação do CODIR.');
           return;
         }
-        const patch = { codirAprovado: ck.checked };
-        let evento = ck.checked ? 'Aprovada pelo CODIR' : 'Aprovação do CODIR desmarcada';
-        if (ck.checked && d.status === 'codir') { patch.status = 'fila'; evento = 'Aprovada pelo CODIR — posicionada na fila'; }
+        const aj = ck.checked ? ajusteDigitado() : { patch: {}, sufixo: '' };
+        const patch = { codirAprovado: ck.checked, ...aj.patch };
+        let evento = ck.checked ? `Aprovada pelo CODIR${aj.sufixo}` : 'Aprovação do CODIR desmarcada';
+        if (ck.checked && d.status === 'codir') { patch.status = 'fila'; evento = `Aprovada pelo CODIR — posicionada na fila${aj.sufixo}`; }
         await s.atualizarDemanda(d.id, patch, evento);
         if (patch.status === 'fila') await notificar(s, 'fila', d, interna);
         toast('Registro de aprovação atualizado.');
@@ -251,7 +269,8 @@ export function viewDemanda(rerender, id) {
         // “Há dotação orçamentária?” — desfechos registrados pelo próprio CODIR.
         filhosCodir.push(el('div', { class: 'chips' },
           el('button', { class: 'btn ghost sm', onclick: async () => {
-            await s.atualizarDemanda(d.id, { codirAprovado: true, status: 'fila' }, 'Aprovada pelo CODIR — posicionada na fila');
+            const aj = ajusteDigitado();
+            await s.atualizarDemanda(d.id, { codirAprovado: true, status: 'fila', ...aj.patch }, `Aprovada pelo CODIR — posicionada na fila${aj.sufixo}`);
             await notificar(s, 'fila', d, interna);
             toast('Demanda posicionada na fila.');
           } }, 'Aprovar — posicionar na fila'),
@@ -282,8 +301,6 @@ export function viewDemanda(rerender, id) {
           } }, 'Não aprovar — encerrar')));
       }
 
-      const inAjuste = el('input', { type: 'number', step: 0.01, min: -1, max: 1, value: d.ajuste?.valor ?? '', placeholder: '0,00' });
-      const inJust = el('input', { type: 'text', maxlength: 300, value: d.ajuste?.justificativa ?? '', placeholder: 'Justificativa da deliberação' });
       filhosCodir.push(el('div', { class: 'form-grid' },
         el('div', { class: 'form-linha' },
           campo('Fator de ajuste', inAjuste, 'Somado à prioridade calculada (ex.: 0,02) — altera a ordem da fila.'),
@@ -292,7 +309,7 @@ export function viewDemanda(rerender, id) {
           const v = inAjuste.value === '' ? null : +inAjuste.value;
           if (v && !inJust.value.trim()) { toast('Informe a justificativa do ajuste.', 'erro'); return; }
           await s.atualizarDemanda(d.id, { ajuste: v ? { valor: v, justificativa: inJust.value.trim(), solicitadoPor: 'CODIR' } : null },
-            v ? `Ajuste de prioridade ${v > 0 ? '+' : ''}${v} aplicado pelo CODIR` : 'Ajuste de prioridade removido pelo CODIR');
+            v ? `Ajuste de prioridade ${v > 0 ? '+' : ''}${v} aplicado pelo CODIR — ${inJust.value.trim()}` : 'Ajuste de prioridade removido pelo CODIR');
           toast('Ajuste salvo.');
         } }, 'Salvar ajuste')));
     }
