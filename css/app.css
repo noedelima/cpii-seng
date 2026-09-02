@@ -281,6 +281,14 @@ textarea { resize: vertical; width: 100%; }
 .pontos-fill.cheia { background: var(--perigo); }
 .prof-lista { display: flex; flex-direction: column; gap: 0; }
 .prof-detalhe.inativo { opacity: .72; }
+
+/* --- Selo de ausência nos cartões de profissional (v1.29.4) ------------------ */
+.prof-card { position: relative; }
+.badge-ausencia { display: inline-flex; align-items: center; justify-content: center; width: 21px; height: 21px; border-radius: 50%; vertical-align: middle; color: var(--perigo); background: color-mix(in srgb, var(--perigo) 12%, transparent); border: 1px solid color-mix(in srgb, var(--perigo) 45%, transparent); }
+.badge-ausencia.prevista { color: var(--ouro); background: color-mix(in srgb, var(--ouro) 14%, transparent); border-color: color-mix(in srgb, var(--ouro) 55%, transparent); }
+.prof-card .badge-ausencia { position: absolute; top: 9px; right: 10px; }
+.prof-cab h2 .badge-ausencia { margin-left: 6px; }
+
 .prof-cab { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
 .prof-cab h2 { margin-bottom: 2px; }
 .prof-resumo { display: grid; grid-template-columns: repeat(auto-fit, minmax(95px, 1fr)); gap: 8px; margin: 12px 0 2px; }

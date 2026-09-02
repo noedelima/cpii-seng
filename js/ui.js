@@ -104,6 +104,37 @@ export function select(opcoes, { value = '', placeholder = 'Selecione…', ...at
 
 // --- Badge de status ------------------------------------------------------------
 import { statusNome, statusCor } from './config.js';
+
+// --- Indicador de ausência (v1.29.4) -----------------------------------------
+// Selo com ampulheta para os cartões de profissional: tom de alerta quando há
+// ausência VIGENTE (férias, licença etc.); versão discreta (dourada) quando a
+// próxima ausência começa em até `diasAviso` dias — mesma janela usada nos
+// seletores de alocação (notaAusencia). Detalhes (tipo e período) no tooltip e
+// no aria-label. SVG montado via DOM (createElementNS) — sem innerHTML, na
+// linha da regra de segurança deste módulo.
+import { ausenciaAtual, proximaAusencia, tipoAusenciaNome } from './config.js';
+export function badgeAusencia(p, diasAviso = 15) {
+  const atual = ausenciaAtual(p);
+  const prox = atual ? null : proximaAusencia(p);
+  const emBreve = prox && (prox.inicio - Date.now() <= diasAviso * 86400000);
+  if (!atual && !emBreve) return null;
+  const a = atual || prox;
+  const dt = (ts) => new Date(ts).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+  const titulo = atual
+    ? `${tipoAusenciaNome(a.tipo)} — ausente até ${dt(a.fim)}`
+    : `${tipoAusenciaNome(a.tipo)} prevista: ${dt(a.inicio)} a ${dt(a.fim)}`;
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(NS, 'svg');
+  for (const [k, v] of Object.entries({ viewBox: '0 0 24 24', width: '13', height: '13',
+    fill: 'none', stroke: 'currentColor', 'stroke-width': '2.2', 'stroke-linecap': 'round',
+    'stroke-linejoin': 'round', 'aria-hidden': 'true' })) svg.setAttribute(k, v);
+  const path = document.createElementNS(NS, 'path');
+  path.setAttribute('d', 'M6 3h12M6 21h12M8 3v3.5a4 4 0 0 0 1.6 3.2L12 12l-2.4 2.3A4 4 0 0 0 8 17.5V21M16 3v3.5a4 4 0 0 1-1.6 3.2L12 12l2.4 2.3a4 4 0 0 1 1.6 3.2V21');
+  svg.append(path);
+  return el('span', { class: `badge-ausencia${atual ? '' : ' prevista'}`, title: titulo,
+    role: 'img', 'aria-label': titulo }, svg);
+}
+
 export const badgeStatus = (id) => el('span', { class: `badge ${statusCor(id)}` }, statusNome(id));
 
 // --- Barra de pontos (carga do profissional) -------------------------------------

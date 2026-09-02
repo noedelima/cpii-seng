@@ -1,7 +1,7 @@
 // =============================================================================
 // Profissionais da SENG — cadastro, carga de pontos (art. 12) e art. 13
 // =============================================================================
-import { el, frag, campo, select, toast, fmtData } from '../ui.js';
+import { el, frag, campo, select, toast, fmtData, badgeAusencia } from '../ui.js';
 import { CARGOS, AREAS, AREAS_APOIO, tipoAusenciaNome, ausenciaAtual, proximaAusencia } from '../config.js';
 import { avatar } from '../avatar.js';
 import { cargaProfissionais, limitePlanejamento, refIndividual } from '../calc.js';
@@ -48,7 +48,7 @@ export function viewProfissionais(rerender) {
       el('div', { class: 'prof-cab' },
         el('div', { class: 'prof-ident' }, avatar(p.nome, p.fotoUrl, 44),
           el('div', {},
-            el('h2', {}, p.nome, p.ativo === false ? el('span', { class: 'sub' }, ` — inativo${p.obs ? ` (${p.obs})` : ''}` ) : null),
+            el('h2', {}, p.nome, badgeAusencia(p), p.ativo === false ? el('span', { class: 'sub' }, ` — inativo${p.obs ? ` (${p.obs})` : ''}` ) : null),
             el('p', { class: 'sub' }, `${p.cargo} · ${p.area}${p.email ? ` · ${p.email}` : ''}`),
             (() => {
               const atual = ausenciaAtual(p); const prox = proximaAusencia(p);

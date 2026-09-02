@@ -4,7 +4,7 @@
 // Privacidade: nenhum nome de profissional nem assunto de chamado; os totais
 // de chamados vêm do doc público config/transparencia (só contagens).
 // =============================================================================
-import { el, frag, fmtNum } from '../ui.js';
+import { el, frag, fmtNum, badgeAusencia } from '../ui.js';
 import { CAMPI, ESPECIALIDADES, FASES_DEMANDA, campusNome } from '../config.js';
 import { ordenarFila, prioridade, cargaProfissionais, capacidadeSetorial, refIndividual, distribuicaoTempos } from '../calc.js';
 import { store } from '../store.js';
@@ -157,6 +157,7 @@ export function viewInicio() {
       const cards = profissionais.filter(p => p.ativo !== false || carga[p.id].total > 0).map(p => {
         const c2 = carga[p.id];
         return el('a', { class: 'prof-card', href: '#/equipe', title: 'Ver detalhes na Equipe' },
+          badgeAusencia(p),
           el('div', { class: 'prof-nome' }, avatar(p.nome, p.fotoUrl, 26), ' ', p.nome, p.ativo === false ? el('span', { class: 'sub' }, ' (inativo)') : null),
           el('div', { class: 'sub' }, `${p.cargo} · ${p.area}`),
           el('div', { class: 'prof-pontos' },
