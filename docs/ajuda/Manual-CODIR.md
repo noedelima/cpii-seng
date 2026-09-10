@@ -72,6 +72,8 @@ O CODIR atua a partir do status **“Aguardando aprovação do CODIR”** (após
 
 > **Projeto + Obra.** Uma demanda que exigia projeto e obra **volta ao CODIR como obra** (com projeto existente) quando a etapa de projeto é concluída — a **aprovação anterior é zerada** (repriorização): delibere novamente, conferindo o GUT e o valor reavaliados para a obra.
 
+> **Exceção — obra direta.** Se a equipe optar por **contratação integrada** (projeto incluído na licitação da obra) ou por **solução sem projeto** (apenas TR e orçamento), **não há retorno ao Conselho**: o mesmo atendimento segue como obra, sob a deliberação já registrada — a decisão fica visível na linha do tempo da demanda.
+
 ---
 
 ## 4. Como ler a prioridade

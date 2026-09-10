@@ -8,7 +8,7 @@ export const APP = {
   orgao: 'Colégio Pedro II',
   setor: 'Seção de Engenharia — SENG/DECOF',
   portaria: 'Portaria nº 7503/REITORIA/CPII, de 24/11/2025',
-  versao: '1.29.4',
+  versao: '1.30.0',
 };
 
 // --- Parâmetros ajustáveis pelo Administrador (defaults) ---------------------
@@ -145,6 +145,10 @@ export const RESULTADOS_CERTAME = [
 export const PROJETO_ORIGEM = [
   { id: 'interno',    nome: 'Interno (SENG)' },
   { id: 'contratado', nome: 'Contratado' },
+  // Obra direta (v1.30): sem etapa de projeto separada — o atendimento segue
+  // como obra no mesmo ciclo, sem retorno ao CODIR.
+  { id: 'integrada',  nome: 'Contratação integrada — projeto incluído na licitação da obra' },
+  { id: 'dispensado', nome: 'Sem projeto — solução com TR e orçamento' },
 ];
 
 // Reversões de status — disponíveis SOMENTE para Chefe/Admin (statusTotal), para

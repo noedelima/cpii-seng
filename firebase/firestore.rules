@@ -57,7 +57,7 @@ service cloud.firestore {
               || (d.suspensao is map && d.suspensao.get('motivo','') in ['dotacao','tecnico','outro']))
           && (!('certame' in d) || d.certame == null
               || (d.certame is map && d.certame.get('resultado', null) in [null,'exito','deserto','fracassado']))
-          && (!('projetoOrigem' in d) || d.projetoOrigem == null || d.projetoOrigem in ['interno','contratado'])
+          && (!('projetoOrigem' in d) || d.projetoOrigem == null || d.projetoOrigem in ['interno','contratado','integrada','dispensado'])
           && (!('chamadoOrigem' in d) || d.chamadoOrigem == null || (d.chamadoOrigem is string && d.chamadoOrigem.size() <= 24));
     }
     // Deliberação do CODIR (gateways "Aprovada?" e "Há dotação orçamentária?"
@@ -134,6 +134,14 @@ service cloud.firestore {
         // Workflow v2: fase, artefatos, certame e origem — equipe, no atendimento
         || (ehEq && resource.data.status == 'atendimento'
             && mudou.hasOnly(['fase', 'artefatos', 'certame', 'projetoOrigem', 'historico', 'atualizadoEm']))
+        // Obra direta (v1.30): na etapa de projeto, a equipe define a origem
+        // 'integrada' (art. 46) ou 'dispensado' (sem projeto) e o MESMO
+        // atendimento segue como obra — sem retorno ao CODIR.
+        || (ehEq && resource.data.status == 'atendimento'
+            && resource.data.get('etapa', null) != 'obra'
+            && request.resource.data.get('etapa', null) == 'obra'
+            && request.resource.data.get('projetoOrigem', '') in ['integrada', 'dispensado']
+            && mudou.hasOnly(['etapa', 'projetoOrigem', 'historico', 'atualizadoEm']))
       );
     }
 

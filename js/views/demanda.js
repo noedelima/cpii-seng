@@ -677,9 +677,26 @@ function cartaoFaseAtual(d, s, user, interna) {
   const blocoProjetoOrigem = () => {
     if (!['projeto', 'projeto-obra'].includes(d.tipoDemanda) && d.etapa !== 'projeto') return null;
     const selPO = select(PROJETO_ORIGEM, { value: d.projetoOrigem || '', placeholder: 'Definir…' });
-    selPO.onchange = () => selPO.value && salvar({ projetoOrigem: selPO.value },
-      `Origem do projeto definida: ${(PROJETO_ORIGEM.find(o => o.id === selPO.value) || {}).nome}`);
-    return campo('Origem do projeto', selPO, 'Projeto elaborado internamente pontua pela alocação (art. 11).');
+    selPO.onchange = async () => {
+      if (!selPO.value) return;
+      const nomePO = (PROJETO_ORIGEM.find(o => o.id === selPO.value) || {}).nome;
+      // Obra direta (v1.30): contratação integrada (art. 46 da Lei 14.133/2021)
+      // ou solução sem projeto — não há etapa de projeto separada nem retorno ao
+      // CODIR: o MESMO atendimento segue como obra, preservando fase, checklist
+      // de artefatos e deliberação (a aprovação original já contempla a obra).
+      if (['integrada', 'dispensado'].includes(selPO.value) && ehEtapaProjeto(d) && d.tipoDemanda !== 'projeto') {
+        const ok = await confirmar('Seguir direto como obra?',
+          `${nomePO}: não haverá etapa de projeto separada. O atendimento segue como OBRA no ciclo normal da contratação (planejamento → licitação → execução → recebimento), mantendo fase, artefatos e a deliberação do CODIR. A decisão fica registrada na linha do tempo.`,
+          { ok: 'Seguir como obra' });
+        if (!ok) { selPO.value = d.projetoOrigem || ''; return; }
+        await salvar({ etapa: 'obra', projetoOrigem: selPO.value },
+          `Origem do projeto definida: ${nomePO} — o atendimento segue direto como obra, sem etapa de projeto separada`);
+        return;
+      }
+      salvar({ projetoOrigem: selPO.value }, `Origem do projeto definida: ${nomePO}`);
+    };
+    return campo('Origem do projeto', selPO,
+      'Interno pontua pela alocação (art. 11). Contratação integrada ou sem projeto: o atendimento segue direto como obra, sem etapa de projeto separada.');
   };
 
   if (!d.fase) {

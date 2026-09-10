@@ -90,7 +90,7 @@ Dentro de **Em atendimento**, a demanda percorre as **fases do ciclo da contrata
 - **Execução** — contrato em andamento, acompanhado pelos fiscais alocados.
 - **Recebimento** — recebimento provisório/definitivo do objeto; ao final, a Chefia **conclui a demanda**.
 
-Demandas em atendimento **anteriores à classificação** aparecem “sem fase definida” até a equipe defini-la no cartão **Fase atual**. No ciclo **projeto → obra**, registre também a **origem do projeto** (interno ou contratado) — projeto interno pontua pela alocação (art. 11).
+Demandas em atendimento **anteriores à classificação** aparecem “sem fase definida” até a equipe defini-la no cartão **Fase atual**. No ciclo **projeto → obra**, registre também a **origem do projeto**: **interno** (pontua pela alocação — art. 11), **contratado**, **contratação integrada** (projeto incluído na licitação da obra) ou **sem projeto** (solução com TR e orçamento) — nas duas últimas, o atendimento segue direto como obra (ver quadro abaixo).
 
 > **Desfazer (correções de fase).** Cada fase traz uma ação de **correção** para desfazer avanços acidentais — remover a classificação (“sem fase definida”), retornar da licitação ao planejamento **sem registrar certame**, desfazer o êxito do certame (Execução → Licitação) ou retornar do recebimento à execução. Diferente do retorno por certame deserto/fracassado, a correção não registra resultado — apenas o evento de correção no histórico.
 
@@ -108,6 +108,8 @@ Regras de transição (resumo):
 A tabela completa de transições por perfil está no **Apêndice B**.
 
 > **Projeto + Obra em etapas.** Demandas de **obra** cujo projeto **não existe ou é parcial** tramitam como **uma única demanda**, em duas etapas. Concluída a etapa de **projeto** (no cartão **Gestão**, botão *“Concluir projeto → obra ao CODIR”*): se o projeto era **inexistente**, a demanda **retorna ao CODIR como obra** (com projeto existente) para **repriorização** — a aprovação anterior é **zerada** (nova deliberação) e o ciclo de fases/artefatos do projeto é **arquivado e limpo** para o ciclo da obra; se era **parcial**, há a opção de **contratação unificada** (projeto + obra) ou separada. Demandas de **projeto puro** também dispõem do botão *“Reavaliar como obra (projeto pronto)”*, quando a orientação for contratar a obra em seguida. Reavalie o GUT e o valor da obra antes de reenviar ao CODIR.
+
+> **Obra direta — contratação integrada ou sem projeto.** Ainda na etapa de projeto, ao definir a **origem do projeto** como **Contratação integrada** (projeto incluído na licitação da obra — art. 46 da Lei nº 14.133/2021) ou **Sem projeto** (solução contratada apenas com TR e orçamento elaborados no planejamento), o **mesmo atendimento segue direto como OBRA**, sem etapa de projeto separada e **sem retornar ao CODIR** — a deliberação original já contempla a obra. Fase, checklist de artefatos e prioridade são **preservados**, e a decisão fica registrada na linha do tempo. A decisão está disponível para a **equipe alocada** e para a **Chefia**, no campo *Origem do projeto* do cartão **Fase atual**.
 
 ---
 
