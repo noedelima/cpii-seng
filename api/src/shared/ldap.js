@@ -1,5 +1,5 @@
 // =============================================================================
-// LDAP "simple bind" mínimo — ZERO dependências (BER/ASN.1 artesanal + net/tls
+// LDAP "simple bind" mínimo — ZERO dependências (BER/ASN.1 artesanal + tls
 // nativos). Suficiente para AUTENTICAR (bind) contra Active Directory / OpenLDAP;
 // não faz busca nem leitura de atributos. Base da futura autenticação
 // Matrícula/Senha de rede do CPII (ADR-003) — dormente até LDAP_URL ser
@@ -13,7 +13,6 @@
 // BindRequest (RFC 4511): SEQUENCE { messageID(1), [APPLICATION 0] {
 //   version(3), name OCTET STRING, [CONTEXT 0] senha } }
 // =============================================================================
-const net = require('net');
 const tls = require('tls');
 
 // ---- BER (encode) -----------------------------------------------------------
@@ -65,12 +64,15 @@ function ldapBind(url, dn, senha, timeoutMs = 8000) {
   return new Promise((resolve, reject) => {
     let u;
     try { u = new URL(url); } catch { return reject(new Error('LDAP_URL inválida')); }
+    if (u.protocol !== 'ldaps:' || !u.hostname || u.username || u.password
+        || (u.pathname && u.pathname !== '/') || u.search || u.hash) {
+      return reject(new Error('LDAP_URL deve usar LDAPS com validação de certificado'));
+    }
     if (!senha) return resolve({ ok: false, codigo: 49, mensagem: 'senha vazia (bind anônimo recusado)' });
-    const ldaps = u.protocol === 'ldaps:';
-    const porta = Number(u.port) || (ldaps ? 636 : 389);
-    const conectar = ldaps
-      ? (cb) => tls.connect({ host: u.hostname, port: porta, servername: u.hostname }, cb)
-      : (cb) => net.connect({ host: u.hostname, port: porta }, cb);
+    const porta = Number(u.port) || 636;
+    const conectar = (cb) => tls.connect({
+      host: u.hostname, port: porta, servername: u.hostname, rejectUnauthorized: true,
+    }, cb);
 
     let socket, feito = false;
     const fim = (fn, v) => { if (!feito) { feito = true; try { socket.destroy(); } catch { } fn(v); } };
@@ -80,8 +82,13 @@ function ldapBind(url, dn, senha, timeoutMs = 8000) {
     const partes = [];
     socket.on('data', (d) => {
       partes.push(d);
+      if (partes.reduce((n, b) => n + b.length, 0) > 65536) {
+        clearTimeout(timer); fim(reject, new Error('LDAP: resposta excessiva')); return;
+      }
       try {
-        const { codigo, mensagem } = parseBindResponse(Buffer.concat(partes));
+        const buf = Buffer.concat(partes);
+        if (buf.length < 2 || lerTLV(buf, 0).fim > buf.length) return;
+        const { codigo, mensagem } = parseBindResponse(buf);
         clearTimeout(timer);
         fim(resolve, { ok: codigo === 0, codigo, mensagem });
       } catch { /* resposta ainda incompleta — aguarda mais dados */ }

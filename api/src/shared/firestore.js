@@ -32,88 +32,99 @@ function enc(v) {
   if (typeof v === 'string') return { stringValue: v };
   if (typeof v === 'boolean') return { booleanValue: v };
   if (typeof v === 'number') return Number.isInteger(v) ? { integerValue: String(v) } : { doubleValue: v };
+  if (v instanceof Date) return { timestampValue:v.toISOString() };
   if (Array.isArray(v)) return { arrayValue: { values: v.map(enc) } };
   if (typeof v === 'object') { const f = {}; for (const [k, x] of Object.entries(v)) f[k] = enc(x); return { mapValue: { fields: f } }; }
   return { nullValue: null };
 }
 const encFields = (obj = {}) => { const f = {}; for (const [k, v] of Object.entries(obj)) f[k] = enc(v); return f; };
 
+// Discard upstream diagnostics; retain only known machine codes for HTTP mapping.
+async function responseError(response) {
+  let code='UNKNOWN';
+  try { const body=await response.json();const candidate=body?.error?.status;
+    if (['PERMISSION_DENIED','NOT_FOUND','ALREADY_EXISTS','ABORTED','FAILED_PRECONDITION','INVALID_ARGUMENT','UNAUTHENTICATED','UNAVAILABLE'].includes(candidate)) code=candidate;
+  } catch { /* response may not be JSON */ }
+  if (code==='UNKNOWN' && response.status===403) code='PERMISSION_DENIED';
+  const error=new Error('firestore request failed');error.code=code;error.httpStatus=response.status;return error;
+}
+
 // ---- Leitura ----------------------------------------------------------------
 async function docGet(path, token) {
   const r = await fetch(`${BASE}/${path}`, { headers: { Authorization: 'Bearer ' + token } });
   if (r.status === 404) return null;
-  if (!r.ok) throw new Error('firestore GET ' + r.status + ': ' + (await r.text()).slice(0, 300));
+  if (!r.ok) throw await responseError(r);
   return unwrap((await r.json()).fields || {});
 }
 async function docGetRaw(path, token) {
   const r = await fetch(`${BASE}/${path}`, { headers: { Authorization: 'Bearer ' + token } });
   if (r.status === 404) return null;
-  if (!r.ok) throw new Error('firestore GET ' + r.status + ': ' + (await r.text()).slice(0, 300));
+  if (!r.ok) throw await responseError(r);
   return r.json();
 }
 
-// ---- Escrita (sob o token; as rules aprovam/negam) --------------------------
-// PATCH com updateMask: define os campos de `fields`; campos no mask e ausentes
-// de `fields` são apagados (deleteField). Cria o doc se não existir (merge/upsert).
-async function patchDoc(path, fields, maskPaths, token) {
-  const qs = maskPaths.map((p) => 'updateMask.fieldPaths=' + encodeURIComponent(p)).join('&');
-  const r = await fetch(`${BASE}/${path}?${qs}`, {
-    method: 'PATCH',
-    headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ fields }),
-  });
-  if (!r.ok) throw new Error('firestore PATCH ' + r.status + ': ' + (await r.text()).slice(0, 300));
-  return r.json();
-}
-async function createDoc(collection, fields, token) {
-  const r = await fetch(`${BASE}/${collection}`, {
-    method: 'POST',
-    headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ fields }),
-  });
-  if (!r.ok) throw new Error('firestore POST ' + r.status + ': ' + (await r.text()).slice(0, 200));
-  return r.json();
-}
-async function commitWrite(write, token) {
-  const r = await fetch(COMMIT, {
-    method: 'POST',
-    headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ writes: [write] }),
-  });
-  if (!r.ok) throw new Error('firestore commit ' + r.status + ': ' + (await r.text()).slice(0, 300));
-  return r.json();
-}
-// Atualiza doc existente: só os campos do mask; `historyEvent` (opcional) faz o
-// arrayUnion em `historico` (appendMissingElements) — igual ao SDK.
-async function commitPatch(path, fields, maskPaths, historyEvent, token) {
-  const name = `projects/${PROJECT_ID}/databases/(default)/documents/${path}`;
-  const write = { update: { name, fields }, currentDocument: { exists: true } };
-  if (maskPaths && maskPaths.length) write.updateMask = { fieldPaths: maskPaths };
-  if (historyEvent) write.updateTransforms = [{ fieldPath: 'historico', appendMissingElements: { values: [historyEvent] } }];
-  return commitWrite(write, token);
-}
-// Cria doc num id definido; falha se já existir.
-async function commitCreate(path, fields, token) {
-  const name = `projects/${PROJECT_ID}/databases/(default)/documents/${path}`;
-  return commitWrite({ update: { name, fields }, currentDocument: { exists: false } }, token);
-}
+// All application writes go through mutate; rules require its atomic receipt.
+module.exports = { BASE, val, unwrap, enc, encFields, docGet, docGetRaw };
 
-// ---- Auxiliares (nome do usuário + auditoria append-only) -------------------
-async function nomeDoUsuario(user) {
-  try { const p = await docGet('usuarios/' + user.uid, user.token); return (p && p.nome) || user.email || 'Sistema'; }
-  catch { return user.email || 'Sistema'; }
+// Atomic source + public projection + audit receipt. No administrative data
+// credential is used: every write is still evaluated under the caller's Rules.
+const { randomUUID } = require('crypto');
+const { publicDemanda, publicConfig, normalizeMutation } = require('./security');
+const stable = value => JSON.stringify(value, (_, v) => v && typeof v === 'object' && !Array.isArray(v)
+  ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => a.localeCompare(b))) : v);
+const changedKeys = (old, next) => [...new Set([...Object.keys(old || {}), ...Object.keys(next || {})])]
+  .filter(k => k !== '_audit' && stable(old?.[k]) !== stable(next?.[k]));
+async function mutate(path, patch, user, { create = false, remove = [], event = '' } = {}) {
+  if (!patch || typeof patch !== 'object' || Array.isArray(patch)) throw new Error('invalid_patch');
+  const [collection, id, extra] = path.split('/');
+  if (extra || !['demandas','chamados','internas','profissionais','tarefas','usuarios','config'].includes(collection)
+      || !/^[A-Za-z0-9_-]{1,128}$/.test(id)) throw new Error('invalid_mutation_path');
+  const actor = await docGet('usuarios/' + user.uid, user.token);
+  if (!actor || actor.ativo === false) throw new Error('PERMISSION_DENIED');
+  const oldRaw = create ? null : await docGetRaw(path, user.token);
+  if (!create && !oldRaw) throw new Error('mutation_not_found');
+  const old = oldRaw ? unwrap(oldRaw.fields) : {};
+  const data = normalizeMutation(collection, old, patch, { ...user, nome: actor.nome }, event, create);
+  remove.forEach(k => { delete data[k]; });
+  const eventId = randomUUID();
+  data._audit = eventId;
+  const fields = Object.fromEntries(Object.entries(data).map(([k, value]) => [k,
+    oldRaw && Object.hasOwn(old, k) && stable(value) === stable(old[k]) ? oldRaw.fields[k]
+      : value instanceof Date ? { timestampValue: value.toISOString() } : enc(value)]));
+  const source = { update: { name: BASE + '/' + path, fields },
+    currentDocument: create ? { exists: false } : { updateTime: oldRaw.updateTime } };
+  // Firestore resource names omit scheme/hostname and API version.
+  const resourceName = p => `projects/${PROJECT_ID}/databases/(default)/documents/${p}`;
+  source.update.name = resourceName(path);
+  const op = create ? 'create' : 'update';
+  const audit = { update: { name: resourceName('logs/' + eventId), fields: encFields({
+    uid: user.uid, nome: actor.nome, email: user.email || '', acao: op,
+    alvo: path, detalhes: '', col: collection, doc: id, op, fields: changedKeys(create ? {} : old, data),
+  }) }, currentDocument: { exists: false },
+    updateTransforms: [{ fieldPath: 'ts', setToServerValue: 'REQUEST_TIME' }] };
+  const writes = [source, audit];
+  if (collection === 'demandas') {
+    const published=encFields(publicDemanda(id,data));
+    if (fields.expurgarEm?.timestampValue) published.expurgarEm=fields.expurgarEm;
+    writes.push({update:{name:resourceName('publicDemandas/'+id),fields:published}});
+  }
+  if (collection === 'config' && ['params','transparencia'].includes(id))
+    writes.push({ update: { name: resourceName('publicConfig/' + id), fields: encFields(publicConfig(id, data)) } });
+  const response = await fetch(COMMIT, { method: 'POST', headers: { Authorization: 'Bearer ' + user.token, 'Content-Type': 'application/json' }, body: JSON.stringify({ writes }) });
+  if (!response.ok) {
+    const error=await responseError(response);
+    // Rules can evaluate an audit's changed fields against a concurrently
+    // updated document before rejecting its updateTime precondition. Keep the
+    // write rejected, but distinguish a readable version conflict from an
+    // actual loss of permission. A failed re-read preserves the denial.
+    if (!create && error.code === 'PERMISSION_DENIED') {
+      try {
+        const current=await docGetRaw(path,user.token);
+        if (!current || current.updateTime !== oldRaw.updateTime) error.code='FAILED_PRECONDITION';
+      } catch { /* access may have been revoked; do not disclose new state */ }
+    }
+    throw error;
+  }
+  return { id, eventId };
 }
-async function logAudit(user, nome, acao, alvo, detalhes) {
-  try {
-    await createDoc('logs', encFields({
-      ts: Date.now(), uid: user.uid, nome: nome || user.email || 'Sistema', email: user.email || '',
-      acao: String(acao || '').slice(0, 120), alvo: String(alvo || '').slice(0, 160), detalhes: String(detalhes || '').slice(0, 1000),
-    }), user.token);
-  } catch { /* auditoria best-effort */ }
-}
-
-module.exports = {
-  BASE, val, unwrap, enc, encFields,
-  docGet, docGetRaw, patchDoc, createDoc, commitPatch, commitCreate,
-  nomeDoUsuario, logAudit,
-};
+module.exports.mutate = mutate;

@@ -1,0 +1,37 @@
+[
+  {
+    "path": "vendor/jspdf/jspdf.umd.min.js",
+    "package": "jspdf",
+    "version": "2.5.2",
+    "sha256": "85ba2cc3ff858a20fa49fe6e457bec863ea40b55a9f3725e58a940e62f6f61a4",
+    "npmIntegrity": "sha512-myeX9c+p7znDWPk0eTrujCzNjT+CXdXyk7YmJq5nD5V7uLLKmSXnlQ/Jn/kuo3X09Op70Apm0rQSnFWyGK8uEQ=="
+  },
+  {
+    "path": "vendor/jspdf-autotable/jspdf.plugin.autotable.min.js",
+    "package": "jspdf-autotable",
+    "version": "3.8.4",
+    "sha256": "2223830cf9a1ec85af014cc71b37c1b1eb566f3d18b2ab8071e96af822c58bdb",
+    "npmIntegrity": "sha512-rSffGoBsJYX83iTRv8Ft7FhqfgEL2nLpGAIiqruEQQ3e4r0qdLFbPUB7N9HAle0I3XgpisvyW751VHCqKUVOgQ=="
+  },
+  {
+    "path": "vendor/xlsx/xlsx.full.min.js",
+    "package": "xlsx",
+    "version": "0.18.5",
+    "sha256": "c9506197caf809a075b6dee1da0d36fb19da7158ffe8a88e7b0c96c5d8623c99",
+    "npmIntegrity": "sha512-dmg3LCjBPHZnQp5/F/+nnTa+miPJxUXB6vtk42YjBBKayDNagxGEeIdWApkYPOf3Z3pm3k62Knjzp7lMeTEtFQ=="
+  },
+  {
+    "path": "vendor/pdfjs-dist/pdf.min.mjs",
+    "package": "pdfjs-dist",
+    "version": "4.10.38",
+    "sha256": "27fc2a057a00f92a4334ad06e17dbd7259912954e9fb7f76400bcca5fd190a9c",
+    "npmIntegrity": "sha512-/Y3fcFrXEAsMjJXeL9J8+ZG9U01LbuWaYypvDW2ycW1jL269L3js3DVBjDJ0Up9Np1uqDXsDrRihHANhZOlwdQ=="
+  },
+  {
+    "path": "vendor/pdfjs-dist/pdf.worker.min.mjs",
+    "package": "pdfjs-dist",
+    "version": "4.10.38",
+    "sha256": "1baa1844c89c80a5b2797c916e75ab29254be46d8e9cb53cb6364d7aad84be36",
+    "npmIntegrity": "sha512-/Y3fcFrXEAsMjJXeL9J8+ZG9U01LbuWaYypvDW2ycW1jL269L3js3DVBjDJ0Up9Np1uqDXsDrRihHANhZOlwdQ=="
+  }
+]

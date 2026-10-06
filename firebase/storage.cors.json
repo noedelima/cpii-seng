@@ -1,0 +1,12 @@
+[
+  {
+    "origin": [
+      "https://polite-forest-0f8e6fe10.7.azurestaticapps.net",
+      "https://cpii-seng.web.app",
+      "https://cpii-seng.firebaseapp.com"
+    ],
+    "method": ["GET", "HEAD"],
+    "responseHeader": ["Content-Type", "Content-Length", "Content-Disposition", "ETag"],
+    "maxAgeSeconds": 3600
+  }
+]

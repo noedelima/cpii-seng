@@ -17,7 +17,8 @@
 // Sem LDAP_URL → 503 e nada muda no login atual (e-mail/senha do Firebase).
 // =============================================================================
 const { app } = require('@azure/functions');
-const { json } = require('../shared/http');
+const { json, failure } = require('../shared/http');
+const { reserve } = require('../shared/ldapLimits');
 const { PROJECT_ID } = require('../shared/auth');
 const { claimsDisponiveis, accessToken, customToken, SCOPE_DATASTORE } = require('../shared/adminAuth');
 const { ldapBind, ldapDisponivel } = require('../shared/ldap');
@@ -52,6 +53,7 @@ app.http('authMatricula', {
       return json(503, { error: 'Autenticação por matrícula ainda não habilitada — aguarda a integração com o domínio institucional (DTI).' });
     if (!claimsDisponiveis())
       return json(503, { error: 'Service account (FB_SA_JSON) não configurada.' });
+    let reservation;
     try {
       const body = await request.json().catch(() => ({}));
       const matricula = String(body.matricula || '').trim();
@@ -59,21 +61,30 @@ app.http('authMatricula', {
       if (!/^\d{4,12}$/.test(matricula) || !senha)
         return json(400, { error: 'Informe matrícula (somente números) e a senha de rede.' });
 
+      reservation = reserve(matricula);
+      if (reservation.status === 503)
+        return json(503, { error: 'Integração LDAP aguarda configuração dos limites aprovados pela DTI.' });
+      if (reservation.status === 429)
+        return { ...json(429, { error: 'Limite de tentativas. Aguarde antes de tentar novamente.' }),
+          headers: { 'Retry-After': String(reservation.retryAfter) } };
+
+      // Check eligibility before touching AD. Do not reveal whether an account
+      // exists, is disabled, or supplied an invalid password.
+      const u = await usuarioPorMatricula(matricula);
+      if (!u || !u.ativo)
+        return json(401, { error: 'Matrícula ou senha de rede inválida.' });
+
       // 1) Credencial de rede (AD/LDAP) — mesma do SUAP.
       const dn = (process.env.LDAP_BIND_TEMPLATE || '{matricula}@cp2.g12.br').replaceAll('{matricula}', matricula);
       const bind = await ldapBind(process.env.LDAP_URL, dn, senha);
       if (!bind.ok) return json(401, { error: 'Matrícula ou senha de rede inválida.' });
 
-      // 2) Cadastro no Portal (a autorização continua sendo do Portal/rules).
-      const u = await usuarioPorMatricula(matricula);
-      if (!u) return json(403, { error: 'Matrícula sem cadastro no Portal — solicite acesso à Administração.' });
-      if (!u.ativo) return json(403, { error: 'Usuário desativado.' });
-
       // 3) Sessão Firebase (custom token) — rules e claims seguem valendo.
       return json(200, { token: customToken(u.uid), uid: u.uid, nome: u.nome });
     } catch (e) {
-      context.error && context.error('auth/matricula', e);
-      return json(500, { error: 'erro interno', detalhe: String(e.message || e) });
+      return failure(context, e, 'ldap_login');
+    } finally {
+      reservation?.release?.();
     }
   },
 });

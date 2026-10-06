@@ -94,3 +94,11 @@ contabilização por profissional e alertas dos limites dos arts. 12 e 13.
 
 ---
 Desenvolvido para a SENG/DECOF · Colégio Pedro II · 2026.
+
+## Validação de segurança
+
+As correções do relatório de outubro/2026 têm regressões locais (`npm test`) e
+em Auth/Firestore/Storage emulados (`npm run test:rules`). O procedimento de
+migração e implantação está em [SECURITY-REMEDIATION](docs/SECURITY-REMEDIATION.md).
+O pacote npm da raiz contém somente ferramentas de desenvolvimento; o app
+continua estático e a API tem pacote independente em `api/`.

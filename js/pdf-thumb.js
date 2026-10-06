@@ -1,21 +1,16 @@
 // =============================================================================
 // Miniatura da 1ª página de um PDF (client-side, no momento do upload).
-// pdf.js (pdfjs-dist) carregado sob demanda do CDN já liberado no CSP
-// (cdn.jsdelivr.net). Best-effort: qualquer falha (offline, PDF protegido,
+// pdf.js (pdfjs-dist) carregado sob demanda de arquivos locais versionados. Best-effort: qualquer falha (offline, PDF protegido,
 // worker bloqueado) retorna null e o anexo segue sem miniatura.
 // =============================================================================
-const PDFJS = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.min.mjs';
-const WORKER = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs';
+const PDFJS = '/vendor/pdfjs-dist/pdf.min.mjs';
+const WORKER = '/vendor/pdfjs-dist/pdf.worker.min.mjs';
 
 let _lib = null;
 async function lib() {
   if (_lib) return _lib;
   const pdfjs = await import(PDFJS);
-  // Worker cross-origin não pode ser instanciado diretamente; com o workerSrc
-  // apontando ao CDN o pdf.js cai no "fake worker" (import de módulo na main
-  // thread), permitido pelo CSP (script-src cdn.jsdelivr.net). Validado em
-  // produção — não usar fetch aqui (connect-src não inclui o CDN).
-  pdfjs.GlobalWorkerOptions.workerSrc = WORKER;
+  pdfjs.GlobalWorkerOptions.workerSrc = new URL(WORKER,location.origin).href;
   _lib = pdfjs;
   return pdfjs;
 }

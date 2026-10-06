@@ -23,20 +23,25 @@ migração seja um chaveamento de configuração, não um retrabalho.
      migração de documentos é necessária ao ativar o LDAP.
 
 2. **Endpoint dormente `POST /api/auth/matricula`** (Azure Functions), fluxo:
-   `bind LDAP (credencial de rede) → lookup /usuarios por matrícula → custom
+   `limites → lookup de elegibilidade /usuarios por matrícula → bind LDAPS → custom
    token do Firebase → signInWithCustomToken no cliente`.
    - Depois do custom token, **nada muda**: mesmas Security Rules, mesmas
      custom claims (role/campi), mesmo app. O LDAP responde apenas pela
      **autenticação**; a **autorização** continua no Portal.
-   - `shared/ldap.js`: simple bind RFC 4511 com BER mínimo sobre `net`/`tls`
+   - `shared/ldap.js`: simple bind RFC 4511 com BER mínimo sobre `tls`
      nativos — **zero dependências**, coerente com o restante da API.
    - Sem `LDAP_URL` configurada → HTTP 503; o login atual segue intocado.
 
 ## Ativação (checklist para quando a DTI liberar o domínio)
 
 1. App Settings no SWA:
-   - `LDAP_URL` — ex.: `ldaps://ad.cp2.g12.br:636` (recomendado LDAPS; a
+   - `LDAP_URL` — ex.: `ldaps://ad.cp2.g12.br:636` (LDAPS obrigatório, com validação de certificado; a
      Function precisa alcançar o servidor — VNet integration se interno).
+   - Política explícita da DTI: `LDAP_MAX_CONCURRENT`, `LDAP_ACCOUNT_ATTEMPTS`,
+     `LDAP_GLOBAL_ATTEMPTS`, `LDAP_WINDOW_SECONDS` (inteiros positivos).
+   - `LDAP_GLOBAL_LIMIT_ENFORCED=true` somente após configurar e validar um
+     limite global distribuído no gateway. O guard local não coordena instâncias;
+     o marcador não configura o gateway. Sem política/marcador, retorna 503.
    - `LDAP_BIND_TEMPLATE` — ex.: `{matricula}@cp2.g12.br` (UPN do AD) ou
      `uid={matricula},ou=pessoas,dc=cp2,dc=g12,dc=br` (DN do OpenLDAP).
 2. Service account `FB_SA_JSON` — conceder papéis adicionais:
@@ -60,6 +65,6 @@ migração seja um chaveamento de configuração, não um retrabalho.
   indisponibilidade (métodos coexistem).
 - Senhas de rede **nunca** tocam o Firebase — só o bind LDAP na Function.
 - Risco controlado: endpoint dormente devolve 503 e não amplia superfície de
-  ataque; quando ativo, o rate limiting do SWA/Front Door deve ser avaliado
-  (mitigação: o bind LDAP já limita tentativas no próprio AD, com lockout de
-  domínio).
+  ataque. Ativação exige política compatível com lockout do AD, limites por
+  conta/globais/concorrência e validação da DTI; lockout sozinho não substitui
+  esses controles. Contas ausentes/inativas não provocam binds.

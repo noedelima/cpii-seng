@@ -23,6 +23,7 @@ export function viewInicio() {
   // ---- KPIs -----------------------------------------------------------------
   const n = (st) => todas.filter(d => d.status === st).length;
   const dtConclusao = (d) => {
+    if (d.concluidoEm) return d.concluidoEm;
     const h = (d.historico || []).filter(x => /conclu/i.test(x.acao || '')).pop();
     return (h && h.ts) || d.atualizadoEm;
   };

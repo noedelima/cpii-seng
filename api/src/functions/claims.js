@@ -1,8 +1,8 @@
 // =============================================================================
-// Sincronização das CUSTOM CLAIMS (role/campi) — hardening do Storage (ADR-002).
+// Sincronização das CUSTOM CLAIMS (role/campi) — compatibilidade legada.
 // A fonte da verdade é /usuarios/{uid} no Firestore (gerido só pelo admin, sob
 // as Security Rules). Estes endpoints copiam o perfil para claims no ID token,
-// que as Storage rules leem SEM cross-service (request.auth.token.role/.campi).
+// para integrações antigas; as novas Storage Rules consultam o perfil vivo.
 //   POST /api/claims/self — o próprio usuário sincroniza as suas claims
 //                           (lê o próprio doc; sem escalada possível).
 //   POST /api/claims/sync — admin sincroniza as claims de { uid } (após criar,
@@ -11,13 +11,13 @@
 // =============================================================================
 const { app } = require('@azure/functions');
 const { json, withAuth } = require('../shared/http');
-const { docGet, logAudit } = require('../shared/firestore');
+const { docGet } = require('../shared/firestore');
 const { claimsDisponiveis, setCustomClaims } = require('../shared/adminAuth');
 
 const ROLES = ['campus', 'engenharia', 'estagiario', 'administrativo', 'chefe', 'codir', 'admin'];
 
 // Perfil (doc /usuarios) → claims mínimas. Inativo ou perfil inválido → {}
-// (token sem claims = negado pelas Storage rules).
+// Claims não são autoridade de acesso das novas Storage Rules.
 function claimsDoPerfil(p) {
   if (!p || p.ativo === false || !ROLES.includes(p.role)) return {};
   const claims = { role: p.role };
@@ -54,7 +54,6 @@ app.http('claimsSync', {
     if (!perfil) return json(404, { error: 'usuário sem perfil em /usuarios' });
     const claims = claimsDoPerfil(perfil);
     await setCustomClaims(uid, claims);
-    await logAudit(user, chamador.nome, 'Claims sincronizadas [via API]', uid, JSON.stringify(claims));
     return json(200, { ok: true, uid, claims });
   }),
 });
