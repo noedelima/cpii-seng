@@ -66,7 +66,7 @@ localmente na interceptação de requests do navegador. Nunca usa credenciais ou
 endpoints de dados da produção. Proxies são retirados porque a CLI encaminha
 consultas cross-service locais indevidamente quando herda proxy HTTP.
 
-Resultado observado: **29 testes locais**, **108 cenários de regras**, **6 verificações da API REST sob regras** e **11
+Resultado observado: **31 testes locais**, **108 cenários de regras**, **6 verificações da API REST sob regras** e **11
 verificações de navegador**, todos aprovados. Além disso, o host Azure Functions
 com Node 20 respondeu health 200, requisição sem token 401 com correlação e LDAP
 dormente 503. O Core Tools alertou que Node 20 chegou ao fim do suporte; o runtime

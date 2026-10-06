@@ -149,3 +149,19 @@ test('migration explicitly removes GCS download-token key without losing other m
  const {retirementMetadata}=require('../../tools/security-migration.cjs');const previous={ownerUid:'synthetic',firebaseStorageDownloadTokens:'SYNTHETIC_TEST_ONLY'};
  assert.deepEqual(retirementMetadata(previous),{ownerUid:'synthetic',firebaseStorageDownloadTokens:null});assert.equal(previous.firebaseStorageDownloadTokens,'SYNTHETIC_TEST_ONLY');
 });
+test('a stale audit denial is reported as a version conflict, without weakening writes',async()=>{
+ let reads=0;const f=load('api/src/shared/firestore.js',{'./auth':{PROJECT_ID:'demo-security-local'},'./security':security},{fetch:async(url)=>{
+  if(url.endsWith('/usuarios/caller'))return {ok:true,status:200,json:async()=>({fields:{nome:{stringValue:'Caller'},ativo:{booleanValue:true}}})};
+  if(url.endsWith(':commit'))return {ok:false,status:403,json:async()=>({error:{status:'PERMISSION_DENIED'}})};
+  reads++;return {ok:true,status:200,json:async()=>({updateTime:reads===1?'2026-10-06T12:00:00Z':'2026-10-06T12:00:01Z',fields:{assunto:{stringValue:'Synthetic'},categoria:{stringValue:'eletrica'},status:{stringValue:'aberto'}}})};
+ }});
+ await assert.rejects(f.mutate('chamados/synthetic',{descricao:'Changed'}, {uid:'caller',token:'synthetic'}),e=>e.code==='FAILED_PRECONDITION');assert.equal(reads,2);
+});
+test('a denied re-read after revocation preserves the original permission failure',async()=>{
+ let reads=0;const f=load('api/src/shared/firestore.js',{'./auth':{PROJECT_ID:'demo-security-local'},'./security':security},{fetch:async(url)=>{
+  if(url.endsWith('/usuarios/caller'))return {ok:true,status:200,json:async()=>({fields:{nome:{stringValue:'Caller'},ativo:{booleanValue:true}}})};
+  if(url.endsWith(':commit') || ++reads===2)return {ok:false,status:403,json:async()=>({error:{status:'PERMISSION_DENIED'}})};
+  return {ok:true,status:200,json:async()=>({updateTime:'2026-10-06T12:00:00Z',fields:{assunto:{stringValue:'Synthetic'},categoria:{stringValue:'eletrica'},status:{stringValue:'aberto'}}})};
+ }});
+ await assert.rejects(f.mutate('chamados/synthetic',{descricao:'Changed'}, {uid:'caller',token:'synthetic'}),e=>e.code==='PERMISSION_DENIED');assert.equal(reads,2);
+});

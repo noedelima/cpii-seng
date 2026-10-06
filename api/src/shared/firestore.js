@@ -111,7 +111,20 @@ async function mutate(path, patch, user, { create = false, remove = [], event = 
   if (collection === 'config' && ['params','transparencia'].includes(id))
     writes.push({ update: { name: resourceName('publicConfig/' + id), fields: encFields(publicConfig(id, data)) } });
   const response = await fetch(COMMIT, { method: 'POST', headers: { Authorization: 'Bearer ' + user.token, 'Content-Type': 'application/json' }, body: JSON.stringify({ writes }) });
-  if (!response.ok) throw await responseError(response);
+  if (!response.ok) {
+    const error=await responseError(response);
+    // Rules can evaluate an audit's changed fields against a concurrently
+    // updated document before rejecting its updateTime precondition. Keep the
+    // write rejected, but distinguish a readable version conflict from an
+    // actual loss of permission. A failed re-read preserves the denial.
+    if (!create && error.code === 'PERMISSION_DENIED') {
+      try {
+        const current=await docGetRaw(path,user.token);
+        if (!current || current.updateTime !== oldRaw.updateTime) error.code='FAILED_PRECONDITION';
+      } catch { /* access may have been revoked; do not disclose new state */ }
+    }
+    throw error;
+  }
   return { id, eventId };
 }
 module.exports.mutate = mutate;
