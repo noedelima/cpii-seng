@@ -1,7 +1,7 @@
 // =============================================================================
 // SENG Demandas — Relatório PDF efêmero (gera e baixa; nada é armazenado)
 // Papel timbrado do CP2, data/hora de geração, filtros aplicados.
-// jsPDF + AutoTable carregados sob demanda (CDN) apenas ao clicar em "PDF".
+// jsPDF + AutoTable carregados sob demanda (arquivos locais versionados) apenas ao clicar em "PDF".
 // =============================================================================
 import { TIMBRE_H, TIMBRE_RATIO } from './logos.js';
 import { campusNome, statusNome, TIPOS_ATIVIDADE, APP, statusChamadoNome, categoriaChamadoNome, slaChamado, faseCurta } from './config.js';
@@ -11,10 +11,10 @@ let libs = null;
 async function carregarLibs() {
   if (libs) return libs;
   await Promise.all([
-    importScript('https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js'),
+    importScript('/vendor/jspdf/jspdf.umd.min.js'),
     null,
   ]);
-  await importScript('https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js');
+  await importScript('/vendor/jspdf-autotable/jspdf.plugin.autotable.min.js');
   libs = window.jspdf;
   return libs;
 }

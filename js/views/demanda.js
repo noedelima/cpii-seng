@@ -25,6 +25,19 @@ export function viewDemanda(rerender, id) {
     return frag(el('section', { class: 'card' }, el('h1', {}, 'Demanda não encontrada'), el('a', { class: 'btn ghost', href: '#/' }, 'Voltar')));
 
   const params = s.getParams();
+  if (d._publicOnly) {
+    const score=prioridade(d,params);
+    return frag(el('section',{class:'card'},
+      el('h1',{},d.objeto || 'Demanda'), badgeStatus(d.status),
+      linha('Campus',campusNome(d.campus)),
+      linha('Especialidades',(d.especialidades || []).join(', ') || '—'),
+      linha('Tipo de demanda',nomeDe(TIPOS_DEMANDA,d.tipoDemanda)),
+      linha('Valor estimado',fmtMoeda(d.valorEstimado)),
+      linha('Prazo estimado',nomeDe(PRAZOS,d.prazoEstimado)),
+      linha('Prioridade',fmtNum(score.final)),
+      linha('Registrada em',fmtDataHora(d.criadoEm)),
+      el('a',{class:'btn ghost',href:'#/dashboard'},'Voltar à fila')));
+  }
   const internas = user ? s.getInternas() : {};
   const interna = internas[d.id] || {};
   const profissionais = user ? s.listProfissionais() : [];
@@ -484,6 +497,7 @@ export function viewDemanda(rerender, id) {
     cartaoAnexos = renderAnexosCard({
       lista: () => ((s.getDemanda(d.id) || d).anexos || []),
       podeAnexar,
+      podeRemover: a => ['engenharia','chefe','admin'].includes(user.role) || (ehCampusDono && a.ownerUid === user.uid),
       upload: (f2, onP) => s.uploadAnexoDemanda(d.id, d.campus, f2, onP),
       uploadThumb: typeof s.uploadThumbDemanda === 'function' ? (blob, base) => s.uploadThumbDemanda(d.id, d.campus, blob, base) : null,
       removerStorage: (p) => s.removerAnexoChamado(p),

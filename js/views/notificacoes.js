@@ -5,6 +5,7 @@
 import { el, frag, fmtDataHora, toast } from '../ui.js';
 import { store } from '../store.js';
 import { ROTULO_TIPO } from '../notificacoes.js';
+import { notificationLink } from '../security.js';
 import { DIAS_NOTIFICACAO } from '../config.js';
 
 export function cardNotificacoes() {
@@ -31,7 +32,7 @@ export function cardNotificacoes() {
       el('li', {},
         el('a', {
           class: `notif-item ${n.lida ? '' : 'nao-lida'}`,
-          href: n.link || `#/demanda/${n.demandaId}`,
+          href: notificationLink(n),
           onclick: () => { if (!n.lida) s.marcarNotificacaoLida(n.id); },
         },
           el('span', { class: `notif-tag tipo-${n.tipo}` }, ROTULO_TIPO[n.tipo] || n.tipo),

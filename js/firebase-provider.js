@@ -6,6 +6,7 @@
 import { api, apiLigada } from './api.js';
 import { CATEGORIAS_CHAMADO, STATUS_CHAMADO_ABERTO, slaChamado, PARAMS_DEFAULT } from './config.js';
 import { calcularTransparencia } from './calc.js';
+import { publicDemanda, publicConfig, normalizeMutation, notificationLink } from './security.js';
 
 const FB = 'https://www.gstatic.com/firebasejs/10.12.2';
 
@@ -15,6 +16,13 @@ export class FirebaseProvider {
     this.user = null;
     this._subs = new Set();
     this._demandas = [];
+    this._publicDemandas = [];
+    this._privateDemandas = [];
+    this._publicParams = null;
+    this._fileUrls = new Map();
+    this._fileGeneration = 0;
+    this._authGeneration = 0;
+    this._unsubUser = null;
     this._internas = {};
     this._profissionais = [];
     this._usuarios = [];
@@ -29,14 +37,94 @@ export class FirebaseProvider {
   }
 
   // --- Log de auditoria (gravado a cada modificação; leitura só de admin) ---
-  async _log(acao, alvo, detalhes = '') {
+  async _businessWrite(collection, id, patch, options = {}) {
+    if (!this.user || this.user.ativo === false) throw new Error('Perfil ativo obrigatório.');
     const fs = this._F;
-    try {
-      await fs.addDoc(fs.collection(this.db, 'logs'), {
-        ts: Date.now(), uid: this.user?.uid || 'anon', nome: this.user?.nome || 'Sistema',
-        email: this.user?.email || '', acao, alvo, detalhes,
+    const actor = { ...this.user };
+    const eventRef = fs.doc(fs.collection(this.db, 'logs'));
+    const sourceRef = fs.doc(this.db, collection, id);
+    const stable = value => JSON.stringify(value, (_, v) => v && typeof v === 'object' && !Array.isArray(v)
+      ? Object.fromEntries(Object.entries(v).sort(([a],[b]) => a.localeCompare(b))) : v);
+    await fs.runTransaction(this.db, async tx => {
+      const snapshot = await tx.get(sourceRef);
+      const old = snapshot.exists() ? snapshot.data() : {};
+      if (options.create === true && snapshot.exists()) throw new Error('Identificador já existente. Tente novamente.');
+      if (options.create === false && !snapshot.exists()) throw new Error('Registro não encontrado.');
+      const op = options.delete ? 'delete' : snapshot.exists() ? 'update' : 'create';
+      let data = options.delete ? {} : normalizeMutation(collection, old, patch, actor, options.event || '', op === 'create');
+      (options.remove || []).forEach(k => { delete data[k]; });
+      const fields = op === 'delete' ? Object.keys(old).filter(k => k !== '_audit')
+        : [...new Set([...Object.keys(old), ...Object.keys(data)])].filter(k => k !== '_audit' && stable(old[k]) !== stable(data[k]));
+      if (op === 'delete') {
+        tx.delete(sourceRef);
+        tx.set(fs.doc(this.db, 'auditDeletes', collection + '_' + id), { col:collection, doc:id, eventId:eventRef.id });
+      } else {
+        data._audit = eventRef.id;
+        tx.set(sourceRef, data);
+      }
+      tx.set(eventRef, { ts:fs.serverTimestamp(), uid:actor.uid, nome:actor.nome,
+        email:this.auth.currentUser?.email || actor.email || '', acao:op, alvo:collection+'/'+id, detalhes:'',
+        col:collection, doc:id, op, fields });
+      if (collection === 'demandas') {
+        const ref = fs.doc(this.db,'publicDemandas',id);
+        if (op === 'delete') tx.delete(ref); else tx.set(ref,publicDemanda(id,data));
+      }
+      if (collection === 'config' && ['params','transparencia'].includes(id)) {
+        const ref = fs.doc(this.db,'publicConfig',id);
+        if (op === 'delete') tx.delete(ref); else tx.set(ref,publicConfig(id,data));
+      }
+    });
+    return eventRef.id;
+  }
+  _mergeDemandas() {
+    const byId=new Map(this._publicDemandas.map(d => [d.id,d]));
+    this._privateDemandas.forEach(d => byId.set(d.id,d));
+    this._demandas=[...byId.values()];
+  }
+  _revokeFiles() {
+    this._fileGeneration++;
+    for (const promise of this._fileUrls.values()) promise.then(url => { if (url) URL.revokeObjectURL(url); });
+    this._fileUrls.clear();
+  }
+  _fileUrl(path) {
+    if (!path) return Promise.resolve(null);
+    if (!this._fileUrls.has(path)) {
+      const generation=this._fileGeneration;
+      const promise=this._St.getBlob(this._St.ref(this.storage,path)).then(blob => {
+        if (generation !== this._fileGeneration) return null;
+        return URL.createObjectURL(blob);
+      }).catch(() => null);
+      this._fileUrls.set(path,promise);
+    }
+    return this._fileUrls.get(path);
+  }
+  _present(snapshot, idKey = 'id') {
+    const { _audit:_receipt, ...stored }=snapshot.data();
+    const data={ ...stored, [idKey]:snapshot.id };
+    if (data.ts?.toMillis) data.ts=data.ts.toMillis();
+    if (data.fotoUrl) {
+      let path=String(data.fotoUrl);
+      if (!/^perfis\/[A-Za-z0-9_-]+\.jpg$/.test(path)) {
+        try { const u=new URL(path); path=u.hostname === 'firebasestorage.googleapis.com' ? decodeURIComponent(u.pathname.split('/o/')[1] || '') : ''; } catch { path=''; }
+      }
+      data.fotoUrl=null;
+      if (/^perfis\/[A-Za-z0-9_-]+\.jpg$/.test(path)) {
+        const generation=this._fileGeneration;
+        this._fileUrl(path).then(url => { if (generation===this._fileGeneration) { data.fotoUrl=url;this._emit(); } });
+      }
+    }
+    if (Array.isArray(data.anexos)) {
+      const generation=this._fileGeneration;
+      data.anexos=data.anexos.map(a => {
+        const {url:_u,thumbUrl:_t,...metadata}=a;
+        Promise.all([this._fileUrl(a.path),this._fileUrl(a.thumbPath)]).then(([url,thumbUrl]) => {
+          if (generation !== this._fileGeneration) return;
+          Object.assign(metadata,{url,thumbUrl}); this._emit();
+        });
+        return metadata;
       });
-    } catch (e) { console.warn('log', e); }
+    }
+    return data;
   }
   listLogs() { return this.user?.role === 'admin' ? this._logs : []; }
 
@@ -61,52 +149,109 @@ export class FirebaseProvider {
     this.db = fs.getFirestore(app);
     this.storage = storage.getStorage(app);
 
-    // Públicos: demandas e parâmetros
-    fs.onSnapshot(fs.query(fs.collection(this.db, 'demandas')), (snap) => {
-      this._demandas = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    if (['localhost','127.0.0.1'].includes(location.hostname) && window.__SENG_EMULATORS__) {
+      const ports=window.__SENG_EMULATORS__;
+      auth.connectAuthEmulator(this.auth,'http://127.0.0.1:'+ports.auth,{disableWarnings:true});
+      fs.connectFirestoreEmulator(this.db,'127.0.0.1',ports.firestore);
+      storage.connectStorageEmulator(this.storage,'127.0.0.1',ports.storage);
+    }
+    // Públicos: somente projeções com campos definidos.
+    fs.onSnapshot(fs.query(fs.collection(this.db, 'publicDemandas')), (snap) => {
+      this._publicDemandas = snap.docs.map(d => ({ id: d.id, ...d.data(), _publicOnly:true }));
+      this._mergeDemandas();
       this._emit();
     });
-    fs.onSnapshot(fs.doc(this.db, 'config', 'params'), (snap) => {
-      this._params = snap.exists() ? snap.data() : null;
+    fs.onSnapshot(fs.doc(this.db, 'publicConfig', 'params'), (snap) => {
+      this._publicParams = snap.exists() ? Object.fromEntries(Object.entries(snap.data()).filter(([,v]) => v != null)) : null;
       this._emit();
     });
     // Transparência: agregados públicos de chamados (só contagens — ver Início).
-    fs.onSnapshot(fs.doc(this.db, 'config', 'transparencia'), (snap) => {
+    fs.onSnapshot(fs.doc(this.db, 'publicConfig', 'transparencia'), (snap) => {
       this._transparencia = snap.exists() ? snap.data() : null;
       this._emit();
     });
 
     await new Promise((resolve) => {
       auth.onAuthStateChanged(this.auth, async (u) => {
+        const generation=++this._authGeneration;
+        this.user=null;
         this._unsubPriv.forEach(fn => fn()); this._unsubPriv = [];
+        this._unsubUser?.(); this._unsubUser=null;
+        this._clearPrivate();
         if (u) {
-          const prof = await fs.getDoc(fs.doc(this.db, 'usuarios', u.uid));
-          this.user = { uid: u.uid, email: u.email, ...(prof.exists() ? prof.data() : { role: 'campus', nome: u.email }) };
-          await this._sincronizarClaims(u);
-          this._assinarPrivados();
-        } else {
-          this.user = null;
-          this._internas = {}; this._profissionais = []; this._usuarios = []; this._tarefas = [];
-          this._notificacoes = []; this._diretorio = []; this._chamados = [];
-        }
+          const applyProfile = snap => {
+            if (generation !== this._authGeneration) return;
+            const profile=snap.exists() ? snap.data() : null;
+            if (!profile || profile.ativo === false) {
+              this._unsubPriv.forEach(fn => fn());this._unsubPriv=[];
+              this.user=null; this._clearPrivate();
+              this._A.signOut(this.auth); this._emit(); return;
+            }
+            const previous=this.user;
+            this.user={...profile,uid:u.uid,email:u.email};
+            const scope=x => JSON.stringify([x?.role,x?.campus,x?.campi,x?.ativo]);
+            if (!previous || scope(previous)!==scope(this.user)) {
+              this._unsubPriv.forEach(fn => fn()); this._unsubPriv=[];
+              this._clearPrivate(); this._assinarPrivados();
+            }
+            this._emit();
+          };
+          let prof;
+          try { prof=await fs.getDoc(fs.doc(this.db,'usuarios',u.uid)); }
+          catch { if (generation===this._authGeneration) await this._A.signOut(this.auth); resolve();return; }
+          if (generation !== this._authGeneration) { resolve();return; }
+          applyProfile(prof);
+          if (this.user) {
+            this._unsubUser=fs.onSnapshot(fs.doc(this.db,'usuarios',u.uid),applyProfile,() => { if (generation===this._authGeneration) this._A.signOut(this.auth); });
+            await this._sincronizarClaims(u);
+          }
+        } else this.user=null;
         this._emit();
         resolve();
       });
     });
   }
 
+  _clearPrivate() {
+    this._privateDemandas=[]; this._mergeDemandas(); this._params=null;
+    this._internas={}; this._profissionais=[]; this._usuarios=[]; this._tarefas=[];
+    this._logs=[]; this._notificacoes=[]; this._diretorio=[]; this._chamados=[];
+    this._revokeFiles();
+  }
+
   _assinarPrivados() {
-    const fs = this._F;
-    const uid = this.user.uid;
+    const sdk=this._F;
+    const uid=this.user.uid;
+    const generation=this._fileGeneration;
+    const fs={...sdk,onSnapshot:(ref,callback,error) => sdk.onSnapshot(ref,snapshot => {
+      if (this.user?.uid===uid && generation===this._fileGeneration) callback(snapshot);
+    },error)};
+    const internal=['engenharia','estagiario','administrativo','chefe','codir','admin'].includes(this.user.role);
+    if (internal) {
+      this._unsubPriv.push(fs.onSnapshot(fs.collection(this.db,'demandas'),snap => {
+        this._privateDemandas=snap.docs.map(d => this._present(d)); this._mergeDemandas(); this._emit();
+      }));
+      this._unsubPriv.push(fs.onSnapshot(fs.doc(this.db,'config','params'),snap => {
+        this._params=snap.exists() ? snap.data() : null; this._emit();
+      }));
+    } else if (this.user.role === 'campus') {
+      const campi=this.user.campi?.length ? this.user.campi : [this.user.campus].filter(Boolean);
+      const blocks=[];
+      for (let i=0;i<campi.length;i+=10) blocks.push(campi.slice(i,i+10));
+      const records=blocks.map(() => []);
+      blocks.forEach((block,i) => this._unsubPriv.push(fs.onSnapshot(fs.query(fs.collection(this.db,'demandas'),fs.where('campus','in',block)),snap => {
+        records[i]=snap.docs.map(d => this._present(d)); this._privateDemandas=records.flat(); this._mergeDemandas(); this._emit();
+      })));
+    }
     this._unsubPriv.push(fs.onSnapshot(fs.collection(this.db, 'internas'), (snap) => {
       this._internas = {}; snap.docs.forEach(d => { this._internas[d.id] = d.data(); }); this._emit();
     }, () => {}));
     this._unsubPriv.push(fs.onSnapshot(fs.collection(this.db, 'profissionais'), (snap) => {
-      this._profissionais = snap.docs.map(d => ({ id: d.id, ...d.data() })); this._emit(); this._talvezSincronizarDiretorio();
+      this._profissionais = snap.docs.map(d => this._present(d)); this._emit(); this._talvezSincronizarDiretorio();
     }, () => {}));
     // Inbox pessoal: apenas as notificações destinadas a mim (regra reforça no servidor).
     this._unsubPriv.push(fs.onSnapshot(fs.query(fs.collection(this.db, 'notificacoes'), fs.where('para', '==', uid)), (snap) => {
-      this._notificacoes = snap.docs.map(d => ({ id: d.id, ...d.data() })); this._emit();
+      this._notificacoes = snap.docs.map(d => this._present(d)); this._emit();
     }, () => {}));
     // Diretório de roteamento (sem nomes) — todo perfil lê; só chefe/admin grava.
     this._unsubPriv.push(fs.onSnapshot(fs.doc(this.db, 'diretorio', 'atual'), (snap) => {
@@ -116,7 +261,7 @@ export class FirebaseProvider {
     const rl = this.user?.role;
     if (['engenharia', 'estagiario', 'administrativo', 'chefe', 'codir', 'admin'].includes(rl)) {
       this._unsubPriv.push(fs.onSnapshot(fs.collection(this.db, 'chamados'), (snap) => {
-        this._chamados = snap.docs.map(d => ({ id: d.id, ...d.data() })); this._emit();
+        this._chamados = snap.docs.map(d => this._present(d)); this._emit();
         this._talvezSincronizarTransparencia();
       }, () => {}));
     } else if (rl === 'campus') {
@@ -129,7 +274,7 @@ export class FirebaseProvider {
         const porBloco = blocos.map(() => []);
         blocos.forEach((bloco, ix) => this._unsubPriv.push(
           fs.onSnapshot(fs.query(fs.collection(this.db, 'chamados'), fs.where('campus', 'in', bloco)), (snap) => {
-            porBloco[ix] = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            porBloco[ix] = snap.docs.map(d => this._present(d));
             this._chamados = porBloco.flat(); this._emit();
           }, () => {})));
       }
@@ -137,18 +282,18 @@ export class FirebaseProvider {
     // Tarefas da seção (v1.22): Eng/Chefe/Admin — erro silencioso p/ demais (rules).
     if (['engenharia', 'estagiario', 'administrativo', 'admin', 'chefe'].includes(this.user?.role)) {
       this._unsubPriv.push(fs.onSnapshot(fs.collection(this.db, 'tarefas'), (snap) => {
-        this._tarefas = snap.docs.map(d => ({ id: d.id, ...d.data() })); this._emit();
+        this._tarefas = snap.docs.map(d => this._present(d)); this._emit();
       }, () => {}));
     }
     if (['admin', 'chefe'].includes(this.user?.role)) {
       this._unsubPriv.push(fs.onSnapshot(fs.collection(this.db, 'usuarios'), (snap) => {
-        this._usuarios = snap.docs.map(d => ({ uid: d.id, ...d.data() })); this._emit(); this._talvezSincronizarDiretorio();
+        this._usuarios = snap.docs.map(d => this._present(d,'uid')); this._emit(); this._talvezSincronizarDiretorio();
       }, () => {}));
     }
     if (this.user?.role === 'admin') {
       this._unsubPriv.push(fs.onSnapshot(
         fs.query(fs.collection(this.db, 'logs'), fs.orderBy('ts', 'desc'), fs.limit(500)),
-        (snap) => { this._logs = snap.docs.map(d => ({ id: d.id, ...d.data() })).reverse(); this._emit(); },
+        (snap) => { this._logs = snap.docs.map(d => this._present(d)).reverse(); this._emit(); },
         () => {}));
     }
   }
@@ -187,18 +332,23 @@ export class FirebaseProvider {
   async criarNotificacoes(itens) {
     if (!this.user || !Array.isArray(itens) || !itens.length) return;
     const fs = this._F;
-    const base = Date.now();
-    const batch = fs.writeBatch(this.db);
-    itens.forEach(it => {
-      const ref = fs.doc(fs.collection(this.db, 'notificacoes'));
-      batch.set(ref, {
-        para: it.para, de: this.user.uid, deNome: this.user.nome || '',
-        tipo: it.tipo, demandaId: it.demandaId, objeto: it.objeto || '', texto: it.texto || '',
-        link: it.link || '', criadoEm: base, lida: false,
-      });
-    });
-    try { await batch.commit(); } catch (e) { console.warn('criarNotificacoes', e); }
+    for (let offset=0;offset<itens.length;offset+=10) {
+      const batch=fs.writeBatch(this.db);
+      for (const it of itens.slice(offset,offset+10)) {
+        const collection=String(it.tipo).startsWith('chamado-') ? 'chamados' : 'demandas';
+        const snapshot=await fs.getDoc(fs.doc(this.db,collection,it.demandaId));
+        if (!snapshot.exists() || !snapshot.data()._audit) continue;
+        const eventoId=snapshot.data()._audit;
+        const id=eventoId+'_'+it.para+'_'+it.tipo;
+        batch.set(fs.doc(this.db,'notificacoes',id),{
+          para:it.para,de:this.user.uid,deNome:this.user.nome,tipo:it.tipo,demandaId:it.demandaId,
+          objeto:it.objeto || '',texto:it.texto || '',link:notificationLink(it),criadoEm:Date.now(),lida:false,eventoId,
+        });
+      }
+      try { await batch.commit(); } catch (e) { console.warn('notification_failure',e.code); }
+    }
   }
+
   async marcarNotificacaoLida(id) {
     const fs = this._F;
     try { await fs.updateDoc(fs.doc(this.db, 'notificacoes', id), { lida: true }); } catch (e) { console.warn(e); }
@@ -234,12 +384,13 @@ export class FirebaseProvider {
     await this._A.signInWithEmailAndPassword(this.auth, email.trim(), senha);
     // aguarda o onAuthStateChanged carregar o perfil de /usuarios/{uid}
     for (let i = 0; i < 50 && !this.user; i++) await new Promise(r => setTimeout(r, 100));
+    if (!this.user) throw new Error('Seu usuário não possui perfil ativo no portal.');
     return this.user;
   }
 
   // Custom claims (hardening do Storage — ADR-002): garante que o ID token
-  // carregue role/campi espelhando /usuarios/{uid}. As Storage rules dependem
-  // disso. Caso comum (claims já corretas): custo zero — só leitura local do
+  // carregue role/campi espelhando /usuarios/{uid}. As novas Storage Rules
+  // consultam perfis vivos, não estas claims. Caso comum (claims já corretas): custo zero — só leitura local do
   // token. Divergiu (1º acesso ou perfil alterado): sincroniza pela API e
   // renova o token. Best-effort: sem API/FB_SA_JSON, segue sem claims.
   async _sincronizarClaims(u) {
@@ -277,7 +428,6 @@ export class FirebaseProvider {
       await this._A.reauthenticateWithCredential(u, cred);
     } catch { throw new Error('Senha atual incorreta.'); }
     await this._A.updatePassword(u, novaSenha);
-    await this._log('Senha alterada', u.email);
   }
 
   listDemandas() { return this._demandas; }
@@ -294,7 +444,7 @@ export class FirebaseProvider {
     const { atualizadoEm: _a, ...novoSem } = novo;
     const { atualizadoEm: _b, ...atualSem } = this._transparencia || {};
     if (JSON.stringify(novoSem) === JSON.stringify(atualSem)) return;
-    try { await this._F.setDoc(this._F.doc(this.db, 'config', 'transparencia'), novo); }
+    try { await this._businessWrite('config','transparencia',novo); }
     catch (e) { console.warn('transparencia', e); }
   }
   getChamado(id) { return this._chamados.find(c => c.id === id) || null; }
@@ -306,17 +456,12 @@ export class FirebaseProvider {
     const now = Date.now();
     const data = { ...c, ano, seq, status: 'aberto', aberturaEm: now, atualizadoEm: now, prazoLimite: now + (cat ? cat.slaDias : 15) * 86400000 };
     if (apiLigada()) { await api.criarChamado(id, data); return id; }
-    await this._F.setDoc(this._F.doc(this.db, 'chamados', id), data);
-    await this._log('Chamado aberto', id, c.assunto || '');
+    await this._businessWrite('chamados',id,data,{create:true});
     return id;
   }
   async atualizarChamado(id, patch, evento) {
     if (apiLigada()) return api.atualizarChamado(id, patch, evento);
-    const fs = this._F;
-    const upd = { ...patch, atualizadoEm: Date.now() };
-    if (evento) upd.historico = fs.arrayUnion({ ts: Date.now(), user: this.user?.nome || 'Sistema', acao: evento });
-    await fs.updateDoc(fs.doc(this.db, 'chamados', id), upd);
-    await this._log('Chamado atualizado', id, evento || Object.keys(patch).join(', '));
+    await this._businessWrite('chamados',id,patch,{create:false,event:evento});
   }
 
   // Anexos (Cloud Storage): chamados/{campus}/{chamadoId}/{arquivo}. As Storage
@@ -324,21 +469,19 @@ export class FirebaseProvider {
   async uploadAnexoChamado(chamadoId, campus, file, onProgress) {
     const st = this._St;
     const nome = String(file.name || 'arquivo').replace(/[^\w.\-]+/g, '_').slice(-80);
-    const path = `chamados/${campus}/${chamadoId}/${Date.now()}_${nome}`;
+    const path = `chamados/${campus}/${chamadoId}/${crypto.randomUUID()}_${nome}`;
     const ref = st.ref(this.storage, path);
     await new Promise((resolve, reject) => {
-      const task = st.uploadBytesResumable(ref, file, { contentType: file.type || 'application/octet-stream' });
+      const task = st.uploadBytesResumable(ref, file, { contentType:file.type || 'application/octet-stream', customMetadata:{ownerUid:this.user.uid} });
       task.on('state_changed',
         (snap) => { if (onProgress) onProgress(snap.totalBytes ? snap.bytesTransferred / snap.totalBytes : 0); },
         reject, resolve);
     });
-    const url = await st.getDownloadURL(ref);
-    return { nome: file.name || nome, path, url, tipo: file.type || '', tamanho: file.size || 0, ts: Date.now(), por: this.user?.nome || '' };
+    return { nome:file.name || nome,path,ownerUid:this.user.uid, tipo: file.type || '', tamanho: file.size || 0, ts: Date.now(), por: this.user?.nome || '' };
   }
   async removerAnexoChamado(path) {
     if (!path) return;
-    try { await this._St.deleteObject(this._St.ref(this.storage, path)); }
-    catch (e) { console.warn('removerAnexoChamado', e); }
+    await this._St.deleteObject(this._St.ref(this.storage,path));
   }
   // Miniatura de anexo (JPEG pequeno, gerada no cliente) — mesmo prefixo do
   // chamado no Storage (as rules valem igual: image/jpeg, < 10 MB).
@@ -349,16 +492,15 @@ export class FirebaseProvider {
   async uploadAnexoDemanda(demandaId, campus, file, onProgress) {
     const st = this._St;
     const nome = String(file.name || 'arquivo').replace(/[^\w.\-]+/g, '_').slice(-80);
-    const path = `demandas/${campus}/${demandaId}/${Date.now()}_${nome}`;
+    const path = `demandas/${campus}/${demandaId}/${crypto.randomUUID()}_${nome}`;
     const ref = st.ref(this.storage, path);
     await new Promise((resolve, reject) => {
-      const task = st.uploadBytesResumable(ref, file, { contentType: file.type || 'application/octet-stream' });
+      const task = st.uploadBytesResumable(ref, file, { contentType:file.type || 'application/octet-stream', customMetadata:{ownerUid:this.user.uid} });
       task.on('state_changed',
         (snap) => { if (onProgress) onProgress(snap.totalBytes ? snap.bytesTransferred / snap.totalBytes : 0); },
         reject, resolve);
     });
-    const url = await st.getDownloadURL(ref);
-    return { nome: file.name || nome, path, url, tipo: file.type || '', tamanho: file.size || 0, ts: Date.now(), por: this.user?.nome || '' };
+    return { nome:file.name || nome,path,ownerUid:this.user.uid, tipo: file.type || '', tamanho: file.size || 0, ts: Date.now(), por: this.user?.nome || '' };
   }
   async uploadThumbDemanda(demandaId, campus, blob, baseNome) {
     return this._uploadThumb(`demandas/${campus}/${demandaId}`, blob, baseNome);
@@ -368,8 +510,10 @@ export class FirebaseProvider {
     const st = this._St;
     const path = `perfis/${this.user.uid}.jpg`;
     const ref = st.ref(this.storage, path);
-    await st.uploadBytesResumable(ref, blob, { contentType: 'image/jpeg' });
-    return await st.getDownloadURL(ref);
+    await st.uploadBytesResumable(ref, blob, { contentType:'image/jpeg', customMetadata:{ownerUid:this.user.uid} });
+    this._fileUrls.get(path)?.then(url => { if (url) URL.revokeObjectURL(url); });
+    this._fileUrls.delete(path);
+    return path;
   }
   async removerFotoPerfil() {
     const st = this._St;
@@ -382,8 +526,7 @@ export class FirebaseProvider {
     const fs = this._F;
     const prof = this.profissionalDoUsuario();
     if (!prof) throw new Error('Nenhum profissional vinculado ao seu e-mail.');
-    await fs.updateDoc(fs.doc(this.db, 'profissionais', prof.id), patch);
-    await this._log(evento || 'Perfil do profissional atualizado', prof.nome, Object.keys(patch).join(', '));
+    await this._businessWrite('profissionais',prof.id,patch,{create:false});
   }
 
   // --- Tarefas da seção (v1.22) ---------------------------------------------
@@ -391,23 +534,21 @@ export class FirebaseProvider {
   async criarTarefa(t) {
     const fs = this._F;
     const id = 't' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-    await fs.setDoc(fs.doc(this.db, 'tarefas', id), { ...t, criadoEm: Date.now(), atualizadoEm: Date.now() });
-    await this._log('Tarefa criada', t.titulo);
+    await this._businessWrite('tarefas',id,{...t,criadoEm:Date.now(),atualizadoEm:Date.now()},{create:true});
     return id;
   }
   async atualizarTarefa(id, patch, evento) {
     const fs = this._F;
-    await fs.updateDoc(fs.doc(this.db, 'tarefas', id), { ...patch, atualizadoEm: Date.now() });
-    await this._log(evento || 'Tarefa atualizada', id, Object.keys(patch).join(', '));
+    await this._businessWrite('tarefas',id,{...patch,atualizadoEm:Date.now()},{create:false});
   }
 
   async _uploadThumb(prefixo, blob, baseNome) {
     const st = this._St;
     const nome = String(baseNome || 'thumb').replace(/[^\w.\-]+/g, '_').slice(-60);
-    const path = `${prefixo}/${Date.now()}_${nome}.thumb.jpg`;
+    const path = `${prefixo}/${crypto.randomUUID()}_${nome}.thumb.jpg`;
     const ref = st.ref(this.storage, path);
-    await st.uploadBytesResumable(ref, blob, { contentType: 'image/jpeg' });
-    return { path, url: await st.getDownloadURL(ref) };
+    await st.uploadBytesResumable(ref, blob, { contentType:'image/jpeg', customMetadata:{ownerUid:this.user.uid} });
+    return {path,ownerUid:this.user.uid};
   }
 
   async criarDemanda(d) {
@@ -417,26 +558,20 @@ export class FirebaseProvider {
     const id = `${ano}${d.campus}${String(seq).padStart(2, '0')}`;
     const data = { ...d, ano, seq, criadoEm: Date.now(), atualizadoEm: Date.now() };
     if (apiLigada()) { await api.criarDemanda(id, data); return id; }
-    await fs.setDoc(fs.doc(this.db, 'demandas', id), data);
-    await this._log('Demanda criada', id, d.objeto || '');
+    await this._businessWrite('demandas',id,data,{create:true});
     return id;
   }
   async atualizarDemanda(id, patch, evento) {
     if (apiLigada()) return api.atualizarDemanda(id, patch, evento);
-    const fs = this._F;
-    const upd = { ...patch, atualizadoEm: Date.now() };
-    if (evento) upd.historico = fs.arrayUnion({ ts: Date.now(), user: this.user?.nome || 'Sistema', acao: evento });
-    await fs.updateDoc(fs.doc(this.db, 'demandas', id), upd);
-    await this._log('Demanda atualizada', id, evento || Object.keys(patch).join(', '));
+    await this._businessWrite('demandas',id,patch,{create:false,event:evento});
   }
   async excluirDemanda(id) {
     const fs = this._F;
     const d = this.getDemanda(id);
     if (d && ['atendimento', 'concluido'].includes(d.status))
       throw new Error('Demandas em atendimento ou concluídas não podem ser excluídas.');
-    await fs.deleteDoc(fs.doc(this.db, 'demandas', id));
-    await fs.deleteDoc(fs.doc(this.db, 'internas', id)).catch(() => {});
-    await this._log('Demanda excluída', id);
+    await this._businessWrite('demandas',id,{}, {delete:true,create:false});
+    if (this._internas[id]) await this._businessWrite('internas',id,{}, {delete:true,create:false});
   }
   // Arquivo morto: soft-delete recuperável; expurgarEm (Timestamp) alimenta o TTL do Firestore.
   async arquivarDemanda(id) {
@@ -446,32 +581,27 @@ export class FirebaseProvider {
     if (['atendimento', 'concluido'].includes(d.status))
       throw new Error('Demandas em atendimento ou concluídas não podem ser excluídas.');
     const expurgar = fs.Timestamp.fromMillis(Date.now() + 30 * 86400000);
-    await fs.updateDoc(fs.doc(this.db, 'demandas', id), {
-      statusAnterior: d.status, status: 'excluido', excluidoEm: Date.now(), expurgarEm: expurgar, atualizadoEm: Date.now(),
-      historico: fs.arrayUnion({ ts: Date.now(), user: this.user?.nome || 'Sistema', acao: 'Demanda enviada ao arquivo morto (excluída)' }),
-    });
-    if (this._internas[id]) await fs.setDoc(fs.doc(this.db, 'internas', id), { expurgarEm: expurgar }, { merge: true }).catch(() => {});
-    await this._log('Demanda arquivada (excluída)', id, d.objeto || '');
+    await this._businessWrite('demandas',id,{
+      statusAnterior:d.status,status:'excluido',excluidoEm:Date.now(),expurgarEm:expurgar,
+    },{create:false,event:'Demanda enviada ao arquivo morto'});
+    if (this._internas[id]) await this._businessWrite('internas',id,{expurgarEm:expurgar},{create:false});
   }
   async resgatarDemanda(id) {
     if (apiLigada()) return api.resgatar(id);
-    const fs = this._F;
-    const d = this.getDemanda(id); if (!d) throw new Error('Demanda não encontrada.');
-    await fs.updateDoc(fs.doc(this.db, 'demandas', id), {
-      status: d.statusAnterior || 'recebido', statusAnterior: fs.deleteField(), excluidoEm: fs.deleteField(), expurgarEm: fs.deleteField(), atualizadoEm: Date.now(),
-      historico: fs.arrayUnion({ ts: Date.now(), user: this.user?.nome || 'Sistema', acao: 'Demanda resgatada do arquivo morto' }),
-    });
-    if (this._internas[id]) await fs.setDoc(fs.doc(this.db, 'internas', id), { expurgarEm: fs.deleteField() }, { merge: true }).catch(() => {});
-    await this._log('Demanda resgatada', id, d.objeto || '');
+    const d=this.getDemanda(id);
+    if (!d || d.status!=='excluido') throw new Error('A demanda não está no arquivo morto.');
+    await this._businessWrite('demandas',id,{status:d.statusAnterior || 'recebido'},
+      {create:false,remove:['statusAnterior','excluidoEm','expurgarEm'],event:'Demanda resgatada do arquivo morto'});
+    if (this._internas[id]) await this._businessWrite('internas',id,{}, {create:false,remove:['expurgarEm']});
   }
+
   async purgarExcluidos(dias = 30) {
     const fs = this._F;
     const limite = Date.now() - dias * 86400000;
     const expirados = this._demandas.filter(d => d.status === 'excluido' && (d.excluidoEm || 0) < limite);
     for (const d of expirados) {
-      await fs.deleteDoc(fs.doc(this.db, 'demandas', d.id)).catch(() => {});
-      await fs.deleteDoc(fs.doc(this.db, 'internas', d.id)).catch(() => {});
-      await this._log('Demanda removida definitivamente (arquivo morto expirado)', d.id, d.objeto || '');
+      await this._businessWrite('demandas',d.id,{}, {delete:true,create:false});
+      if (this._internas[d.id]) await this._businessWrite('internas',d.id,{}, {delete:true,create:false});
     }
     return expirados.length;
   }
@@ -480,8 +610,7 @@ export class FirebaseProvider {
   async setInterna(id, patch) {
     if (apiLigada()) return api.setInterna(id, patch);
     const fs = this._F;
-    await fs.setDoc(fs.doc(this.db, 'internas', id), patch, { merge: true });
-    await this._log('Alocação atualizada', id, Object.keys(patch).join(', '));
+    await this._businessWrite('internas',id,patch);
   }
 
   listProfissionais() { return this._profissionais; }
@@ -492,12 +621,11 @@ export class FirebaseProvider {
     if (apiLigada()) { const r = await api.salvarProfissional(p); return r.id; }
     if (p.id) {
       const { id, ...rest } = p;
-      await fs.setDoc(fs.doc(this.db, 'profissionais', id), rest, { merge: true });
-      await this._log('Profissional atualizado', p.nome, p.email || '');
+      await this._businessWrite('profissionais',id,rest,{create:false});
       return id;
     }
-    const ref = await fs.addDoc(fs.collection(this.db, 'profissionais'), p);
-    await this._log('Profissional criado', p.nome, p.email || '');
+    const ref = fs.doc(fs.collection(this.db,'profissionais'));
+    await this._businessWrite('profissionais',ref.id,p,{create:true});
     return ref.id;
   }
 
@@ -529,10 +657,9 @@ export class FirebaseProvider {
       }
     }
     const { uid: _u, senha: _s, ...rest } = u;
-    await fs.setDoc(fs.doc(this.db, 'usuarios', uid), rest, { merge: true });
-    // Claims (Storage): sincroniza o token do usuário afetado (best-effort).
+    await this._businessWrite('usuarios',uid,rest,{create:!existente});
+    // Compatibilidade legada. A autorização de Storage usa o perfil atual.
     if (apiLigada()) { try { await api.claimsSync(uid); } catch (e) { console.warn('claimsSync', e); } }
-    await this._log(existente ? 'Usuário atualizado' : 'Usuário criado', u.email || uid, `perfil: ${u.role}${u.ativo === false ? ' (desativado)' : ''}`);
   }
 
   async _criarCredencial(email, senha) {
@@ -559,12 +686,12 @@ export class FirebaseProvider {
   getParams() {
     // Mescla com os defaults: parâmetros novos ganham valor padrão mesmo em
     // docs de produção antigos (ex.: limites de referência).
-    return { ...PARAMS_DEFAULT, ...(this._params || {}) };
+    const { _audit:_receipt, ...privateParams }=this._params || {};
+    return { ...PARAMS_DEFAULT, ...(this._publicParams || {}), ...privateParams };
   }
   async setParams(p) {
     if (apiLigada()) return api.setParams(p);
     const fs = this._F;
-    await fs.setDoc(fs.doc(this.db, 'config', 'params'), p, { merge: true });
-    await this._log('Parâmetros alterados', 'config', JSON.stringify(p));
+    await this._businessWrite('config','params',p);
   }
 }

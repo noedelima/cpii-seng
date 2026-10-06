@@ -1,12 +1,12 @@
 // =============================================================================
 // SENG Demandas — Exportação da fila em Excel (.xlsx) — perfis internos
 // Todas as colunas (inclui classificação, escores, alocação e observações).
-// SheetJS carregado sob demanda (CDN jsdelivr, conforme CSP) apenas ao clicar.
+// SheetJS carregado sob demanda (arquivos locais versionados) apenas ao clicar.
 // =============================================================================
 import { campusNome, statusNome, TIPOS_DEMANDA, PROJETO_EXISTE, TIPOS_ATIVIDADE, PRAZOS, APP, faseNome } from './config.js';
 import { prioridade, pontosArt11, faixaValorLabel, fiscaisDe } from './calc.js';
 
-const SRC = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+const SRC = '/vendor/xlsx/xlsx.full.min.js';
 function carregarLib() {
   return new Promise((resolve, reject) => {
     if (window.XLSX) return resolve(window.XLSX);

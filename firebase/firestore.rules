@@ -1,8 +1,8 @@
 rules_version = '2';
 // =============================================================================
-// SENG Demandas — Security Rules (Cloud Firestore) — v1.1
+// SENG Demandas — Security Rules (Cloud Firestore) — v2 — hardened authorization and atomic provenance
 // Publicar com: npx -y firebase-tools@latest deploy --only firestore:rules
-// Modelo: dashboard público lê apenas /demandas e /config; tudo o mais exige
+// Modelo: dashboard público lê apenas /publicDemandas e /publicConfig; o restante exige
 // autenticação; papéis em /usuarios/{uid}.role (gerido só por administrador).
 // Papéis: campus | engenharia | chefe | codir | admin (admin pode tudo).
 // =============================================================================
@@ -13,12 +13,12 @@ service cloud.firestore {
     function signedIn() { return request.auth != null; }
     function perfil() { return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data; }
     function role() { return signedIn() ? perfil().role : ''; }
-    function ativo() { return signedIn() && perfil().ativo != false; }
+    function ativo() { return signedIn() && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) && perfil().ativo != false; }
     function isAdmin() { return ativo() && role() == 'admin'; }
-    function isChefe() { return ativo() && (role() == 'chefe' || role() == 'admin'); }
-    function isEng()   { return ativo() && (role() == 'engenharia' || role() == 'chefe' || role() == 'admin'); }
-    function isCodir() { return ativo() && (role() == 'codir' || role() == 'admin'); }
-    function isInterno() { return isEng() || isCodir(); }
+    function isChefe() { return ativo() && role() in ['chefe','admin']; }
+    function isEng()   { return ativo() && role() in ['engenharia','chefe','admin']; }
+    function isCodir() { return ativo() && role() in ['codir','admin']; }
+    function isInterno() { return ativo() && role() in ['engenharia','chefe','codir','admin']; }
     // Equipe de APOIO da SENG (v1.27): Estagiário e Administrativo — veem o
     // ambiente interno e colaboram (tarefas, comentários, anexos), sem
     // autoridade técnica (triagem, avaliação, status, alocação).
@@ -27,6 +27,85 @@ service cloud.firestore {
     function isCampusDe(campusId) {
       return ativo() && role() == 'campus'
         && (campusId in perfil().get('campi', []) || perfil().get('campus', '') == campusId);
+    }
+
+
+    function currentTime(n) {
+      return n is number && n >= request.time.toMillis() - 60000 && n <= request.time.toMillis() + 1000;
+    }
+    function sourcePath(col, id) { return /databases/$(database)/documents/$(col)/$(id); }
+    function auditRequired(col, id) {
+      let eventId = request.resource.data.get('_audit', '');
+      let path = /databases/$(database)/documents/logs/$(eventId);
+      let event = getAfter(path).data;
+      return eventId is string && eventId.size() > 0 && eventId != (resource == null ? '' : resource.data.get('_audit', ''))
+        && !exists(path) && event.uid == request.auth.uid && event.col == col && event.doc == id
+        && event.op == (resource == null ? 'create' : 'update') && event.ts == request.time;
+    }
+    function deletionRequired(col, id) {
+      let key = col + '_' + id;
+      let marker = getAfter(/databases/$(database)/documents/auditDeletes/$(key)).data;
+      let event = getAfter(/databases/$(database)/documents/logs/$(marker.eventId)).data;
+      return marker.col == col && marker.doc == id && (!exists(/databases/$(database)/documents/auditDeletes/$(key)) || marker.eventId != get(/databases/$(database)/documents/auditDeletes/$(key)).data.eventId)
+        && !exists(/databases/$(database)/documents/logs/$(marker.eventId))
+        && event.op == 'delete' && event.uid == request.auth.uid && event.ts == request.time;
+    }
+    function historyEntry(h) {
+      return h is map && h.keys().hasOnly(['ts','uid','user','acao'])
+        && h.uid == request.auth.uid && h.user == perfil().nome && currentTime(h.ts)
+        && h.acao is string && h.acao.size() <= 120;
+    }
+    function historyValid(before, after) {
+      let old = before.get('historico', []);
+      let next = after.get('historico', []);
+      return next == old || (next.size() == old.size() + 1
+        && next == old.concat([next[next.size() - 1]]) && historyEntry(next[next.size() - 1]));
+    }
+    function newComment(c) {
+      return c is map && c.keys().hasOnly(['id','ts','texto','autor','autorUid','role','tag'])
+        && c.id is string && c.id.size() <= 100 && c.texto is string && c.texto.size() > 0 && c.texto.size() <= 4000
+        && c.autorUid == request.auth.uid && c.autor == perfil().nome && c.role == role() && currentTime(c.ts)
+        && (!('tag' in c) || (c.tag is string && c.tag.size() <= 80));
+    }
+    function commentsValid(before, after) {
+      let old = before.get('comentarios', []);
+      let next = after.get('comentarios', []);
+      let removed = old.removeAll(next);
+      let added = next.removeAll(old);
+      return next == old || (
+        removed.size() <= 1 && added.size() <= 1 && (
+          (removed.size() == 0 && added.size() == 1 && next.size() == old.size() + 1 && newComment(added[0]))
+          || (removed.size() == 1 && added.size() == 0 && next.size() == old.size() - 1
+              && (removed[0].get('autorUid', '') == request.auth.uid || isChefe()))
+          || (removed.size() == 1 && added.size() == 1 && next.size() == old.size()
+              && removed[0].get('autorUid', '') == request.auth.uid
+              && added[0].diff(removed[0]).affectedKeys().hasOnly(['texto','editadoEm'])
+              && added[0].texto is string && added[0].texto.size() > 0 && added[0].texto.size() <= 4000
+              && currentTime(added[0].editadoEm))
+        ));
+    }
+    function legacyThreadValid(before, after, field) {
+      let old = before.get(field, []);
+      let next = after.get(field, []);
+      return next == old || (next.size() == old.size() + 1 && next == old.concat([next[next.size() - 1]])
+        && newComment(next[next.size() - 1]));
+    }
+    function timelineValid(before, after) {
+      return historyValid(before, after) && commentsValid(before, after)
+        && legacyThreadValid(before, after, 'obsInterna') && legacyThreadValid(before, after, 'obsExterna');
+    }
+    function slaDays(category) {
+      return category in ['eletrica','hidraulica'] ? 5
+        : (category in ['cobertura','climatizacao','incendio'] ? 10 : 15);
+    }
+    function campusSla(before, after) {
+      return (after.status == before.status
+        && after.get('prazoLimite', 0) == before.get('prazoLimite', 0)
+        && after.get('diligenciaDesde', null) == before.get('diligenciaDesde', null))
+        || (before.status == 'diligencia' && after.status == 'triagem'
+          && before.diligenciaDesde is number && before.diligenciaDesde > 0
+          && after.get('diligenciaDesde', null) == null && currentTime(after.atualizadoEm)
+          && after.prazoLimite == before.prazoLimite + after.atualizadoEm - before.diligenciaDesde);
     }
 
     function statusValido(s) {
@@ -42,6 +121,7 @@ service cloud.firestore {
           && d.campus is string && d.campus.size() <= 8
           && statusValido(d.status)
           && d.especialidades is list && d.especialidades.size() <= 8
+          && (!('aval' in d) || d.aval == null || d.aval is map)
           && (!('historico' in d) || (d.historico is list && d.historico.size() <= 400))
           && (!('obsSolicitante' in d) || (d.obsSolicitante is string && d.obsSolicitante.size() <= 4000))
           && (!('obsInterna' in d) || (d.obsInterna is list && d.obsInterna.size() <= 300))
@@ -70,7 +150,7 @@ service cloud.firestore {
     function podeAtualizarDemanda() {
       let p = get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data;
       let papel = (p.ativo != false) ? p.get('role', '') : '';
-      let mudou = request.resource.data.diff(resource.data).affectedKeys();
+      let mudou = request.resource.data.diff(resource.data).affectedKeys().difference(['_audit'].toSet());
       let trav = resource.data.status in ['atendimento', 'concluido'];
       let mesmaAval = request.resource.data.get('aval', null) == resource.data.get('aval', null);
       let mesmaDelib = request.resource.data.get('ajuste', null) == resource.data.get('ajuste', null)
@@ -80,6 +160,7 @@ service cloud.firestore {
       let ehEq = papel in ['engenharia', 'chefe', 'admin'];
       let ehApoioP = papel in ['estagiario', 'administrativo'];
       let ehCodirP = papel in ['codir', 'admin'];
+      let etapaIntake = !mudou.hasAny(['etapa']) || (mudou.hasAny(['tipoDemanda','projetoExiste']) && request.resource.data.get('etapa', null) == (request.resource.data.get('tipoDemanda', '') in ['obra','projeto-obra'] && request.resource.data.get('projetoExiste','') in ['nao','parcial'] ? (resource.data.get('etapa', null) == null ? 'projeto' : resource.data.etapa) : null));
       return !(trav && request.resource.data.status == 'excluido') && (
         // Administrador: tudo, exceto violar a trava
         (papel == 'admin' && (!trav || (mesmaAval && mesmaDelib)))
@@ -112,7 +193,8 @@ service cloud.firestore {
         // Campus dono: responder diligência da própria unidade
         || (campusDono && resource.data.status == 'diligencia'
             && request.resource.data.status in ['diligencia', 'analise'] && mesmaAval && mesmaDelib
-            && request.resource.data.campus == resource.data.campus)
+            && request.resource.data.campus == resource.data.campus
+            && etapaIntake && mudou.hasOnly(['etapa','objeto','descricao','local','tipoDemanda','projetoExiste','tombado','valorEstimado','prazoEstimado','processoSuap','especialidades','emergencial','status','historico','atualizadoEm']))
         // Campus dono: observação do solicitante, em qualquer status
         || (campusDono && mudou.hasOnly(['obsSolicitante', 'historico', 'atualizadoEm'])
             && request.resource.data.campus == resource.data.campus)
@@ -123,7 +205,8 @@ service cloud.firestore {
             && request.resource.data.status == resource.data.status
             && request.resource.data.campus == resource.data.campus
             && mesmaAval && mesmaDelib
-            && (ehEq || ehCodirP || campusDono))
+            && (ehEq || ehCodirP || campusDono)
+            && etapaIntake && mudou.hasOnly(['etapa','objeto','descricao','local','tipoDemanda','projetoExiste','tombado','valorEstimado','prazoEstimado','processoSuap','especialidades','emergencial','historico','atualizadoEm']))
         // Observações internas (equipe + apoio)
         || ((ehEq || ehApoioP) && mudou.hasOnly(['obsInterna', 'historico', 'atualizadoEm']))
         // Observação externa (campus dono / CODIR)
@@ -146,7 +229,8 @@ service cloud.firestore {
     }
 
     function chamadoValido(c) {
-      return c.assunto is string && c.assunto.size() > 0 && c.assunto.size() <= 140
+      return c.keys().hasOnly(['id','processoSuap','ano','seq','campus','autor','categoria','assunto','descricao','local','urgencia','anexos','status','aberturaEm','prazoLimite','diligenciaDesde','atualizadoEm','desfecho','atendentes','resolucao','demandaId','obsInterna','obsExterna','comentarios','historico','_audit'])
+          && c.assunto is string && c.assunto.size() > 0 && c.assunto.size() <= 140
           && c.descricao is string && c.descricao.size() <= 6000
           && c.campus is string && c.campus.size() <= 8
           && c.categoria is string
@@ -162,43 +246,48 @@ service cloud.firestore {
 
     // ---------- demandas (fila pública) --------------------------------------
     match /demandas/{id} {
-      allow read: if true; // dashboard e relatório públicos
+      allow read: if isInterno() || isApoio() || (resource != null && isCampusDe(resource.data.campus));
+      allow get: if resource == null && ativo();
 
       // Intake unificado nos CHAMADOS: demandas nascem da triagem da SENG
       // (conversão chamado→demanda) — o campus não cria demanda diretamente.
       allow create: if demandaValida(request.resource.data)
         && request.resource.data.status == 'recebido'
-        && isEng();
+        && isEng() && auditRequired('demandas', id) && getAfter(sourcePath('publicDemandas', id)).data.get('_audit', null) == request.resource.data._audit
+        && request.resource.data.get('historico', []).size() == 1 && historyEntry(request.resource.data.historico[0]);
 
-      allow update: if demandaValida(request.resource.data) && podeAtualizarDemanda();
+      allow update: if demandaValida(request.resource.data) && podeAtualizarDemanda()
+        && timelineValid(resource.data, request.resource.data) && auditRequired('demandas', id) && getAfter(sourcePath('publicDemandas', id)).data.get('_audit', null) == request.resource.data._audit;
 
       // Exclusão: chefe/admin e nunca em atendimento/concluído
-      allow delete: if isChefe() && !travada();
+      allow delete: if isChefe() && !travada() && deletionRequired('demandas', id) && !existsAfter(sourcePath('publicDemandas', id));
     }
 
     // ---------- dados internos (alocação) — nunca públicos ---------------------
     match /internas/{id} {
       allow read: if isInterno() || isApoio();
       // Chefe/Admin: alocação completa. Engenharia: apenas a observação técnica interna.
-      allow write: if isChefe()
+      allow create, update: if auditRequired('internas', id) && (isChefe()
         || ( isEng() && (
-              ( resource == null && request.resource.data.keys().hasOnly(['obsEngenharia']) )
-              || ( resource != null && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['obsEngenharia']) )
-            ) );
+              ( resource == null && request.resource.data.keys().hasOnly(['obsEngenharia','_audit']) )
+              || ( resource != null && request.resource.data.diff(resource.data).affectedKeys().difference(['_audit'].toSet()).hasOnly(['obsEngenharia']) )
+            ) ));
+      allow get: if resource == null && ativo();
+      allow delete: if isChefe() && deletionRequired('internas', id);
     }
 
     // ---------- profissionais — leitura interna, escrita chefe/admin ------------
     match /profissionais/{id} {
       allow read: if isInterno() || isApoio();
-      allow write: if isChefe()
+      allow create, update: if auditRequired('profissionais', id) && isChefe()
         && request.resource.data.nome is string && request.resource.data.nome.size() <= 80
         && (!('email' in request.resource.data) || request.resource.data.email is string);
       // Meu espaço (v1.20): o próprio profissional (vínculo por e-mail) atualiza
       // SOMENTE a foto de perfil e as próprias ausências (controle informativo).
-      allow update: if ativo()
+      allow update: if auditRequired('profissionais', id) && ativo()
         && resource.data.get('email', '') != ''
         && resource.data.get('email', '') == perfil().get('email', '')
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['fotoUrl', 'ausencias'])
+        && request.resource.data.diff(resource.data).affectedKeys().difference(['_audit'].toSet()).hasOnly(['fotoUrl', 'ausencias'])
         && (!('ausencias' in request.resource.data) || request.resource.data.ausencias == null
             || (request.resource.data.ausencias is list && request.resource.data.ausencias.size() <= 50));
     }
@@ -213,8 +302,12 @@ service cloud.firestore {
     }
     match /tarefas/{id} {
       allow read: if isEng() || isApoio();
-      allow create, update: if (isEng() || isApoio()) && tarefaValida(request.resource.data);
-      allow delete: if isChefe();
+      allow create, update: if (isEng() || isApoio()) && tarefaValida(request.resource.data)
+        && (request.resource.data.situacao != 'cancelada' || isChefe()
+            || (resource != null && resource.data.situacao == 'cancelada'))
+        && auditRequired('tarefas', id);
+      allow delete: if isChefe() && deletionRequired('tarefas', id);
+      allow get: if resource == null && ativo();
     }
 
     // ---------- usuários — leitura p/ chefia (vínculo de profissionais);
@@ -227,11 +320,11 @@ service cloud.firestore {
     }
     match /usuarios/{uid} {
       allow read: if isChefe() || (signedIn() && request.auth.uid == uid);
-      allow create: if isAdmin()
+      allow create: if isAdmin() && auditRequired('usuarios', uid)
         && request.resource.data.role in ['campus','engenharia','estagiario','administrativo','chefe','codir','admin']
         && request.resource.data.nome is string && request.resource.data.nome.size() <= 80
         && matriculaValida(request.resource.data);
-      allow update: if isAdmin()
+      allow update: if isAdmin() && auditRequired('usuarios', uid)
         && request.resource.data.role in ['campus','engenharia','estagiario','administrativo','chefe','codir','admin']
         && request.resource.data.nome is string && request.resource.data.nome.size() <= 80
         && matriculaValida(request.resource.data)
@@ -240,25 +333,49 @@ service cloud.firestore {
         && ( resource.data.role != 'admin'
           || (request.resource.data.role == 'admin' && request.resource.data.ativo != false)
           || request.auth.uid != uid );
-      allow delete: if isAdmin() && resource.data.role != 'admin';
+      allow delete: if isAdmin() && resource.data.role != 'admin' && deletionRequired('usuarios', uid);
+      allow get: if resource == null && isAdmin();
     }
 
-    // ---------- log de auditoria — gravação por autenticados, leitura só admin ---
+    // Audits are an atomic receipt of a real document change, not client prose.
     match /logs/{id} {
       allow read: if isAdmin();
-      allow create: if signedIn() && ativo()
-        && request.resource.data.uid == request.auth.uid
-        && request.resource.data.acao is string && request.resource.data.acao.size() <= 120
-        && request.resource.data.alvo is string && request.resource.data.alvo.size() <= 160
-        && request.resource.data.detalhes is string && request.resource.data.detalhes.size() <= 1000
-        && request.resource.data.ts is number;
-      allow update, delete: if false; // imutável (append-only)
+      allow create: if ativo() && request.resource.data.keys().hasOnly(['ts','uid','nome','email','acao','alvo','detalhes','col','doc','op','fields'])
+        && request.resource.data.uid == request.auth.uid && request.resource.data.nome == perfil().nome
+        && request.resource.data.email == request.auth.token.get('email', '')
+        && request.resource.data.ts == request.time && request.resource.data.detalhes == ''
+        && request.resource.data.col in ['demandas','chamados','internas','profissionais','tarefas','usuarios','config']
+        && request.resource.data.doc is string && request.resource.data.doc.matches('[A-Za-z0-9_-]{1,128}')
+        && request.resource.data.acao == request.resource.data.op
+        && request.resource.data.alvo == request.resource.data.col + '/' + request.resource.data.doc
+        && auditChange(id, request.resource.data);
+      allow update, delete: if false;
     }
-
-    // ---------- parâmetros — leitura pública (cálculo no cliente) ----------------
+    function auditChange(id, e) {
+      let path = sourcePath(e.col, e.doc);
+      return (e.op == 'create' && !exists(path) && existsAfter(path)
+          && getAfter(path).data._audit == id
+          && e.fields.toSet() == getAfter(path).data.keys().toSet().difference(['_audit'].toSet()))
+        || (e.op == 'update' && exists(path) && existsAfter(path)
+          && getAfter(path).data._audit == id
+          && e.fields.toSet() == getAfter(path).data.diff(get(path).data).affectedKeys().difference(['_audit'].toSet()))
+        || (e.op == 'delete' && exists(path) && !existsAfter(path)
+          && getAfter(/databases/$(database)/documents/auditDeletes/$(e.col + '_' + e.doc)).data.eventId == id
+          && e.fields.toSet() == get(path).data.keys().toSet().difference(['_audit'].toSet()));
+    }
+    match /auditDeletes/{key} {
+      allow create, update: if ativo() && request.resource.data.keys().hasOnly(['col','doc','eventId'])
+        && key == request.resource.data.col + '_' + request.resource.data.doc
+        && exists(sourcePath(request.resource.data.col, request.resource.data.doc))
+        && !existsAfter(sourcePath(request.resource.data.col, request.resource.data.doc))
+        && getAfter(/databases/$(database)/documents/logs/$(request.resource.data.eventId)).data.uid == request.auth.uid;
+      allow read, delete: if false;
+    }
     match /config/{doc} {
-      allow read: if true;
-      allow write: if isChefe();
+      allow read: if isInterno() || isApoio();
+      allow get: if resource == null && isChefe();
+      allow create, update: if isChefe() && auditRequired('config', doc) && (!(doc in ['params','transparencia']) || publicConfigMatches(doc, getAfter(sourcePath('publicConfig', doc)).data));
+      allow delete: if isChefe() && deletionRequired('config', doc);
     }
 
     // ---------- diretório de roteamento de notificações (SEM nomes) -------------
@@ -267,8 +384,57 @@ service cloud.firestore {
     // avisos da disciplina); gravado só por chefe/admin (auto-sincronizado a
     // partir de /usuarios e /profissionais). Não contém nomes nem e-mails.
     match /diretorio/{doc} {
-      allow read: if signedIn();
+      allow read: if ativo();
       allow write: if isChefe();
+    }
+
+    function notificationText(type, object) {
+      let prefix = {
+        'nova':'Nova demanda para análise — ', 'diligencia':'Diligência atualizada — ',
+        'comentario':'Novo comentário — ', 'codir':'Enviada para aprovação do CODIR — ',
+        'fila':'Aprovada pelo CODIR e posicionada na fila — ', 'concluido':'Demanda concluída — ',
+        'chamado-novo':'Novo chamado para triagem — ', 'chamado-diligencia':'Chamado em diligência — ',
+        'chamado-resolvido':'Chamado resolvido — ', 'chamado-desfecho':'Chamado com desfecho — ',
+        'chamado-atendimento':'Chamado sob sua responsabilidade — ', 'chamado-comentario':'Novo comentário no chamado — ',
+        'chamado-anexo':'Anexos atualizados no chamado — ', 'chamado-atualizado':'Chamado atualizado — '
+      };
+      return prefix[type] + object;
+    }
+    function notificationEvent(type, source, event) {
+      return (type in ['nova','chamado-novo'] && event.op == 'create')
+        || (type == 'comentario' && event.fields.hasAny(['comentarios','obsInterna','obsExterna','obsSolicitante','anexos']))
+        || (type == 'chamado-comentario' && event.fields.hasAny(['comentarios','obsInterna','obsExterna']))
+        || (type == 'chamado-anexo' && event.fields.hasAny(['anexos']))
+        || (type == 'diligencia' && source.status in ['diligencia','analise'] && event.fields.hasAny(['status','descricao','comentarios','obsExterna']))
+        || (type == 'chamado-diligencia' && source.status == 'diligencia')
+        || (type == 'codir' && source.status == 'codir') || (type == 'fila' && source.status == 'fila')
+        || (type == 'concluido' && source.status == 'concluido')
+        || (type == 'chamado-resolvido' && source.status == 'resolvido')
+        || (type == 'chamado-desfecho' && event.fields.hasAny(['desfecho','demandaId']))
+        || (type == 'chamado-atendimento' && event.fields.hasAny(['atendentes']))
+        || type == 'chamado-atualizado';
+    }
+    function validNotification(id, n) {
+      let isCall = n.tipo.matches('chamado-.*');
+      let col = isCall ? 'chamados' : 'demandas';
+      let source = get(sourcePath(col, n.demandaId)).data;
+      let recipient = get(sourcePath('usuarios', n.para)).data;
+      let event = get(sourcePath('logs', n.eventoId)).data;
+      return ativo() && n.keys().hasOnly(['para','de','deNome','tipo','demandaId','objeto','texto','link','criadoEm','lida','eventoId'])
+        && n.tipo in ['nova','diligencia','comentario','codir','fila','concluido','chamado-novo','chamado-diligencia','chamado-resolvido','chamado-desfecho','chamado-atendimento','chamado-comentario','chamado-anexo','chamado-atualizado']
+        && n.de == request.auth.uid && n.deNome == perfil().nome && n.para != request.auth.uid
+        && recipient.ativo != false && recipient.role in ['campus','engenharia','estagiario','administrativo','chefe','codir','admin']
+        && (recipient.role != 'campus' || source.campus in recipient.get('campi', []) || source.campus == recipient.get('campus', ''))
+        && (isInterno() || isApoio() || isCampusDe(source.campus))
+        && n.demandaId is string && n.demandaId.matches('[A-Za-z0-9_-]{1,100}')
+        && source._audit == n.eventoId && event.uid == request.auth.uid
+        && event.col == col && event.doc == n.demandaId && event.ts.toMillis() >= request.time.toMillis() - 60000
+        && id == n.eventoId + '_' + n.para + '_' + n.tipo
+        && notificationEvent(n.tipo, source, event)
+        && n.objeto == source.get('objeto', source.get('assunto', ''))
+        && n.texto == notificationText(n.tipo, n.objeto)
+        && n.link == '#/' + (isCall ? 'chamado' : 'demanda') + '/' + n.demandaId
+        && n.lida == false && currentTime(n.criadoEm);
     }
 
     // ---------- notificações (inbox pessoal) ------------------------------------
@@ -276,19 +442,12 @@ service cloud.firestore {
     // do próprio; criação por qualquer autenticado (fan-out client-side, com o
     // autor carimbado em `de`); o destinatário só pode alternar `lida`.
     match /notificacoes/{id} {
-      allow read: if signedIn() && resource.data.para == request.auth.uid;
-      allow create: if signedIn()
-        && request.resource.data.de == request.auth.uid
-        && request.resource.data.para is string
-        && request.resource.data.tipo is string
-        && request.resource.data.demandaId is string
-        && request.resource.data.texto is string && request.resource.data.texto.size() <= 300
-        && request.resource.data.lida == false
-        && request.resource.data.criadoEm is number;
-      allow update: if signedIn() && resource.data.para == request.auth.uid
+      allow read: if ativo() && resource.data.para == request.auth.uid;
+      allow create: if validNotification(id, request.resource.data);
+      allow update: if ativo() && resource.data.para == request.auth.uid
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lida'])
         && request.resource.data.lida is bool;
-      allow delete: if signedIn() && resource.data.para == request.auth.uid;
+      allow delete: if ativo() && resource.data.para == request.auth.uid;
     }
 
     // ---------- chamados (intake da SENG) — ADR-002 -----------------------------
@@ -298,8 +457,22 @@ service cloud.firestore {
       allow read: if isInterno() || isApoio() || (resource != null && isCampusDe(resource.data.campus));
       allow create: if chamadoValido(request.resource.data)
         && request.resource.data.status == 'aberto'
-        && ( isEng() || isCampusDe(request.resource.data.campus) );
+        && request.resource.data.keys().hasOnly(['id','ano','seq','campus','autor','categoria','assunto','descricao','local','urgencia','processoSuap','anexos','status','aberturaEm','prazoLimite','atualizadoEm','obsInterna','obsExterna','comentarios','historico','_audit'])
+        && ( isEng() || isCampusDe(request.resource.data.campus) )
+        && auditRequired('chamados', id) && request.resource.data.get('id', id) == id
+        && request.resource.data.autor.keys().hasOnly(['uid','nome','email'])
+        && request.resource.data.autor.uid == request.auth.uid && request.resource.data.autor.nome == perfil().nome
+        && request.resource.data.autor.email == request.auth.token.get('email', '')
+        && currentTime(request.resource.data.aberturaEm) && request.resource.data.atualizadoEm == request.resource.data.aberturaEm
+        && request.resource.data.categoria in ['eletrica','hidraulica','cobertura','estrutura','acessibilidade','climatizacao','incendio','consultoria','outros']
+        && request.resource.data.prazoLimite == request.resource.data.aberturaEm + slaDays(request.resource.data.categoria) * 86400000
+        && request.resource.data.get('historico', []).size() == 1 && historyEntry(request.resource.data.historico[0])
+        && request.resource.data.get('comentarios', []).size() == 0
+        && request.resource.data.get('obsInterna', []).size() == 0 && request.resource.data.get('obsExterna', []).size() == 0;
+      allow get: if resource == null && ativo();
       allow update: if chamadoValido(request.resource.data)
+        && auditRequired('chamados', id) && timelineValid(resource.data, request.resource.data)
+        && request.resource.data.get('autor', null) == resource.data.get('autor', null)
         && request.resource.data.campus == resource.data.campus
         && (
           // SENG/Admin: triagem, resolução e status
@@ -310,20 +483,54 @@ service cloud.firestore {
           // v1.26: o campus dono também corrige dados da abertura (assunto,
           // localização, urgência e processo SUAP) até o início do atendimento.
           || ( isCampusDe(resource.data.campus)
-               && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['descricao','assunto','local','urgencia','processoSuap','status','obsExterna','comentarios','anexos','historico','atualizadoEm','prazoLimite','diligenciaDesde'])
-               && request.resource.data.get('prazoLimite', 0) >= resource.data.get('prazoLimite', 0)
-               && request.resource.data.status in ['aberto','triagem','diligencia'] )
+               && request.resource.data.diff(resource.data).affectedKeys().difference(['_audit'].toSet()).hasOnly(['descricao','assunto','local','urgencia','processoSuap','status','obsExterna','comentarios','anexos','historico','atualizadoEm','prazoLimite','diligenciaDesde'])
+               && resource.data.status in ['aberto','triagem','diligencia']
+               && campusSla(resource.data, request.resource.data) )
           // Campus dono: comentar também com o chamado EM ATENDIMENTO
           // (consultoria/laudo em curso) — sem mudar status nem outros campos.
           || ( isCampusDe(resource.data.campus)
-               && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['obsExterna','comentarios','historico','atualizadoEm'])
+               && request.resource.data.diff(resource.data).affectedKeys().difference(['_audit'].toSet()).hasOnly(['obsExterna','comentarios','historico','atualizadoEm'])
                && request.resource.data.status == resource.data.status )
           // Apoio (v1.27): comentários, anexos e observações internas — sem status.
           || ( isApoio()
-               && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['obsInterna','comentarios','anexos','historico','atualizadoEm'])
+               && request.resource.data.diff(resource.data).affectedKeys().difference(['_audit'].toSet()).hasOnly(['obsInterna','comentarios','anexos','historico','atualizadoEm'])
                && request.resource.data.status == resource.data.status )
         );
+      allow delete: if isChefe() && deletionRequired('chamados', id);
+    }
+    function publicDemandMatches(id, d) {
+      let source = getAfter(sourcePath('demandas', id)).data;
+      let a = source.get('aval', null) == null ? {} : source.aval;
+      let ajuste = source.get('ajuste', null) == null ? {} : source.ajuste;
+      return d == {'_audit': source.get('_audit', null), 'ano': source.get('ano', null), 'campus': source.get('campus', null), 'objeto': source.get('objeto', null), 'especialidades': source.get('especialidades', null), 'status': source.get('status', null), 'fase': source.get('fase', null), 'etapa': source.get('etapa', null), 'tipoDemanda': source.get('tipoDemanda', null), 'projetoExiste': source.get('projetoExiste', null), 'projetoOrigem': source.get('projetoOrigem', null), 'tombado': source.get('tombado', null), 'emergencial': source.get('emergencial', null), 'valorEstimado': source.get('valorEstimado', null), 'prazoEstimado': source.get('prazoEstimado', null), 'criadoEm': source.get('criadoEm', null), 'atualizadoEm': source.get('atualizadoEm', null), 'concluidoEm': source.get('concluidoEm', null), 'codirAprovado': source.get('codirAprovado', null), 'expurgarEm': source.get('expurgarEm', null), 'id': id, 'aval': {'g': a.get('g', null), 'u': a.get('u', null), 't': a.get('t', null), 'valorConsiderado': a.get('valorConsiderado', null), 'prazoConsiderado': a.get('prazoConsiderado', null), 'tipoAtividade': a.get('tipoAtividade', null), 'tombadoConf': a.get('tombadoConf', null), 'pontosManual': a.get('pontosManual', null)}, 'ajuste': {'valor': ajuste.get('valor', null)}}
+        && d.objeto is string && d.campus is string && d.especialidades is list
+        && nullableNumber(d.valorEstimado) && nullableNumber(d.criadoEm) && nullableNumber(d.atualizadoEm)
+        && nullableNumber(d.aval.g) && nullableNumber(d.aval.u) && nullableNumber(d.aval.t)
+
+        && nullableString(d.fase) && nullableString(d.etapa) && nullableString(d.tipoDemanda) && nullableString(d.projetoExiste) && nullableString(d.projetoOrigem) && nullableString(d.tombado) && nullableString(d.prazoEstimado) && nullableString(d.status)
+        && nullableString(d.aval.prazoConsiderado) && nullableString(d.aval.tipoAtividade) && nullableBool(d.aval.tombadoConf) && nullableBool(d.emergencial) && nullableBool(d.codirAprovado)
+        && (d.expurgarEm == null || d.expurgarEm is timestamp)
+        && nullableNumber(d.ano) && nullableNumber(d.concluidoEm) && d.especialidades.hasOnly(['Arquitetura','Engenharia Civil','Engenharia Elétrica','Engenharia Mecânica','Segurança do Trabalho'])
+        && nullableNumber(d.aval.valorConsiderado) && nullableNumber(d.aval.pontosManual) && nullableNumber(d.ajuste.valor);
+    }
+    function nullableString(s) { return s == null || s is string; }
+    function nullableBool(b) { return b == null || b is bool; }
+    function nullableNumber(n) { return n == null || n is number; }
+    match /publicDemandas/{id} {
+      allow read: if true;
+      allow create, update: if ativo() && publicDemandMatches(id, request.resource.data)
+        && (isInterno() || isApoio() || isCampusDe(getAfter(sourcePath('demandas', id)).data.campus));
+      allow delete: if isChefe() && !existsAfter(sourcePath('demandas', id));
+    }
+    match /publicConfig/{id} {
+      allow read: if true;
+      allow create, update: if isChefe() && publicConfigMatches(id, request.resource.data);
       allow delete: if isChefe();
     }
+    function publicConfigMatches(id, d) {
+      let source = getAfter(sourcePath('config', id)).data;
+      return nullableNumber(d.get('abertos', null)) && nullableNumber(d.get('anoPlano', null)) && nullableNumber(d.get('ativos', null)) && nullableNumber(d.get('atualizadoEm', null)) && nullableNumber(d.get('emAtendimento', null)) && nullableNumber(d.get('emDiligencia', null)) && nullableNumber(d.get('emTriagem', null)) && nullableNumber(d.get('emTriagemSeng', null)) && nullableNumber(d.get('limitePontos', null)) && nullableNumber(d.get('pesoGUT', null)) && nullableNumber(d.get('pesoPxC', null)) && nullableNumber(d.get('refChamadosProf', null)) && nullableNumber(d.get('refChamadosSetor', null)) && nullableNumber(d.get('refPlanejProf', null)) && nullableNumber(d.get('refPlanejSetor', null)) && nullableNumber(d.get('resolvidosAno', null)) && nullableNumber(d.get('slaPrazo', null)) && nullableNumber(d.get('slaVencendo', null)) && nullableNumber(d.get('slaVencido', null)) && nullableNumber(d.get('triagemMediaDias', null)) && nullableNumber(d.get('valorRef', null)) && ((id == 'params' && d == {'anoPlano': source.get('anoPlano', null), 'valorRef': source.get('valorRef', null), 'pesoGUT': source.get('pesoGUT', null), 'pesoPxC': source.get('pesoPxC', null), 'limitePontos': source.get('limitePontos', null), 'refChamadosProf': source.get('refChamadosProf', null), 'refChamadosSetor': source.get('refChamadosSetor', null), 'refPlanejProf': source.get('refPlanejProf', null), 'refPlanejSetor': source.get('refPlanejSetor', null)}) || (id == 'transparencia' && d == {'ativos': source.get('ativos', null), 'emTriagem': source.get('emTriagem', null), 'abertos': source.get('abertos', null), 'emTriagemSeng': source.get('emTriagemSeng', null), 'emDiligencia': source.get('emDiligencia', null), 'emAtendimento': source.get('emAtendimento', null), 'resolvidosAno': source.get('resolvidosAno', null), 'slaPrazo': source.get('slaPrazo', null), 'slaVencendo': source.get('slaVencendo', null), 'slaVencido': source.get('slaVencido', null), 'triagemMediaDias': source.get('triagemMediaDias', null), 'atualizadoEm': source.get('atualizadoEm', null)}));
+    }
+
   }
 }

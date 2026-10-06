@@ -200,7 +200,7 @@ function secaoLog(s, rerender) {
   const logs = (s.listLogs() || []).slice().reverse();
   const txt = filtroLog.trim().toLowerCase();
   const filtrados = txt
-    ? logs.filter(l => `${l.nome} ${l.email} ${l.acao} ${l.alvo} ${l.detalhes}`.toLowerCase().includes(txt))
+    ? logs.filter(l => `${l.nome} ${l.email} ${l.acao} ${l.alvo} ${l.detalhes} ${(l.fields || []).join(' ')}`.toLowerCase().includes(txt))
     : logs;
   const inFiltro = el('input', {
     type: 'search', placeholder: 'Filtrar por usuário, ação, alvo…', value: filtroLog,
@@ -217,9 +217,9 @@ function secaoLog(s, rerender) {
       el('tbody', {}, filtrados.length ? filtrados.slice(0, 300).map(l => el('tr', { class: 'log-linha' },
         el('td', { class: 'sub' }, fmtDataHora(l.ts)),
         el('td', {}, l.nome, l.email ? el('span', { class: 'sub' }, ` ${l.email}`) : null),
-        el('td', {}, l.acao),
+        el('td', {}, ({create:'Criado',update:'Atualizado',delete:'Excluído'})[l.acao] || l.acao),
         el('td', { class: 'mono' }, l.alvo || '—'),
-        el('td', { class: 'sub' }, l.detalhes || ''))) : el('tr', {}, el('td', { colspan: 5, class: 'vazio' }, 'Nenhum registro.'))))),
+        el('td', { class: 'sub' }, l.detalhes || (Array.isArray(l.fields) && l.fields.length ? 'Campos: '+l.fields.join(', ') : '')))) : el('tr', {}, el('td', { colspan: 5, class: 'vazio' }, 'Nenhum registro.'))))),
     el('p', { class: 'nota' }, 'Registro de toda modificação no sistema: o quê, quando e por quem. Os registros não podem ser editados nem excluídos.'));
 }
 

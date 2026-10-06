@@ -73,8 +73,8 @@ api/
 | `PATCH /api/config/params` | parâmetros do sistema | ✅ no ar |
 | `PUT /api/chamados/{id}` | abrir chamado (id calculado no cliente) | ✅ no ar |
 | `PATCH /api/chamados/{id}` | atualizar chamado (triagem, desfechos, diligência/SLA, comentários) | ✅ no ar |
-| `POST /api/claims/self` | sincroniza as custom claims do próprio token (Storage — ADR-002) | ✅ no ar |
-| `POST /api/claims/sync` | admin/chefe sincroniza as claims de um usuário (`{ uid }`) | ✅ no ar |
+| `POST /api/claims/self` | sincroniza as custom claims do próprio token (compatibilidade legada — ADR-002) | ✅ no ar |
+| `POST /api/claims/sync` | admin sincroniza as claims de um usuário (`{ uid }`) | ✅ no ar |
 
 **Roteamento no provider.** As guardas ficam no `FirebaseProvider` (métodos
 `criarDemanda/atualizarDemanda/setInterna/arquivar/resgatar/salvarProfissional/setParams`):
@@ -121,3 +121,10 @@ app.http('<nome>', { methods: ['GET'], authLevel: 'anonymous', route: '<nome>',
 Nenhuma migração de dados envolvida. Para escritas via Firestore REST (próximos
 endpoints), o padrão será `PATCH/commit` com o token do usuário — sempre sob as
 rules.
+
+## Correção de segurança preparada em outubro/2026
+
+As escritas de documentos usam um único commit sob o token do usuário, com
+recibo de auditoria e projeção pública quando aplicável. Falhas de autorização
+retornam 403 e correlação, sem diagnósticos upstream. A ativação exige migração
+coordenada das regras/API/cliente; ver [SECURITY-REMEDIATION](SECURITY-REMEDIATION.md).

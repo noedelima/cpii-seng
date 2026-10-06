@@ -8,7 +8,7 @@
 //   lista()            → anexos atuais do documento (estado fresco do store)
 //   podeAnexar         → bool
 //   upload(file, onP)  → sobe o arquivo, devolve o objeto anexo
-//   uploadThumb(blob, base) → sobe a miniatura, devolve { path, url } (opcional)
+//   uploadThumb(blob, base) → sobe a miniatura, devolve { path } (opcional)
 //   removerStorage(path)    → apaga do Storage
 //   salvar(anexos, evento)  → grava a lista no documento
 //   aoMudar?()         → pós-gravação (ex.: notificação)
@@ -54,7 +54,7 @@ const _thumbsFeitas = new Set();
 export async function backfillThumbs(cfg) {
   if (!cfg.uploadThumb) return;
   const pendentes = (cfg.lista() || []).filter(a =>
-    a.tipo === 'application/pdf' && !a.thumbUrl && a.url && a.path && !_thumbsFeitas.has(a.path));
+    a.tipo === 'application/pdf' && !a.thumbPath && !a.thumbUrl && a.url && a.path && !_thumbsFeitas.has(a.path));
   for (const a of pendentes) {
     _thumbsFeitas.add(a.path);
     try {
@@ -153,7 +153,7 @@ export function renderAnexosCard(cfg) {
               : el('span', { class: 'anexo-file' }, 'PDF')),
           el('span', { class: 'anexo-nome' }, a.titulo || a.nome)),
         cfg.podeAnexar ? el('button', { class: 'anexo-edit', title: 'Editar título/descrição', 'aria-label': 'Editar dados do anexo', onclick: () => editarMeta(a) }, '✎') : null,
-        cfg.podeAnexar ? el('button', { class: 'anexo-rm', title: 'Remover', 'aria-label': 'Remover anexo', onclick: () => remover(a) }, '×') : null)))
+        (cfg.podeRemover ? cfg.podeRemover(a) : cfg.podeAnexar) ? el('button', { class: 'anexo-rm', title: 'Remover', 'aria-label': 'Remover anexo', onclick: () => remover(a) }, '×') : null)))
     : el('p', { class: 'sub' }, 'Sem anexos.');
 
   if (cfg.podeAnexar) backfillThumbs(cfg);

@@ -4,3 +4,6 @@ Thumbs.db
 *.log
 .firebase/
 firebase-debug.log
+
+.test-cache/
+tests/security/*-results.json

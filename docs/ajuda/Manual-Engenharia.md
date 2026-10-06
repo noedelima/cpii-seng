@@ -164,7 +164,7 @@ Clique em uma linha do painel para abrir o detalhe. No topo, o **stepper** mostr
 
 > **Editar dados da solicitação.** Enquanto a demanda **não foi submetida ao CODIR** (status Recebido, Em análise ou Em diligência), o cartão **“Editar dados da solicitação”** permite corrigir localização, tipo, situação do projeto, valor, prazo, processo SUAP, objeto, descrição, especialidades e o sinalizador emergencial. A edição é aberta a **Engenharia, Chefia, Administração e CODIR** (qualquer demanda) e ao **Campus** (apenas as da própria unidade). Ao entrar em **“Aguardando aprovação do CODIR”**, os dados **congelam para todos**; para corrigir, **reverta o status** (Fluxo 5) e a edição reabre. A **unidade (campus) não é editável** (compõe o identificador). Cada alteração registra no **histórico** e no **log de auditoria** **exatamente quais campos** mudaram — ex.: *“Dados da solicitação editados — campos: Processo SUAP, Valor estimado, Prazo estimado”*.
 
-> **Linha do tempo (comentários, anexos e eventos).** Cada demanda tem um **fio único de comentários**, mesclado aos **anexos** e aos **eventos de status** em ordem cronológica. Os comentários são **visíveis a todos**: no painel público a autoria aparece pela **origem/perfil** (Campus, Engenharia, CODIR); autenticados veem também o **nome** e a data/hora. Podem **escrever**: Engenharia/Chefia/Administração, o CODIR e o Campus (da própria unidade). O **autor pode editar** o próprio comentário (fica marcado *(editado)*) e **excluí-lo**; a Chefia/Administração também pode excluir. Registros dos fios antigos permanecem visíveis, somente leitura. Toda ação fica no histórico e no log de auditoria.
+> **Linha do tempo (comentários, anexos e eventos).** Cada demanda tem um **fio único de comentários**, mesclado aos **anexos** e aos **eventos de status** em ordem cronológica. Comentários e anexos ficam disponíveis à equipe autorizada e ao Campus da própria unidade, conforme o perfil. A consulta pública mostra o resumo e a priorização, sem comentários, histórico pessoal ou anexos. Podem **escrever**: Engenharia/Chefia/Administração, o CODIR e o Campus (da própria unidade). O **autor pode editar** o próprio comentário (fica marcado *(editado)*) e **excluí-lo**; a Chefia/Administração também pode excluir. Registros dos fios antigos permanecem visíveis, somente leitura. Toda ação fica no histórico e no log de auditoria.
 
 ---
 
@@ -399,7 +399,7 @@ Nos desfechos **consultoria/laudo**, elabore a Nota Técnica no fluxo institucio
 - **Novo chamado** → engenheiros/arquitetos da **disciplina** da categoria (ou toda a Engenharia, se a categoria não tiver disciplina).
 - **Diligência / desfecho / resolvido** → o **campus** dono.
 
-> **Segurança dos anexos.** Os arquivos ficam no Cloud Storage **sob autenticação**, restritos ao prefixo `chamados/`, só imagem/PDF e com limite de tamanho; a **descoberta** é controlada pelo chamado (Firestore) e as **URLs são tokenizadas**. *(Detalhe técnico: o isolamento por campus na própria camada de Storage depende de custom claims — ver docs/ADR-002.)*
+> **Segurança dos anexos.** Os arquivos ficam **sob autenticação**, vinculados ao chamado/demanda e ao campus, com controle pelo perfil atual. São permitidos imagem/PDF e há limite de tamanho. Anexos novos não podem sobrescrever arquivos existentes; o portal baixa os arquivos na sessão autorizada.
 
 ---
 

@@ -159,6 +159,7 @@ export function viewChamado(rerender, id) {
   const anexos = renderAnexosCard({
     lista: () => ((s.getChamado(c.id) || c).anexos || []),
     podeAnexar,
+    podeRemover: a => ['engenharia','chefe','admin'].includes(user.role) || (ehDono && podeAnexar && a.ownerUid === user.uid),
     upload: (f, onP) => s.uploadAnexoChamado(c.id, c.campus, f, onP),
     uploadThumb: typeof s.uploadThumbChamado === 'function' ? (blob, base) => s.uploadThumbChamado(c.id, c.campus, blob, base) : null,
     removerStorage: (p) => s.removerAnexoChamado(p),

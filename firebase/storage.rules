@@ -1,66 +1,63 @@
 rules_version = '2';
-// =============================================================================
-// SENG Demandas — Security Rules (Cloud Storage) — anexos de chamados — v2
-// Publicar: npx -y firebase-tools@latest deploy --only storage --project cpii-seng
-//
-// ISOLAMENTO POR PAPEL/CAMPUS VIA CUSTOM CLAIMS (hardening do ADR-002):
-//   As claims (role/campi) são copiadas de /usuarios/{uid} para o ID token pela
-//   camada de API (POST /api/claims/self|sync — service account dedicada, papel
-//   somente "Firebase Authentication Admin"). Aqui as regras leem
-//   request.auth.token — SEM cross-service, que não funciona entre o bucket
-//   (us-central1) e o Firestore (southamerica-east1); testado em 07/07/2026.
-//
-//   ⚠️ ORDEM DE ATIVAÇÃO (ver docs/ADR-002-chamados.md): publicar estas regras
-//   somente APÓS configurar FB_SA_JSON no SWA e os usuários renovarem o token
-//   (o app sincroniza e renova sozinho no login). Token sem claims = negado.
-//
-// Controles mantidos: base de usuários fechada; restrito ao prefixo chamados/;
-// apenas imagem comum/PDF até 10 MB; descoberta dos arquivos controlada no
-// Firestore (lista `anexos` no doc do chamado); URLs de download tokenizadas.
-// =============================================================================
+// Authorization uses live profiles and parent documents in the default Firestore
+// database. Enable the Storage service agent's Firestore read permission before
+// deployment (see docs/SECURITY-REMEDIATION.md). Claims are not an authority here.
 service firebase.storage {
   match /b/{bucket}/o {
-    function role() { return request.auth != null ? request.auth.token.get('role', '') : ''; }
-    function meusCampi() { return request.auth != null ? request.auth.token.get('campi', []) : []; }
-    // Espelham as rules do Firestore: interno (inclui CODIR) lê tudo; anexa e
-    // remove a SENG (eng/chefe/admin) ou o campus dono; CODIR lê, não anexa.
-    function isInterno() { return role() in ['engenharia', 'chefe', 'codir', 'admin', 'estagiario', 'administrativo']; }
-    function isSeng() { return role() in ['engenharia', 'chefe', 'admin']; }
-    // Apoio (v1.27): anexa como a equipe; a remoção segue restrita à SENG técnica.
-    function isEquipe() { return role() in ['engenharia', 'chefe', 'admin', 'estagiario', 'administrativo']; }
-    function isCampusDe(c) { return role() == 'campus' && c in meusCampi(); }
-    function tipoOk() {
-      return request.resource.contentType.matches('image/(jpeg|png|webp|heic|heif)')
-          || request.resource.contentType == 'application/pdf';
+    function profile() {
+      return firestore.get(/databases/(default)/documents/usuarios/$(request.auth.uid)).data;
     }
-    // anexos de chamados: chamados/{campus}/{chamadoId}/{arquivo}
-    match /chamados/{campus}/{chamadoId}/{arquivo} {
-      allow read:           if isInterno() || isCampusDe(campus);
-      allow create, update: if (isEquipe() || isCampusDe(campus))
-                            && request.resource.size < 10 * 1024 * 1024
-                            && tipoOk();
-      allow delete:         if isSeng() || isCampusDe(campus);
+    function active() {
+      return request.auth != null
+        && firestore.exists(/databases/(default)/documents/usuarios/$(request.auth.uid))
+        && profile().get('ativo', true) != false;
     }
-    // anexos de demandas (unificação dos workflows): demandas/{campus}/{demandaId}/{arquivo}
-    match /demandas/{campus}/{demandaId}/{arquivo} {
-      allow read:           if isInterno() || isCampusDe(campus);
-      allow create, update: if (isEquipe() || isCampusDe(campus))
-                            && request.resource.size < 10 * 1024 * 1024
-                            && tipoOk();
-      allow delete:         if isSeng() || isCampusDe(campus);
+    function role() { return active() ? profile().get('role', '') : ''; }
+    function internal() { return role() in ['engenharia','chefe','admin','codir','estagiario','administrativo']; }
+    function team() { return role() in ['engenharia','chefe','admin','estagiario','administrativo']; }
+    function technical() { return role() in ['engenharia','chefe','admin']; }
+    function campusMember(campus) {
+      return role() == 'campus' && (campus in profile().get('campi', []) || campus == profile().get('campus', ''));
     }
-    // Fotos de perfil (Meu espaço v1.20): perfis/{uid}.jpg — gravável só pelo
-    // próprio usuário; leitura por qualquer autenticado (exibição interna).
-    match /perfis/{arquivo} {
-      allow read:           if request.auth != null;
-      allow create, update: if request.auth != null
-                            && arquivo == request.auth.uid + '.jpg'
-                            && request.resource.contentType == 'image/jpeg'
-                            && request.resource.size < 300 * 1024;
-      allow delete:         if request.auth != null
-                            && (arquivo == request.auth.uid + '.jpg' || role() == 'admin');
+    function parent(col, id) { return firestore.get(/databases/(default)/documents/$(col)/$(id)).data; }
+    function parentMatches(col, id, campus) {
+      return firestore.exists(/databases/(default)/documents/$(col)/$(id)) && parent(col, id).campus == campus;
     }
-    // Tudo o mais: negado.
-    match /{allPaths=**} { allow read, write: if false; }
+    function canRead(col, id, campus) {
+      return parentMatches(col, id, campus) && (internal() || campusMember(campus));
+    }
+    function canAttach(col, id, campus) {
+      return parentMatches(col, id, campus) && parent(col, id).status != 'excluido'
+        && (team() || (campusMember(campus)
+          && (col == 'demandas' || parent(col, id).status in ['aberto','triagem','diligencia'])));
+    }
+    function validUpload() {
+      return request.resource.size <= 10 * 1024 * 1024
+        && (request.resource.contentType.matches('image/(jpeg|png|webp|heic|heif)') || request.resource.contentType == 'application/pdf')
+        && request.resource.metadata.ownerUid == request.auth.uid;
+    }
+    function canDelete(col, id, campus) {
+      return parentMatches(col, id, campus) && (technical()
+        || (campusMember(campus) && canAttach(col,id,campus) && resource.metadata.get('ownerUid', '') == request.auth.uid));
+    }
+    match /chamados/{campus}/{id}/{file} {
+      allow read: if canRead('chamados',id,campus);
+      allow create: if resource == null && canAttach('chamados',id,campus) && validUpload();
+      allow update: if false;
+      allow delete: if canDelete('chamados',id,campus);
+    }
+    match /demandas/{campus}/{id}/{file} {
+      allow read: if canRead('demandas',id,campus);
+      allow create: if resource == null && canAttach('demandas',id,campus) && validUpload();
+      allow update: if false;
+      allow delete: if canDelete('demandas',id,campus);
+    }
+    match /perfis/{file} {
+      allow read: if active();
+      allow create, update: if active() && file == request.auth.uid + '.jpg'
+        && request.resource.contentType == 'image/jpeg' && request.resource.size <= 300 * 1024;
+      allow delete: if active() && (file == request.auth.uid + '.jpg' || role() == 'admin');
+    }
+    match /{path=**} { allow read, write: if false; }
   }
 }

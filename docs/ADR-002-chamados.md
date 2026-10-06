@@ -65,7 +65,8 @@ status ativo. O relógio **pausa** em *Em diligência*: ao entrar, grava-se
 `diligenciaDesde` (o restante congela e a UI exibe **“SLA pausado”**); ao sair
 (resposta do campus ou retomada da SENG), `prazoLimite += now − diligenciaDesde`
 e a marca é limpa — o tempo em diligência não é descontado. Nas rules, o campus
-só pode **estender** `prazoLimite`, nunca reduzir.
+só recompõe o prazo na transição diligência → triagem, pelo tempo real da pausa;
+edições no mesmo estado preservam prazo e marca de diligência.
 
 ## Segurança (rules)
 
@@ -77,53 +78,30 @@ só pode **estender** `prazoLimite`, nunca reduzir.
   próprio chamado.
 - **Escritas passam pela camada de API** (onde ela existe), como as demandas.
 
-### Anexos (Cloud Storage) — limitação cross-service e controles compensatórios
+### Anexos (Cloud Storage) — consulta ao perfil e ao documento associado
 
-O ideal seria espelhar as regras do Firestore no Storage com `firestore.get`
-(papel do usuário + campus do chamado). Porém as **regras cross-service** do
-Storage exigem bucket e Firestore em **local compatível**; aqui o bucket está em
-**us-central1** (nível gratuito) e o Firestore em **southamerica-east1** — logo
-`firestore.get/exists` **não resolvem** (negam tudo). Testado em 07/07/2026
-(inclusive isolando `exists` puro). Mover o bucket para a mesma região custaria o
-nível gratuito, então foi mantido em us-central1.
+As regras propostas em outubro/2026 consultam `/usuarios/{uid}` e o documento
+pai em Firestore `(default)`. Claims antigas deixam de conceder acesso após
+mudança de campus/papel ou desativação. Anexo exige pai existente, campus do
+caminho igual ao do pai, autoria em metadata e arquivo novo. Sobrescrita é negada.
+Campus anexa a chamados em aberto/triagem/diligência; demandas continuam aceitando
+anexos em atendimento/concluídas. Apoio anexa; remoção continua restrita à SENG
+técnica ou ao campus autor do arquivo, nas etapas permitidas.
 
-**Regras adotadas** (`firebase/storage.rules`): autenticação obrigatória, restrito
-ao prefixo `chamados/`, apenas imagem/PDF até 10 MB, todo o resto negado.
-**Controles compensatórios:** base de usuários **fechada** (contas só pelo admin,
-sem cadastro público); a **descoberta** dos arquivos é controlada no Firestore (a
-lista `anexos` vive no doc do chamado, com regras por SENG/campus) e as **URLs de
-download são tokenizadas** e imprevisíveis. Risco residual: um usuário autenticado
-que adivinhe um caminho completo poderia ler arquivo de outro campus — baixo, dado
-o público interno fechado e as URLs com token.
+A afirmação anterior de que regiões distintas inviabilizam `firestore.get/exists`
+não foi comprovada. A auditoria identificou a ausência da permissão do agente de
+serviço. A política foi validada em emuladores oficiais, incluindo consulta entre
+Storage e Firestore; sua ativação no bucket real depende de IAM e de teste em
+staging. O banco deve ser o `(default)`; não se propõe mudança de região.
 
-**Hardening implementado (2026-07-10, v1.12.0)** — isolamento por papel/campus
-na própria camada de Storage, sem cross-service, via **custom claims**
-(`role`/`campi`) no ID token:
+O cliente usa downloads autenticados e URLs `blob:` da sessão. Links duráveis
+antigos exigem retirada explícita dos tokens, com migração de metadata pelo
+operador autorizado; somente atualizar regras não revoga esses links. CORS do
+bucket deve permitir as origens do portal. As claims continuam disponíveis para
+compatibilidade, mas sua sincronização deixa de ser a barreira de revogação.
 
-- **Definição das claims:** endpoints na camada de API (Azure Functions) —
-  `POST /api/claims/self` (o próprio usuário; copia o SEU doc `/usuarios/{uid}`,
-  sem escalada possível) e `POST /api/claims/sync` (admin, após criar/editar/
-  desativar usuário). Fonte da verdade continua sendo `/usuarios/{uid}` no
-  Firestore, sob as rules.
-- **Credencial:** service account **dedicada**, papel único
-  `roles/firebaseauth.admin` (Firebase Authentication Admin) — gere contas/
-  claims, **não acessa Firestore/Storage**. Chave JSON na App Setting
-  `FB_SA_JSON` do SWA (nunca no repositório); implementação REST zero-deps
-  (`api/src/shared/adminAuth.js`). Sem a App Setting → endpoints respondem 501
-  e nada quebra (recurso dormente).
-- **Sincronização automática:** no login, o `FirebaseProvider` compara as
-  claims do token com o perfil; divergiu → chama `claims/self` e renova o token
-  (`getIdToken(true)`). Ao salvar usuário, o admin dispara `claims/sync` do
-  afetado (efetiva na próxima renovação do token dele, ≤ 1 h).
-- **Storage rules v2:** `request.auth.token.get('role'/'campi')` — leitura por
-  interno (inclui CODIR) ou campus dono do caminho `chamados/{campus}/…`;
-  create/update/delete por SENG (eng/chefe/admin) ou campus dono; token sem
-  claims é negado. Espelham as rules do Firestore.
-- **Ordem de ativação:** 1) deploy do código (SWA CI/CD); 2) criar a SA e a App
-  Setting `FB_SA_JSON`; 3) usuários renovam claims no próximo acesso
-  (automático); 4) só então `firebase deploy --only storage`. **Rollback:**
-  restaurar as rules anteriores (histórico git) e republicar — os controles
-  compensatórios acima voltam a ser a proteção vigente.
+A correção está preparada no checkout; não há afirmação de implantação. Ver
+[procedimento e evidências](SECURITY-REMEDIATION.md) antes de publicar.
 
 ## Roadmap
 
