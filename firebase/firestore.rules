@@ -54,7 +54,9 @@ service cloud.firestore {
     function soAcrescimo(campo) {
       let antes = resource.data.get(campo, []);
       let depois = request.resource.data.get(campo, []);
-      return depois.size() >= antes.size() && depois[0:antes.size()] == antes;
+      // (lista vazia: o fatiamento [0:0] gera erro de índice nas rules — tratado à parte)
+      return antes.size() == 0
+        || (depois.size() >= antes.size() && depois[0:antes.size()] == antes);
     }
     // Comentários: por gravação, no máximo 1 entrada removida e 1 incluída.
     // Incluída/editada = do próprio autor. Removida = do próprio autor ou por
