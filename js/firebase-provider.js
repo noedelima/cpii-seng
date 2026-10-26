@@ -23,6 +23,7 @@ export class FirebaseProvider {
     this._notificacoes = [];
     this._diretorio = [];
     this._chamados = [];
+    this._entradas = [];
     this._params = null;
     // v1.31 (#1): ficha pública (/publicas) + documentos completos autorizados.
     this._publicas = {};
@@ -101,7 +102,7 @@ export class FirebaseProvider {
         } else {
           this.user = null;
           this._internas = {}; this._profissionais = []; this._usuarios = []; this._tarefas = [];
-          this._notificacoes = []; this._diretorio = []; this._chamados = [];
+          this._notificacoes = []; this._diretorio = []; this._chamados = []; this._entradas = [];
           this._completas = {}; this._veTodasDemandas = false; this._agenda = null;
           this._mesclarDemandas();
         }
@@ -130,27 +131,21 @@ export class FirebaseProvider {
       this._diretorioTemUids = snap.exists() && Array.isArray(snap.data().uidsAtivos);
       this._emit();
     }, () => {}));
-    // chamados: interno vê todos; campus vê os do(s) seu(s) campus.
     const rl = this.user?.role;
-    // Demandas COMPLETAS (v1.31 — #1): equipe, CODIR e apoio veem todas; o
-    // campus, as do(s) seu(s) campus. Sobrepõem a ficha pública na mesclagem.
-    const aplicarCompletas = (docs, substituir) => {
-      if (substituir) this._completas = {};
-      docs.forEach(d => { this._completas[d.id] = { id: d.id, ...d.data() }; });
-      this._mesclarDemandas();
-      this._talvezSincronizarPublicas();
-    };
+    // v2.0 (ADR-004): ENTRADA ÚNICA — chamado e demanda são fases do mesmo
+    // registro em /entradas. Equipe, CODIR e apoio veem todas; o campus, as
+    // do(s) seu(s) campus (consultas em blocos de 10 — limite do operador `in`).
     if (['engenharia', 'estagiario', 'administrativo', 'chefe', 'codir', 'admin'].includes(rl)) {
       this._veTodasDemandas = true;
-      this._unsubPriv.push(fs.onSnapshot(fs.collection(this.db, 'demandas'),
-        (snap) => aplicarCompletas(snap.docs, true), (e) => console.warn('demandas', e)));
+      this._unsubPriv.push(fs.onSnapshot(fs.collection(this.db, 'entradas'),
+        (snap) => this._aplicarEntradas(snap.docs), (e) => console.warn('entradas', e)));
     } else if (rl === 'campus') {
       const campiD = (Array.isArray(this.user.campi) && this.user.campi.length) ? this.user.campi : (this.user.campus ? [this.user.campus] : []);
       const porBlocoD = [];
       for (let i = 0; i < campiD.length; i += 10) {
         const ix = porBlocoD.length; porBlocoD.push([]);
-        this._unsubPriv.push(fs.onSnapshot(fs.query(fs.collection(this.db, 'demandas'), fs.where('campus', 'in', campiD.slice(i, i + 10))),
-          (snap) => { porBlocoD[ix] = snap.docs; aplicarCompletas(porBlocoD.flat(), true); }, (e) => console.warn('demandas', e)));
+        this._unsubPriv.push(fs.onSnapshot(fs.query(fs.collection(this.db, 'entradas'), fs.where('campus', 'in', campiD.slice(i, i + 10))),
+          (snap) => { porBlocoD[ix] = snap.docs; this._aplicarEntradas(porBlocoD.flat()); }, (e) => console.warn('entradas', e)));
       }
     }
     // Agenda interna (v1.31): saiu de config/params (público) para config/agenda.
@@ -159,26 +154,7 @@ export class FirebaseProvider {
         this._agenda = snap.exists() ? (snap.data().eventos || []) : null; this._emit();
       }, () => {}));
     }
-    if (['engenharia', 'estagiario', 'administrativo', 'chefe', 'codir', 'admin'].includes(rl)) {
-      this._unsubPriv.push(fs.onSnapshot(fs.collection(this.db, 'chamados'), (snap) => {
-        this._chamados = snap.docs.map(d => ({ id: d.id, ...d.data() })); this._emit();
-        this._talvezSincronizarTransparencia();
-      }, () => {}));
-    } else if (rl === 'campus') {
-      const campi = (Array.isArray(this.user.campi) && this.user.campi.length) ? this.user.campi : (this.user.campus ? [this.user.campus] : []);
-      // O operador `in` do Firestore aceita até 10 valores: consultas em blocos
-      // para perfis com muitos campi — TODOS os campi valem (nenhum é descartado).
-      if (campi.length) {
-        const blocos = [];
-        for (let i = 0; i < campi.length; i += 10) blocos.push(campi.slice(i, i + 10));
-        const porBloco = blocos.map(() => []);
-        blocos.forEach((bloco, ix) => this._unsubPriv.push(
-          fs.onSnapshot(fs.query(fs.collection(this.db, 'chamados'), fs.where('campus', 'in', bloco)), (snap) => {
-            porBloco[ix] = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-            this._chamados = porBloco.flat(); this._emit();
-          }, () => {})));
-      }
-    }
+    // (chamados: vista derivada de /entradas — ver _aplicarEntradas)
     // Tarefas da seção (v1.22): Eng/Chefe/Admin — erro silencioso p/ demais (rules).
     if (['engenharia', 'estagiario', 'administrativo', 'admin', 'chefe'].includes(this.user?.role)) {
       this._unsubPriv.push(fs.onSnapshot(fs.collection(this.db, 'tarefas'), (snap) => {
@@ -200,6 +176,28 @@ export class FirebaseProvider {
 
   _emit() { this._subs.forEach(cb => { try { cb(); } catch (e) { console.error(e); } }); }
 
+  // --- Entrada única (v2.0 — ADR-004) ----------------------------------------
+  // Vista DEMANDA: registros que já tiveram fase de demanda (`status` presente;
+  // inclui os devolvidos, exibidos em Arquivados). Vista CHAMADO: registros com
+  // fase de chamado; nela `status` = statusChamado e `demandaId` = o próprio id
+  // quando a fase vigente é a demanda. Mesmo id, mesmos anexos/comentários/histórico.
+  static vistaDemanda(e) {
+    return { ...e, chamadoOrigem: e.statusChamado ? e.id : undefined };
+  }
+  static vistaChamado(e) {
+    return { ...e, status: e.statusChamado, statusDemanda: e.status ?? null,
+      demandaId: e.trilha === 'demanda' ? e.id : null };
+  }
+  _aplicarEntradas(docs) {
+    this._entradas = docs.map(d => ({ id: d.id, ...d.data() }));
+    this._completas = {};
+    this._entradas.forEach(e => { if (e.status != null) this._completas[e.id] = FirebaseProvider.vistaDemanda(e); });
+    this._chamados = this._entradas.filter(e => e.statusChamado != null).map(FirebaseProvider.vistaChamado);
+    this._mesclarDemandas();
+    this._talvezSincronizarPublicas();
+    this._talvezSincronizarTransparencia();
+  }
+
   // --- Fila pública por projeção (v1.31 — auditoria #1) ---------------------
   _mesclarDemandas() {
     const m = { ...this._publicas };
@@ -217,6 +215,7 @@ export class FirebaseProvider {
     const p = {};
     FirebaseProvider.CAMPOS_PUBLICOS.forEach(k => { if (d[k] !== undefined) p[k] = d[k]; });
     p.ajusteValor = d.ajuste ? (d.ajuste.valor ?? null) : null;
+    p.refDemanda = d.refs ? (d.refs.demanda ?? null) : null;   // nº antigo citado no SUAP
     return p;
   }
   // Mantém /publicas espelhando as demandas que ESTE usuário enxerga por
@@ -234,7 +233,7 @@ export class FirebaseProvider {
     };
     const ops = [];
     for (const d of Object.values(this._completas)) {
-      if (d.status === 'excluido') { if (this._publicas[d.id]) ops.push(['del', d.id]); continue; }
+      if (d.status === 'excluido' || d.status === 'devolvido' || d.trilha !== 'demanda') { if (this._publicas[d.id]) ops.push(['del', d.id]); continue; }
       const p = this._projecaoPublica(d);
       const atual = this._publicas[d.id];
       const { id: _i, _publica: _p, ...semMeta } = atual || {};
@@ -387,7 +386,7 @@ export class FirebaseProvider {
   }
 
   listDemandas() { return this._demandas; }
-  getDemanda(id) { return this._demandas.find(d => d.id === id) || null; }
+  getDemanda(id) { return this._demandas.find(d => d.id === id) || this._demandas.find(d => d.refs?.demanda === id) || null; }
 
   // --- Chamados (intake da SENG) ------------------------------------------
   listChamados() { return this._chamados; }
@@ -403,29 +402,49 @@ export class FirebaseProvider {
     try { await this._F.setDoc(this._F.doc(this.db, 'config', 'transparencia'), novo); }
     catch (e) { console.warn('transparencia', e); }
   }
-  getChamado(id) { return this._chamados.find(c => c.id === id) || null; }
-  async criarChamado(c) {
+  getChamado(id) { return this._chamados.find(c => c.id === id) || this._chamados.find(c => c.refs?.chamado === id) || null; }
+  // Número antigo (ex.: CH2026CCE003, 2026CCE05) → número novo, pela coleção pública aliases.
+  async resolverAlias(antigo) {
+    if (!antigo) return null;
+    const local = this._entradas.find(e => e.refs?.chamado === antigo || e.refs?.demanda === antigo);
+    if (local) return local.id;
+    try {
+      const snap = await this._F.getDoc(this._F.doc(this.db, 'aliases', String(antigo)));
+      return snap.exists() ? (snap.data().id || null) : null;
+    } catch { return null; }
+  }
+  // Próximo número da entrada: ANO + CAMPUS + sequencial de 3 dígitos, único por (ano, campus).
+  _proximoId(campus) {
     const ano = new Date().getFullYear();
-    const seq = Math.max(0, ...this._chamados.filter(x => x.ano === ano && x.campus === c.campus).map(x => x.seq || 0)) + 1;
-    const id = `CH${ano}${c.campus}${String(seq).padStart(3, '0')}`;
+    const seq = Math.max(0, ...this._entradas.filter(x => x.ano === ano && x.campus === campus).map(x => x.seq || 0)) + 1;
+    return { ano, seq, id: `${ano}${campus}${String(seq).padStart(3, '0')}` };
+  }
+  async criarChamado(c) {
+    const { ano, seq, id } = this._proximoId(c.campus);
     const cat = CATEGORIAS_CHAMADO.find(k => k.id === c.categoria);
     const now = Date.now();
     // #12: autor = usuário autenticado (rules e API conferem); quem registra por
     // outra pessoa informa `solicitanteRepresentado` (campo descritivo).
     const data = { ...c, autor: { nome: this.user?.nome || '', email: this.user?.email || '', uid: this.user?.uid },
-      ano, seq, status: 'aberto', aberturaEm: now, atualizadoEm: now, prazoLimite: now + (cat ? cat.slaDias : 15) * 86400000 };
+      ano, seq, trilha: 'chamado', statusChamado: 'aberto', aberturaEm: now, atualizadoEm: now, prazoLimite: now + (cat ? cat.slaDias : 15) * 86400000 };
+    delete data.status;
     if (!data.solicitanteRepresentado) delete data.solicitanteRepresentado;
     if (apiLigada()) { await api.criarChamado(id, data); return id; }
-    await this._F.setDoc(this._F.doc(this.db, 'chamados', id), data);
+    data.historico = [{ ts: now, user: this.user?.nome || 'Sistema', acao: 'Chamado aberto' }];
+    await this._F.setDoc(this._F.doc(this.db, 'entradas', id), data);
     await this._log('Chamado aberto', id, c.assunto || '');
     return id;
   }
   async atualizarChamado(id, patch, evento) {
-    if (apiLigada()) return api.atualizarChamado(id, patch, evento);
+    // Vista chamado → documento: `status` do chamado é `statusChamado`.
+    const p = { ...patch };
+    delete p.demandaId;
+    if ('status' in p) { p.statusChamado = p.status; delete p.status; }
+    if (apiLigada()) return api.atualizarChamado(id, p, evento);
     const fs = this._F;
-    const upd = { ...patch, atualizadoEm: Date.now() };
+    const upd = { ...p, atualizadoEm: Date.now() };
     if (evento) upd.historico = fs.arrayUnion({ ts: Date.now(), user: this.user?.nome || 'Sistema', acao: evento });
-    await fs.updateDoc(fs.doc(this.db, 'chamados', id), upd);
+    await fs.updateDoc(fs.doc(this.db, 'entradas', id), upd);
     await this._log('Chamado atualizado', id, evento || Object.keys(patch).join(', '));
   }
 
@@ -434,7 +453,7 @@ export class FirebaseProvider {
   async uploadAnexoChamado(chamadoId, campus, file, onProgress) {
     const st = this._St;
     const nome = String(file.name || 'arquivo').replace(/[^\w.\-]+/g, '_').slice(-80);
-    const path = `chamados/${campus}/${chamadoId}/${Date.now()}_${nome}`;
+    const path = `entradas/${campus}/${chamadoId}/${Date.now()}_${nome}`;
     const ref = st.ref(this.storage, path);
     await new Promise((resolve, reject) => {
       const task = st.uploadBytesResumable(ref, file, { contentType: file.type || 'application/octet-stream', customMetadata: { uid: this.user.uid } });
@@ -453,13 +472,13 @@ export class FirebaseProvider {
   // Miniatura de anexo (JPEG pequeno, gerada no cliente) — mesmo prefixo do
   // chamado no Storage (as rules valem igual: image/jpeg, < 10 MB).
   async uploadThumbChamado(chamadoId, campus, blob, baseNome) {
-    return this._uploadThumb(`chamados/${campus}/${chamadoId}`, blob, baseNome);
+    return this._uploadThumb(`entradas/${campus}/${chamadoId}`, blob, baseNome);
   }
   // Anexos de DEMANDAS (unificação dos workflows): demandas/{campus}/{id}/{arquivo}.
   async uploadAnexoDemanda(demandaId, campus, file, onProgress) {
     const st = this._St;
     const nome = String(file.name || 'arquivo').replace(/[^\w.\-]+/g, '_').slice(-80);
-    const path = `demandas/${campus}/${demandaId}/${Date.now()}_${nome}`;
+    const path = `entradas/${campus}/${demandaId}/${Date.now()}_${nome}`;
     const ref = st.ref(this.storage, path);
     await new Promise((resolve, reject) => {
       const task = st.uploadBytesResumable(ref, file, { contentType: file.type || 'application/octet-stream', customMetadata: { uid: this.user.uid } });
@@ -471,7 +490,7 @@ export class FirebaseProvider {
     return { nome: file.name || nome, path, url, tipo: file.type || '', tamanho: file.size || 0, ts: Date.now(), por: this.user?.nome || '', porUid: this.user.uid };
   }
   async uploadThumbDemanda(demandaId, campus, blob, baseNome) {
-    return this._uploadThumb(`demandas/${campus}/${demandaId}`, blob, baseNome);
+    return this._uploadThumb(`entradas/${campus}/${demandaId}`, blob, baseNome);
   }
   // --- Meu espaço (v1.20): foto de perfil e autoatendimento do profissional ---
   async uploadFotoPerfil(blob) {
@@ -520,23 +539,48 @@ export class FirebaseProvider {
     return { path, url: await st.getDownloadURL(ref) };
   }
 
-  async criarDemanda(d) {
+  // v2.0: demanda não é criada diretamente — nasce da escalada de um chamado.
+  async criarDemanda() { throw new Error('Demandas nascem da escalada de um chamado.'); }
+
+  // Escalada (chamado → demanda, MESMO registro). Reescalada de chamado
+  // devolvido volta à análise com nova deliberação (avaliação técnica mantida).
+  async escalarChamado(id, classificacao, parecer = '') {
+    if (apiLigada()) return api.escalar(id, classificacao, parecer);
     const fs = this._F;
-    const ano = this.getParams().anoPlano;
-    const seq = Math.max(0, ...this._demandas.filter(x => x.ano === ano && x.campus === d.campus).map(x => x.seq || 0)) + 1;
-    const id = `${ano}${d.campus}${String(seq).padStart(2, '0')}`;
-    const data = { ...d, ano, seq, criadoEm: Date.now(), atualizadoEm: Date.now() };
-    if (apiLigada()) { await api.criarDemanda(id, data); return id; }
-    await fs.setDoc(fs.doc(this.db, 'demandas', id), data);
-    await this._log('Demanda criada', id, d.objeto || '');
-    return id;
+    const e = this._entradas.find(x => x.id === id); if (!e) throw new Error('Registro não encontrado.');
+    const now = Date.now();
+    const reescalada = e.status === 'devolvido';
+    const upd = { ...classificacao, trilha: 'demanda', statusChamado: 'obra', desfecho: 'obra', status: 'recebido',
+      codirAprovado: false, ajuste: null, fase: null, atualizadoEm: now,
+      historico: fs.arrayUnion({ ts: now, user: this.user?.nome || 'Sistema',
+        acao: reescalada ? 'Reescalado para demanda — nova deliberação' : 'Escalado para demanda (fila de Obras)' }) };
+    if (!e.criadoEm) upd.criadoEm = now;
+    if (parecer) upd.resolucao = { texto: parecer };
+    await fs.updateDoc(fs.doc(this.db, 'entradas', id), upd);
+    await this._log(reescalada ? 'Chamado reescalado' : 'Chamado escalado', id, classificacao.objeto || '');
+    return { id, reescalada };
+  }
+  // Devolução (demanda → chamado, MESMO registro): Chefia/Admin até o
+  // planejamento; CODIR na deliberação (as rules conferem). Motivo obrigatório.
+  async devolverDemanda(id, motivo) {
+    if (apiLigada()) return api.devolver(id, motivo);
+    const fs = this._F;
+    const e = this._entradas.find(x => x.id === id); if (!e) throw new Error('Registro não encontrado.');
+    const now = Date.now();
+    await fs.updateDoc(fs.doc(this.db, 'entradas', id), {
+      trilha: 'chamado', statusChamado: 'triagem', status: 'devolvido', statusAnterior: e.status, desfecho: null,
+      devolucao: { motivo: String(motivo || '').slice(0, 1000), por: this.user?.nome || '', papel: this.user?.role || '', em: now },
+      atualizadoEm: now,
+      historico: fs.arrayUnion({ ts: now, user: this.user?.nome || 'Sistema', acao: `Devolvida ao chamado — ${motivo}`.slice(0, 300) }),
+    });
+    await this._log('Demanda devolvida ao chamado', id, motivo);
   }
   async atualizarDemanda(id, patch, evento) {
     if (apiLigada()) return api.atualizarDemanda(id, patch, evento);
     const fs = this._F;
     const upd = { ...patch, atualizadoEm: Date.now() };
     if (evento) upd.historico = fs.arrayUnion({ ts: Date.now(), user: this.user?.nome || 'Sistema', acao: evento });
-    await fs.updateDoc(fs.doc(this.db, 'demandas', id), upd);
+    await fs.updateDoc(fs.doc(this.db, 'entradas', id), upd);
     await this._log('Demanda atualizada', id, evento || Object.keys(patch).join(', '));
   }
   async excluirDemanda(id) {
@@ -544,7 +588,7 @@ export class FirebaseProvider {
     const d = this.getDemanda(id);
     if (d && ['atendimento', 'concluido'].includes(d.status))
       throw new Error('Demandas em atendimento ou concluídas não podem ser excluídas.');
-    await fs.deleteDoc(fs.doc(this.db, 'demandas', id));
+    await fs.deleteDoc(fs.doc(this.db, 'entradas', id));
     await fs.deleteDoc(fs.doc(this.db, 'internas', id)).catch(() => {});
     await this._log('Demanda excluída', id);
   }
@@ -555,8 +599,9 @@ export class FirebaseProvider {
     const d = this.getDemanda(id); if (!d) throw new Error('Demanda não encontrada.');
     if (['atendimento', 'concluido'].includes(d.status))
       throw new Error('Demandas em atendimento ou concluídas não podem ser excluídas.');
+    if (d.statusChamado) throw new Error('Esta demanda veio de um chamado: devolva-a ao chamado em vez de excluir.');
     const expurgar = fs.Timestamp.fromMillis(Date.now() + 30 * 86400000);
-    await fs.updateDoc(fs.doc(this.db, 'demandas', id), {
+    await fs.updateDoc(fs.doc(this.db, 'entradas', id), {
       statusAnterior: d.status, status: 'excluido', excluidoEm: Date.now(), expurgarEm: expurgar, atualizadoEm: Date.now(),
       historico: fs.arrayUnion({ ts: Date.now(), user: this.user?.nome || 'Sistema', acao: 'Demanda enviada ao arquivo morto (excluída)' }),
     });
@@ -567,7 +612,7 @@ export class FirebaseProvider {
     if (apiLigada()) return api.resgatar(id);
     const fs = this._F;
     const d = this.getDemanda(id); if (!d) throw new Error('Demanda não encontrada.');
-    await fs.updateDoc(fs.doc(this.db, 'demandas', id), {
+    await fs.updateDoc(fs.doc(this.db, 'entradas', id), {
       status: d.statusAnterior || 'recebido', statusAnterior: fs.deleteField(), excluidoEm: fs.deleteField(), expurgarEm: fs.deleteField(), atualizadoEm: Date.now(),
       historico: fs.arrayUnion({ ts: Date.now(), user: this.user?.nome || 'Sistema', acao: 'Demanda resgatada do arquivo morto' }),
     });
@@ -579,7 +624,7 @@ export class FirebaseProvider {
     const limite = Date.now() - dias * 86400000;
     const expirados = this._demandas.filter(d => d.status === 'excluido' && (d.excluidoEm || 0) < limite);
     for (const d of expirados) {
-      await fs.deleteDoc(fs.doc(this.db, 'demandas', d.id)).catch(() => {});
+      await fs.deleteDoc(fs.doc(this.db, 'entradas', d.id)).catch(() => {});
       await fs.deleteDoc(fs.doc(this.db, 'internas', d.id)).catch(() => {});
       await this._log('Demanda removida definitivamente (arquivo morto expirado)', d.id, d.objeto || '');
     }

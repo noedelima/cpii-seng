@@ -35,7 +35,21 @@ class DemoProvider {
     if (!this.db || this.db._v !== 3) { this.db = seedDemo(); this._save(); }
     this.db.logs = this.db.logs || [];
     this.db.notificacoes = this.db.notificacoes || []; // inbox pessoal (não destrutivo)
-    this.db.chamados = this.db.chamados || [];
+    // v2.0 (ADR-004): entrada única — converte a base demo antiga (demandas +
+    // chamados separados) em /entradas, com as vistas derivadas como na produção.
+    if (!Array.isArray(this.db.entradas)) {
+      this.db.entradas = [
+        ...(this.db.demandas || []).map(d => ({ ...d, trilha: 'demanda' })),
+        ...(this.db.chamados || []).map(({ status, demandaId, ...c }) => ({ ...c, trilha: 'chamado', statusChamado: status })),
+      ];
+      delete this.db.demandas; delete this.db.chamados;
+      this._save();
+    }
+  }
+  _entrada(id) { return this.db.entradas.find(e => e.id === id) || null; }
+  static vistaDemanda(e) { return { ...e, chamadoOrigem: e.statusChamado ? e.id : undefined }; }
+  static vistaChamado(e) {
+    return { ...e, status: e.statusChamado, statusDemanda: e.status ?? null, demandaId: e.trilha === 'demanda' ? e.id : null };
   }
   _save() { localStorage.setItem(LS_KEY, JSON.stringify(this.db)); this._emit(); }
   _emit() { this._subs.forEach(cb => { try { cb(); } catch (e) { console.error(e); } }); }
@@ -85,35 +99,50 @@ class DemoProvider {
     return this.db.profissionais.find(p => (p.email || '').toLowerCase() === e) || null;
   }
 
-  // --- Demandas ---
-  listDemandas() { return this.db.demandas; }
-  getDemanda(id) { return this.db.demandas.find(d => d.id === id) || null; }
-  // --- Chamados (intake da SENG) ---
+  // --- Demandas (vista da entrada única) ---
+  listDemandas() { return this.db.entradas.filter(e => e.status != null).map(DemoProvider.vistaDemanda); }
+  getDemanda(id) {
+    const e = this.db.entradas.find(x => x.status != null && (x.id === id || x.refs?.demanda === id));
+    return e ? DemoProvider.vistaDemanda(e) : null;
+  }
+  // --- Chamados (vista da entrada única) ---
   listChamados() {
     if (!this.user) return [];
     const r = this.user.role;
-    if (['engenharia', 'estagiario', 'administrativo', 'chefe', 'codir', 'admin'].includes(r)) return this.db.chamados;
+    const todos = this.db.entradas.filter(e => e.statusChamado != null).map(DemoProvider.vistaChamado);
+    if (['engenharia', 'estagiario', 'administrativo', 'chefe', 'codir', 'admin'].includes(r)) return todos;
     if (r === 'campus') {
       const campi = (Array.isArray(this.user.campi) && this.user.campi.length) ? this.user.campi : (this.user.campus ? [this.user.campus] : []);
-      return this.db.chamados.filter(c => campi.includes(c.campus));
+      return todos.filter(c => campi.includes(c.campus));
     }
     return [];
   }
-  getChamado(id) { return (this.db.chamados || []).find(c => c.id === id) || null; }
+  getChamado(id) {
+    const e = this.db.entradas.find(x => x.statusChamado != null && (x.id === id || x.refs?.chamado === id));
+    return e ? DemoProvider.vistaChamado(e) : null;
+  }
+  async resolverAlias(antigo) {
+    const e = this.db.entradas.find(x => x.refs?.chamado === antigo || x.refs?.demanda === antigo);
+    return e ? e.id : null;
+  }
   async criarChamado(c) {
     const ano = new Date().getFullYear();
-    const seq = Math.max(0, ...this.db.chamados.filter(x => x.ano === ano && x.campus === c.campus).map(x => x.seq || 0)) + 1;
-    const id = `CH${ano}${c.campus}${String(seq).padStart(3, '0')}`;
+    const seq = Math.max(0, ...this.db.entradas.filter(x => x.ano === ano && x.campus === c.campus).map(x => x.seq || 0)) + 1;
+    const id = `${ano}${c.campus}${String(seq).padStart(3, '0')}`;
     const cat = CATEGORIAS_CHAMADO.find(k => k.id === c.categoria);
     const now = Date.now();
-    this.db.chamados.push({ ...c, id, ano, seq, status: 'aberto', aberturaEm: now, atualizadoEm: now, prazoLimite: now + (cat ? cat.slaDias : 15) * 86400000, historico: c.historico || [this._ev('Chamado aberto')] });
+    const { status: _s, ...dados } = c;
+    this.db.entradas.push({ ...dados, id, ano, seq, trilha: 'chamado', statusChamado: 'aberto', aberturaEm: now, atualizadoEm: now,
+      prazoLimite: now + (cat ? cat.slaDias : 15) * 86400000, historico: c.historico || [this._ev('Chamado aberto')] });
     this._log('Chamado aberto', id, c.assunto || '');
     this._save(); return id;
   }
   async atualizarChamado(id, patch, evento) {
-    const c = this.getChamado(id); if (!c) throw new Error('Chamado não encontrado.');
-    Object.assign(c, patch, { atualizadoEm: Date.now() });
-    if (evento) (c.historico = c.historico || []).push(this._ev(evento));
+    const e = this._entrada(id); if (!e || e.statusChamado == null) throw new Error('Chamado não encontrado.');
+    const p = { ...patch }; delete p.demandaId;
+    if ('status' in p) { p.statusChamado = p.status; delete p.status; }
+    Object.assign(e, p, { atualizadoEm: Date.now() });
+    if (evento) (e.historico = e.historico || []).push(this._ev(evento));
     this._log('Chamado atualizado', id, evento || Object.keys(patch).join(', '));
     this._save();
   }
@@ -138,50 +167,69 @@ class DemoProvider {
     return { path: `demo/${chamadoId}/thumb_${Date.now()}`, url };
   }
   async removerAnexoChamado() { /* demo: nada a remover no storage */ }
-  // Demandas (unificação): no modo demo, mesmos mecanismos dos chamados.
   async uploadAnexoDemanda(demandaId, campus, file, onProgress) {
     return this.uploadAnexoChamado(demandaId, campus, file, onProgress);
   }
   async uploadThumbDemanda(demandaId, campus, blob) {
     return this.uploadThumbChamado(demandaId, campus, blob);
   }
-  async criarDemanda(d) {
-    const ano = this.db.params.anoPlano;
-    const seq = Math.max(0, ...this.db.demandas.filter(x => x.ano === ano && x.campus === d.campus).map(x => x.seq || 0)) + 1;
-    const id = `${ano}${d.campus}${String(seq).padStart(2, '0')}`;
-    const nova = { ...d, id, ano, seq, criadoEm: Date.now(), atualizadoEm: Date.now() };
-    this.db.demandas.push(nova);
-    this._log('Demanda criada', id, nova.objeto || '');
-    this._save(); return id;
+  // v2.0: demanda nasce da escalada de um chamado (mesmo registro).
+  async criarDemanda() { throw new Error('Demandas nascem da escalada de um chamado.'); }
+  async escalarChamado(id, classificacao, parecer = '') {
+    const e = this._entrada(id); if (!e || e.trilha !== 'chamado') throw new Error('Chamado não encontrado.');
+    if (!['triagem', 'atendimento', 'resolvido'].includes(e.statusChamado))
+      throw new Error('Só é possível escalar chamados em triagem, em atendimento ou resolvidos.');
+    const reescalada = e.status === 'devolvido';
+    Object.assign(e, classificacao, { trilha: 'demanda', statusChamado: 'obra', desfecho: 'obra', status: 'recebido',
+      codirAprovado: false, ajuste: null, fase: null, atualizadoEm: Date.now() });
+    if (!e.criadoEm) e.criadoEm = Date.now();
+    if (parecer) e.resolucao = { texto: parecer };
+    (e.historico = e.historico || []).push(this._ev(reescalada ? 'Reescalado para demanda — nova deliberação' : 'Escalado para demanda (fila de Obras)'));
+    this._log(reescalada ? 'Chamado reescalado' : 'Chamado escalado', id, classificacao.objeto || '');
+    this._save(); return { id, reescalada };
+  }
+  async devolverDemanda(id, motivo) {
+    const e = this._entrada(id); if (!e || e.trilha !== 'demanda' || !e.statusChamado) throw new Error('Só demandas originadas de chamado podem ser devolvidas.');
+    const ok = (['chefe', 'admin'].includes(this.user?.role)
+        && (['recebido', 'analise', 'diligencia', 'codir', 'fila', 'suspenso'].includes(e.status)
+          || (e.status === 'atendimento' && [null, undefined, 'planejamento'].includes(e.fase))))
+      || (this.user?.role === 'codir' && ['codir', 'fila'].includes(e.status));
+    if (!ok) throw new Error('Devolução não permitida nesta etapa ou para este perfil.');
+    Object.assign(e, { trilha: 'chamado', statusChamado: 'triagem', statusAnterior: e.status, status: 'devolvido', desfecho: null,
+      devolucao: { motivo, por: this.user?.nome || '', papel: this.user?.role || '', em: Date.now() }, atualizadoEm: Date.now() });
+    (e.historico = e.historico || []).push(this._ev(`Devolvida ao chamado — ${motivo}`));
+    this._log('Demanda devolvida ao chamado', id, motivo);
+    this._save();
   }
   async atualizarDemanda(id, patch, evento) {
-    const d = this.getDemanda(id); if (!d) throw new Error('Demanda não encontrada.');
+    const d = this._entrada(id); if (!d || d.status == null) throw new Error('Demanda não encontrada.');
     Object.assign(d, patch, { atualizadoEm: Date.now() });
     if (evento) (d.historico = d.historico || []).push(this._ev(evento));
     this._log('Demanda atualizada', id, evento || Object.keys(patch).join(', '));
     this._save();
   }
   async excluirDemanda(id) {
-    const d = this.getDemanda(id);
+    const d = this._entrada(id);
     if (d && ['atendimento', 'concluido'].includes(d.status))
       throw new Error('Demandas em atendimento ou concluídas não podem ser excluídas.');
-    this.db.demandas = this.db.demandas.filter(x => x.id !== id);
+    this.db.entradas = this.db.entradas.filter(x => x.id !== id);
     delete this.db.internas[id];
     this._log('Demanda excluída', id, d?.objeto || '');
     this._save();
   }
   // Arquivo morto: exclusão recuperável (soft-delete) por 30 dias.
   async arquivarDemanda(id) {
-    const d = this.getDemanda(id); if (!d) throw new Error('Demanda não encontrada.');
+    const d = this._entrada(id); if (!d || d.status == null) throw new Error('Demanda não encontrada.');
     if (['atendimento', 'concluido'].includes(d.status))
       throw new Error('Demandas em atendimento ou concluídas não podem ser excluídas.');
+    if (d.statusChamado) throw new Error('Esta demanda veio de um chamado: devolva-a ao chamado em vez de excluir.');
     Object.assign(d, { statusAnterior: d.status, status: 'excluido', excluidoEm: Date.now(), atualizadoEm: Date.now() });
     (d.historico = d.historico || []).push(this._ev('Demanda enviada ao arquivo morto (excluída)'));
     this._log('Demanda arquivada (excluída)', id, d.objeto || '');
     this._save();
   }
   async resgatarDemanda(id) {
-    const d = this.getDemanda(id); if (!d) throw new Error('Demanda não encontrada.');
+    const d = this._entrada(id); if (!d || d.status == null) throw new Error('Demanda não encontrada.');
     Object.assign(d, { status: d.statusAnterior || 'recebido', atualizadoEm: Date.now() });
     delete d.statusAnterior; delete d.excluidoEm; delete d.expurgarEm;
     (d.historico = d.historico || []).push(this._ev('Demanda resgatada do arquivo morto'));
@@ -190,11 +238,11 @@ class DemoProvider {
   }
   async purgarExcluidos(dias = 30) {
     const limite = Date.now() - dias * 86400000;
-    const expirados = this.db.demandas.filter(d => d.status === 'excluido' && (d.excluidoEm || 0) < limite);
+    const expirados = this.db.entradas.filter(d => d.status === 'excluido' && (d.excluidoEm || 0) < limite);
     if (!expirados.length) return 0;
     const ids = new Set(expirados.map(d => d.id));
     expirados.forEach(d => { delete this.db.internas[d.id]; this._log('Demanda removida definitivamente (arquivo morto expirado)', d.id, d.objeto || ''); });
-    this.db.demandas = this.db.demandas.filter(d => !ids.has(d.id));
+    this.db.entradas = this.db.entradas.filter(d => !ids.has(d.id));
     this._save();
     return expirados.length;
   }
@@ -294,7 +342,10 @@ class DemoProvider {
 
   // --- Profissionais ---
   listProfissionais() { return this.user ? this.db.profissionais : []; }
-  getTransparencia() { return calcularTransparencia(this.db.chamados || [], slaChamado, STATUS_CHAMADO_ABERTO); }
+  getTransparencia() {
+    const ch = this.db.entradas.filter(e => e.statusChamado != null).map(DemoProvider.vistaChamado);
+    return calcularTransparencia(ch, slaChamado, STATUS_CHAMADO_ABERTO);
+  }
   async salvarProfissional(p) {
     if (p.email && this.db.profissionais.some(x => x.id !== p.id && (x.email || '').toLowerCase() === p.email.toLowerCase()))
       throw new Error('Já existe profissional com este e-mail.');

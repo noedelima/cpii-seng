@@ -35,7 +35,9 @@ export const api = {
   health: () => req('GET', '/health'),
   me: () => req('GET', '/me'),
   // Escritas (híbrido): espelham os métodos do provider; rodam sob as rules.
-  criarDemanda: (id, data) => req('PUT', '/demandas/' + encodeURIComponent(id), { data }),
+  // v2.0 (ADR-004): transições de fase da entrada única
+  escalar: (id, classificacao, parecer) => req('POST', '/entradas/' + encodeURIComponent(id) + '/escalar', { classificacao, parecer }),
+  devolver: (id, motivo) => req('POST', '/entradas/' + encodeURIComponent(id) + '/devolver', { motivo }),
   atualizarDemanda: (id, patch, evento) => req('PATCH', '/demandas/' + encodeURIComponent(id), { patch, evento }),
   arquivar: (id) => req('POST', '/demandas/' + encodeURIComponent(id) + '/arquivar'),
   resgatar: (id) => req('POST', '/demandas/' + encodeURIComponent(id) + '/resgatar'),
