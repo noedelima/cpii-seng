@@ -1,6 +1,6 @@
 rules_version = '2';
 // =============================================================================
-// Portal da Engenharia (cpii-seng) — Security Rules (Cloud Storage) — v3 (v1.31)
+// Portal da Engenharia (cpii-seng) — Security Rules (Cloud Storage) — v4 (v2.0 — entrada única)
 // Publicar: firebase deploy --only storage --project cpii-seng
 //
 // v1.31 (auditoria Codex #8/#9): as regras passam a consultar o FIRESTORE
@@ -47,28 +47,34 @@ service firebase.storage {
       return resource.metadata != null && resource.metadata.get('uid', '') == request.auth.uid;
     }
 
-    // anexos de chamados: chamados/{campus}/{chamadoId}/{arquivo}
-    match /chamados/{campus}/{chamadoId}/{arquivo} {
+    // v2.0 (ADR-004) — ENTRADA ÚNICA: anexos de chamado e de demanda do mesmo
+    // registro em entradas/{campus}/{id}/{arquivo}. O estado vem da fase vigente:
+    // na fase chamado, o campus envia/remove enquanto aberto, em triagem ou em
+    // diligência; na fase demanda, fora do arquivo morto.
+    function campusPodeMexer(e) {
+      return (e.get('trilha', '') == 'chamado' && e.get('statusChamado', '') in ['aberto', 'triagem', 'diligencia'])
+          || (e.get('trilha', '') == 'demanda' && e.get('status', '') != 'excluido');
+    }
+    match /entradas/{campus}/{id}/{arquivo} {
       allow read:   if isInterno() || isCampusDe(campus);
       allow create: if envioOk()
-                    && registro('chamados', chamadoId).get('campus', '') == campus
-                    && (isEquipe()
-                        || (isCampusDe(campus)
-                            && registro('chamados', chamadoId).get('status', '') in ['aberto', 'triagem', 'diligencia']));
+                    && registro('entradas', id).get('campus', '') == campus
+                    && (isEquipe() || (isCampusDe(campus) && campusPodeMexer(registro('entradas', id))));
       allow update: if false;
       allow delete: if isSeng()
-                    || (isCampusDe(campus) && enviadoPorMim()
-                        && registro('chamados', chamadoId).get('status', '') in ['aberto', 'triagem', 'diligencia']);
+                    || (isCampusDe(campus) && enviadoPorMim() && campusPodeMexer(registro('entradas', id)));
     }
-    // anexos de demandas: demandas/{campus}/{demandaId}/{arquivo}
+    // Caminhos LEGADOS (até a v1.31): somente leitura; remoção pela SENG técnica.
+    // Os itens continuam referenciados nos anexos das entradas (path/url).
+    match /chamados/{campus}/{chamadoId}/{arquivo} {
+      allow read:   if isInterno() || isCampusDe(campus);
+      allow create, update: if false;
+      allow delete: if isSeng();
+    }
     match /demandas/{campus}/{demandaId}/{arquivo} {
       allow read:   if isInterno() || isCampusDe(campus);
-      allow create: if envioOk()
-                    && registro('demandas', demandaId).get('campus', '') == campus
-                    && registro('demandas', demandaId).get('status', '') != 'excluido'
-                    && (isEquipe() || isCampusDe(campus));
-      allow update: if false;
-      allow delete: if isSeng() || (isCampusDe(campus) && enviadoPorMim());
+      allow create, update: if false;
+      allow delete: if isSeng();
     }
     // Fotos de perfil (Meu espaço v1.20): perfis/{uid}.jpg — gravável só pelo
     // próprio usuário ativo; leitura por perfis ativos (exibição interna).
