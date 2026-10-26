@@ -1,25 +1,23 @@
 rules_version = '2';
 // =============================================================================
-// Portal da Engenharia (cpii-seng) — Security Rules (Cloud Firestore) — v1.31
+// Portal da Engenharia (cpii-seng) — Security Rules (Cloud Firestore) — v2.0
 // Publicar com: firebase deploy --only firestore:rules --project cpii-seng
 //
-// v1.31 (auditoria de segurança Codex, 05–06/10/2026 — 15 achados):
-//   #1  /demandas deixa de ser pública. O visitante lê a PROJEÇÃO /publicas
-//       (ficha resumida aprovada pela SENG), cuja integridade é garantida aqui:
-//       cada campo publicado precisa ser IGUAL ao documento de origem.
-//       /config/params e /config/transparencia seguem públicos; a Agenda
-//       interna saiu de params para /config/agenda (só equipe SENG).
-//   #2  Notificações: remetente ativo, destinatário no diretório, tipo e link
-//       internos fechados, esquema fechado. Diretório lido só por perfis ativos.
-//   #3  Tarefa só é CANCELADA por quem tem a capacidade (Chefia/Admin).
-//   #4  Histórico só-acréscimo; comentários: autor edita/apaga o PRÓPRIO,
-//       Chefia/Admin moderam; anexos novos carimbados com o autor.
-//   #5  Campus edita apenas os DADOS da solicitação (lista fechada).
-//   #6  Chamado: transições do campus validadas pelo estado anterior; prazo
-//       (SLA) só se recompõe pelo tempo efetivamente pausado em diligência.
-//   #11 Log de auditoria: identidade e horário conferidos com o perfil/servidor.
-//   #12 Autoria do chamado = usuário autenticado; "solicitante representado"
-//       é um campo separado, apenas descritivo.
+// v2.0 (ADR-004 — ENTRADA ÚNICA): chamado e demanda são FASES de um mesmo
+// registro em /entradas/{id} (número ANO+CAMPUS+seq3, ex.: 2026CDC013). A fase
+// vigente está em `trilha` ('chamado' | 'demanda'); `statusChamado` e `status`
+// (da demanda) convivem no documento; histórico, comentários e anexos são
+// ÚNICOS. Atualizações são despachadas pela fase logo na entrada:
+//   chamado→chamado  atualizaChamado()   (não toca campos de demanda)
+//   chamado→demanda  escaladaOk()        (SENG; reescalada reaproveita o registro)
+//   demanda→demanda  atualizaDemanda()   (não toca campos de chamado)
+//   demanda→chamado  devolucaoOk()       (Chefia até o planejamento; CODIR na deliberação)
+// As coleções antigas (/demandas, /chamados) ficam somente leitura (admin) como backup.
+//
+// Mantidas as proteções da v1.31 (auditoria Codex, 15 achados): ficha pública
+// por espelho fiel (#1), notificações validadas (#2), cancelamento de tarefa
+// (#3), listas íntegras (#4), campus só nos dados da solicitação (#5),
+// transições/SLA do chamado (#6), log conferido (#11), autoria (#12).
 // Papéis: campus | engenharia | estagiario | administrativo | chefe | codir | admin
 // =============================================================================
 service cloud.firestore {
@@ -35,14 +33,11 @@ service cloud.firestore {
     function isEng()   { return ativo() && (role() == 'engenharia' || role() == 'chefe' || role() == 'admin'); }
     function isCodir() { return ativo() && (role() == 'codir' || role() == 'admin'); }
     function isInterno() { return isEng() || isCodir(); }
-    // Equipe de APOIO da SENG (v1.27): Estagiário e Administrativo.
     function isApoio() { return ativo() && role() in ['estagiario', 'administrativo']; }
-    // Campus pode estar vinculado a vários campi (lista `campi`); compat com `campus`.
     function isCampusDe(campusId) {
       return ativo() && role() == 'campus'
         && (campusId in perfil().get('campi', []) || perfil().get('campus', '') == campusId);
     }
-    // Horário informado pelo cliente: tolerância de 30 min ao relógio do servidor.
     function horaPlausivel(ts) {
       return ts is int
         && ts >= request.time.toMillis() - 1800000
@@ -50,7 +45,6 @@ service cloud.firestore {
     }
 
     // ---------- integridade de listas (#4) ------------------------------------
-    // Só-acréscimo: as entradas anteriores permanecem, na mesma ordem.
     function soAcrescimo(campo) {
       let antes = resource.data.get(campo, []);
       let depois = request.resource.data.get(campo, []);
@@ -58,9 +52,6 @@ service cloud.firestore {
       return antes.size() == 0
         || (depois.size() >= antes.size() && depois[0:antes.size()] == antes);
     }
-    // Comentários: por gravação, no máximo 1 entrada removida e 1 incluída.
-    // Incluída/editada = do próprio autor. Removida = do próprio autor ou por
-    // moderação (Chefia/Admin). Edição = remove a antiga e inclui a nova.
     function comentariosOk() {
       let antes = resource.data.get('comentarios', []);
       let depois = request.resource.data.get('comentarios', []);
@@ -71,22 +62,17 @@ service cloud.firestore {
             && (nov.size() == 0 || nov[0].get('autorUid', '') == request.auth.uid)
             && (rem.size() == 0 || rem[0].get('autorUid', '') == request.auth.uid || isChefe()));
     }
-    // Anexo novo: carimbado com o autor e apontando para o Storage do próprio
-    // registro (nada de links externos disfarçados de anexo).
-    function caminhoAnexo(col, id) {
-      return '^' + col + '/' + resource.data.campus + '/' + id + '/[^/]+$';
+    function caminhoAnexo(id) {
+      return '^entradas/' + resource.data.campus + '/' + id + '/[^/]+$';
     }
-    function anexoNovoOk(a, col, id) {
+    function anexoNovoOk(a, id) {
       return a.get('porUid', '') == request.auth.uid
-        && a.get('path', '') is string && a.get('path', '').matches(caminhoAnexo(col, id))
+        && a.get('path', '') is string && a.get('path', '').matches(caminhoAnexo(id))
         && a.get('url', '') is string && a.get('url', '').matches('^https://firebasestorage[.]googleapis[.]com/.*')
-        && (a.get('thumbPath', '') == '' || a.get('thumbPath', '').matches(caminhoAnexo(col, id)))
+        && (a.get('thumbPath', '') == '' || a.get('thumbPath', '').matches(caminhoAnexo(id)))
         && (a.get('thumbUrl', '') == '' || a.get('thumbUrl', '').matches('^https://firebasestorage[.]googleapis[.]com/.*'));
     }
-    // Lista de anexos: inclusão (até 5 por gravação, cada uma válida), edição
-    // de título/descrição/miniatura de um anexo, ou remoção de um anexo (do
-    // próprio autor ou pela SENG técnica).
-    function anexosOk(col, id) {
+    function anexosOk(id) {
       let antes = resource.data.get('anexos', []);
       let depois = request.resource.data.get('anexos', []);
       let rem = antes.removeAll(depois);
@@ -95,40 +81,73 @@ service cloud.firestore {
         // edição de título/descrição, ou miniatura gerada depois (PDFs antigos)
         || (rem.size() == 1 && nov.size() == 1
             && nov[0].diff(rem[0]).affectedKeys().hasOnly(['titulo', 'descricao', 'thumbUrl', 'thumbPath'])
-            && (nov[0].get('thumbPath', '') == '' || nov[0].get('thumbPath', '').matches(caminhoAnexo(col, id)))
+            && (nov[0].get('thumbPath', '') == '' || nov[0].get('thumbPath', '') == rem[0].get('thumbPath', '') || nov[0].get('thumbPath', '').matches(caminhoAnexo(id)))
             && (nov[0].get('thumbUrl', '') == '' || nov[0].get('thumbUrl', '').matches('^https://firebasestorage[.]googleapis[.]com/.*')))
         || (rem.size() == 0 && nov.size() >= 1 && nov.size() <= 5
-            && anexoNovoOk(nov[0], col, id)
-            && (nov.size() < 2 || anexoNovoOk(nov[1], col, id))
-            && (nov.size() < 3 || anexoNovoOk(nov[2], col, id))
-            && (nov.size() < 4 || anexoNovoOk(nov[3], col, id))
-            && (nov.size() < 5 || anexoNovoOk(nov[4], col, id)))
+            && anexoNovoOk(nov[0], id)
+            && (nov.size() < 2 || anexoNovoOk(nov[1], id))
+            && (nov.size() < 3 || anexoNovoOk(nov[2], id))
+            && (nov.size() < 4 || anexoNovoOk(nov[3], id))
+            && (nov.size() < 5 || anexoNovoOk(nov[4], id)))
         || (nov.size() == 0 && rem.size() == 1
             && (rem[0].get('porUid', '') == request.auth.uid || isEng()));
     }
-    // Conjunto aplicado a toda atualização de demanda/chamado.
-    function listasIntegras(col, id) {
+    function listasIntegras(id) {
       return soAcrescimo('historico') && soAcrescimo('obsInterna') && soAcrescimo('obsExterna')
-          && comentariosOk() && anexosOk(col, id);
+          && comentariosOk() && anexosOk(id);
     }
 
+    // ---------- campos por fase (despacho) ------------------------------------
+    function camposDemanda() {
+      return ['objeto', 'status', 'aval', 'ajuste', 'codirAprovado', 'fase', 'etapa', 'artefatos', 'certame',
+              'projetoOrigem', 'tipoDemanda', 'projetoExiste', 'tombado', 'valorEstimado', 'prazoEstimado',
+              'especialidades', 'emergencial', 'solicitante', 'criadoEm', 'concluidoEm', 'suspensao',
+              'devolucao', 'statusAnterior', 'excluidoEm', 'expurgarEm', 'obsSolicitante', 'trilha'];
+    }
+    function camposChamado() {
+      return ['assunto', 'categoria', 'urgencia', 'autor', 'solicitanteRepresentado', 'aberturaEm',
+              'prazoLimite', 'diligenciaDesde', 'statusChamado', 'desfecho', 'resolucao', 'atendentes',
+              'trilha', 'refs', 'ano', 'seq'];
+    }
     function statusValido(s) {
       return s in ['recebido','analise','diligencia','codir','fila','atendimento',
-                   'concluido','suspenso','cancelado','nao-enquadrado','excluido'];
+                   'concluido','suspenso','cancelado','nao-enquadrado','excluido','devolvido'];
     }
-    function travada() { return resource.data.status in ['atendimento','concluido']; }
+    function statusChamadoValido(s) {
+      return s in ['aberto','triagem','diligencia','atendimento','obra','encaminhado','resolvido',
+                   'improcedente','duplicado','cancelado'];
+    }
+    function travada() { return resource.data.get('status', '') in ['atendimento','concluido']; }
+
+    // ---------- validação do documento ----------------------------------------
+    function entradaValida(e) {
+      return e.trilha in ['chamado', 'demanda']
+          && e.campus is string && e.campus.size() > 0 && e.campus.size() <= 8
+          && e.descricao is string && e.descricao.size() <= 6000
+          && (!('local' in e) || e.local == null || (e.local is string && e.local.size() <= 160))
+          && (!('processoSuap' in e) || e.processoSuap == null || (e.processoSuap is string && e.processoSuap.size() <= 40))
+          && (!('historico' in e) || (e.historico is list && e.historico.size() <= 600))
+          && (!('obsInterna' in e) || (e.obsInterna is list && e.obsInterna.size() <= 300))
+          && (!('obsExterna' in e) || (e.obsExterna is list && e.obsExterna.size() <= 300))
+          && (!('comentarios' in e) || (e.comentarios is list && e.comentarios.size() <= 400))
+          && (!('anexos' in e) || (e.anexos is list && e.anexos.size() <= 40))
+          && (e.trilha != 'chamado' || chamadoValido(e))
+          && (e.trilha != 'demanda' || demandaValida(e))
+          && (!('statusChamado' in e) || e.statusChamado == null || statusChamadoValido(e.statusChamado))
+          && (!('status' in e) || e.status == null || statusValido(e.status));
+    }
+    function chamadoValido(c) {
+      return c.assunto is string && c.assunto.size() > 0 && c.assunto.size() <= 140
+          && c.categoria is string
+          && statusChamadoValido(c.statusChamado)
+          && (!('solicitanteRepresentado' in c) || c.solicitanteRepresentado == null
+              || (c.solicitanteRepresentado is string && c.solicitanteRepresentado.size() <= 120));
+    }
     function demandaValida(d) {
       return d.objeto is string && d.objeto.size() > 0 && d.objeto.size() <= 120
-          && d.descricao is string && d.descricao.size() <= 6000
-          && d.campus is string && d.campus.size() <= 8
           && statusValido(d.status)
           && d.especialidades is list && d.especialidades.size() <= 8
-          && (!('historico' in d) || (d.historico is list && d.historico.size() <= 400))
           && (!('obsSolicitante' in d) || (d.obsSolicitante is string && d.obsSolicitante.size() <= 4000))
-          && (!('obsInterna' in d) || (d.obsInterna is list && d.obsInterna.size() <= 300))
-          && (!('obsExterna' in d) || (d.obsExterna is list && d.obsExterna.size() <= 300))
-          && (!('comentarios' in d) || (d.comentarios is list && d.comentarios.size() <= 300))
-          && (!('anexos' in d) || (d.anexos is list && d.anexos.size() <= 20))
           && (!('etapa' in d) || d.etapa == null || d.etapa in ['projeto','obra'])
           && (!('fase' in d) || d.fase == null || d.fase in ['planejamento','licitacao','execucao','recebimento'])
           && (!('artefatos' in d) || d.artefatos == null || d.artefatos is map)
@@ -138,16 +157,101 @@ service cloud.firestore {
               || (d.certame is map && d.certame.get('resultado', null) in [null,'exito','deserto','fracassado']))
           && (!('projetoOrigem' in d) || d.projetoOrigem == null || d.projetoOrigem in ['interno','contratado','integrada','dispensado'])
           && (!('concluidoEm' in d) || d.concluidoEm == null || d.concluidoEm is int)
-          && (!('chamadoOrigem' in d) || d.chamadoOrigem == null || (d.chamadoOrigem is string && d.chamadoOrigem.size() <= 24));
+          && (!('devolucao' in d) || d.devolucao == null
+              || (d.devolucao is map && d.devolucao.get('motivo', '') is string && d.devolucao.get('motivo', '').size() <= 1000));
     }
-    // Dados da SOLICITAÇÃO (editáveis pelo campus até a submissão ao CODIR — #5).
+    // Identidade e autoria nunca mudam depois da criação.
+    function identidadePreservada() {
+      let a = resource.data;
+      let d = request.resource.data;
+      return d.campus == a.campus
+          && d.get('ano', null) == a.get('ano', null) && d.get('seq', null) == a.get('seq', null)
+          && d.get('refs', null) == a.get('refs', null)
+          && d.get('autor', null) == a.get('autor', null)
+          && d.get('aberturaEm', null) == a.get('aberturaEm', null);
+    }
+
+    // ---------- fase CHAMADO ----------------------------------------------------
+    function aberturaChamadoOk(id, c) {
+      return c.keys().hasOnly(['campus', 'categoria', 'assunto', 'local', 'urgencia', 'descricao',
+                               'autor', 'solicitanteRepresentado', 'historico', 'processoSuap',
+                               'ano', 'seq', 'statusChamado', 'trilha', 'aberturaEm', 'atualizadoEm', 'prazoLimite'])
+        && c.trilha == 'chamado' && c.statusChamado == 'aberto'
+        && c.ano is int && c.seq is int
+        && id.matches('^' + string(c.ano) + c.campus + '[0-9]{3,4}$')
+        && c.autor is map
+        && c.autor.keys().hasOnly(['nome', 'email', 'uid'])
+        && c.autor.get('uid', '') == request.auth.uid
+        && c.autor.get('email', '') == request.auth.token.get('email', '')
+        && c.get('historico', []).size() <= 1
+        && horaPlausivel(c.aberturaEm)
+        && c.prazoLimite is int && c.prazoLimite > c.aberturaEm
+        && c.prazoLimite <= c.aberturaEm + 7776000000; // até 90 dias
+    }
+    // Campus dono (#6): só nos estados iniciais; diligência → triagem ao
+    // responder; SLA recomposto pelo tempo efetivamente pausado (+10 min).
+    function campusAtualizaChamado() {
+      let a = resource.data;
+      let d = request.resource.data;
+      let mudou = d.diff(a).affectedKeys();
+      let saiDilig = a.statusChamado == 'diligencia' && d.statusChamado == 'triagem';
+      let agora = request.time.toMillis();
+      return isCampusDe(a.campus)
+        && a.statusChamado in ['aberto', 'triagem', 'diligencia']
+        && (d.statusChamado == a.statusChamado || saiDilig)
+        && mudou.hasOnly(['descricao', 'assunto', 'local', 'urgencia', 'processoSuap', 'solicitanteRepresentado',
+                          'statusChamado', 'obsExterna', 'comentarios', 'anexos', 'historico', 'atualizadoEm',
+                          'prazoLimite', 'diligenciaDesde'])
+        && (!mudou.hasAny(['prazoLimite', 'diligenciaDesde'])
+            || (saiDilig
+                && d.get('diligenciaDesde', null) == null
+                && d.get('prazoLimite', 0) >= a.get('prazoLimite', 0)
+                && d.get('prazoLimite', 0) <= a.get('prazoLimite', 0)
+                     + (agora - a.get('diligenciaDesde', agora)) + 600000));
+    }
+    function atualizaChamado() {
+      let mudou = request.resource.data.diff(resource.data).affectedKeys();
+      return !mudou.hasAny(camposDemanda())
+        && request.resource.data.statusChamado != 'obra'
+        && (
+          isEng()
+          || campusAtualizaChamado()
+          || ( isCampusDe(resource.data.campus)
+               && mudou.hasOnly(['obsExterna', 'comentarios', 'historico', 'atualizadoEm'])
+               && request.resource.data.statusChamado == resource.data.statusChamado )
+          || ( isApoio()
+               && mudou.hasOnly(['obsInterna', 'comentarios', 'anexos', 'historico', 'atualizadoEm'])
+               && request.resource.data.statusChamado == resource.data.statusChamado )
+        );
+    }
+
+    // ---------- ESCALADA (chamado → demanda) ---------------------------------------
+    // SENG; a partir da triagem, da consultoria/laudo em atendimento ou de
+    // chamado resolvido. Reescalada (registro com fase de demanda 'devolvido')
+    // volta à análise com NOVA deliberação. A avaliação técnica é preservada.
+    function escaladaOk() {
+      let a = resource.data;
+      let d = request.resource.data;
+      return isEng()
+        && a.statusChamado in ['triagem', 'atendimento', 'resolvido']
+        && d.trilha == 'demanda' && d.statusChamado == 'obra' && d.desfecho == 'obra'
+        && d.status == 'recebido'
+        && d.get('codirAprovado', null) in [null, false]
+        && d.get('ajuste', null) == null
+        && d.get('aval', null) == a.get('aval', null)
+        && (a.get('status', null) == null || a.get('status', null) == 'devolvido')
+        && d.diff(a).affectedKeys().hasOnly(['trilha', 'statusChamado', 'desfecho', 'resolucao', 'status',
+             'objeto', 'tipoDemanda', 'projetoExiste', 'etapa', 'tombado', 'prazoEstimado', 'valorEstimado',
+             'processoSuap', 'especialidades', 'emergencial', 'solicitante', 'criadoEm', 'codirAprovado',
+             'ajuste', 'fase', 'statusAnterior', 'descricao', 'local', 'historico', 'atualizadoEm']);
+    }
+
+    // ---------- fase DEMANDA ---------------------------------------------------------
     function dadosSolicitacao() {
       return ['objeto', 'descricao', 'local', 'tipoDemanda', 'projetoExiste', 'tombado',
               'valorEstimado', 'prazoEstimado', 'processoSuap', 'especialidades', 'emergencial',
               'historico', 'atualizadoEm'];
     }
-    // Deliberação do CODIR (gateways "Aprovada?" e "Há dotação orçamentária?"):
-    //   codir → fila | suspenso(dotacao) | analise | cancelado ; fila → codir
     function podeAtualizarDemanda() {
       let p = get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data;
       let papel = (p.get('ativo', true) != false) ? p.get('role', '') : '';
@@ -162,9 +266,14 @@ service cloud.firestore {
       let ehApoioP = papel in ['estagiario', 'administrativo'];
       let ehCodirP = papel in ['codir', 'admin'];
       return !(trav && request.resource.data.status == 'excluido') && (
-        // Administrador: tudo, exceto violar a trava
-        (papel == 'admin' && (!trav || (mesmaAval && mesmaDelib)))
-        // Chefe: gestão e avaliação; deliberação (ajuste/aprovação) é do CODIR
+        // Ramos leves primeiro (comentários, anexos, observações): são as
+        // gravações mais frequentes e cabem folgadas no limite de 1000 expressões.
+        ((ehEq || ehApoioP || ehCodirP || campusDono)
+            && mudou.hasOnly(['comentarios', 'anexos', 'historico', 'atualizadoEm']))
+        || ((ehEq || ehApoioP) && mudou.hasOnly(['obsInterna', 'historico', 'atualizadoEm']))
+        || ((campusDono || ehCodirP) && mudou.hasOnly(['obsExterna', 'historico', 'atualizadoEm']))
+        || ((campusDono || papel == 'codir') && mudou.hasOnly(['obsSolicitante', 'historico', 'atualizadoEm']))
+        || (papel == 'admin' && (!trav || (mesmaAval && mesmaDelib)))
         || (papel == 'chefe' && mesmaDelib && (!trav || mesmaAval))
         // Ciclo projeto → obra (Chefe/Admin): devolve ao CODIR como obra
         || (papel in ['chefe', 'admin']
@@ -174,12 +283,10 @@ service cloud.firestore {
             && request.resource.data.get('codirAprovado', null) == false
             && mesmaAval
             && request.resource.data.get('ajuste', null) == resource.data.get('ajuste', null))
-        // Engenharia: tratamento básico (sem deliberação; respeita a trava)
         || (papel == 'engenharia' && mesmaDelib
             && request.resource.data.status in ['recebido', 'analise', 'diligencia', 'codir'] && !trav
             && (resource.data.status in ['recebido', 'analise', 'diligencia']
               || !mudou.hasAny(['objeto', 'descricao', 'local', 'tipoDemanda', 'projetoExiste', 'tombado', 'valorEstimado', 'prazoEstimado', 'processoSuap', 'especialidades', 'emergencial'])))
-        // CODIR: somente aprovação e ajuste, nas transições do fluxograma v2
         || (papel == 'codir' && !trav
             && resource.data.status in ['codir', 'fila', 'suspenso']
             && mudou.hasOnly(['codirAprovado', 'ajuste', 'status', 'suspensao', 'historico', 'atualizadoEm'])
@@ -188,32 +295,15 @@ service cloud.firestore {
                   && (request.resource.data.status in ['fila', 'analise', 'cancelado']
                     || (request.resource.data.status == 'suspenso' && request.resource.data.get('suspensao', {}).get('motivo', '') == 'dotacao')))
               || (resource.data.status == 'fila' && request.resource.data.status == 'codir')))
-        // Campus dono: responder diligência (complemento na descrição → análise) — #5
         || (campusDono && resource.data.status == 'diligencia'
             && request.resource.data.status in ['diligencia', 'analise']
             && mudou.hasOnly(['descricao', 'status', 'historico', 'atualizadoEm']))
-        // Campus dono: observação do solicitante, em qualquer status
-        || (campusDono && mudou.hasOnly(['obsSolicitante', 'historico', 'atualizadoEm']))
-        // CODIR: observação do solicitante
-        || (papel == 'codir' && mudou.hasOnly(['obsSolicitante', 'historico', 'atualizadoEm']))
-        // Edição dos DADOS até a submissão ao CODIR — equipe livre; CODIR e
-        // campus dono somente nos dados da solicitação (#5)
         || (resource.data.status in ['recebido', 'analise', 'diligencia']
             && request.resource.data.status == resource.data.status
-            && request.resource.data.campus == resource.data.campus
             && mesmaAval && mesmaDelib
             && (ehEq || ((papel == 'codir' || campusDono) && mudou.hasOnly(dadosSolicitacao()))))
-        // Observações internas (equipe + apoio)
-        || ((ehEq || ehApoioP) && mudou.hasOnly(['obsInterna', 'historico', 'atualizadoEm']))
-        // Observação externa (campus dono / CODIR)
-        || ((campusDono || ehCodirP) && mudou.hasOnly(['obsExterna', 'historico', 'atualizadoEm']))
-        // Linha do tempo unificada: comentários + anexos (integridade em listasIntegras)
-        || ((ehEq || ehApoioP || ehCodirP || campusDono)
-            && mudou.hasOnly(['comentarios', 'anexos', 'historico', 'atualizadoEm']))
-        // Workflow v2: fase, artefatos, certame e origem — equipe, no atendimento
         || (ehEq && resource.data.status == 'atendimento'
             && mudou.hasOnly(['fase', 'artefatos', 'certame', 'projetoOrigem', 'historico', 'atualizadoEm']))
-        // Obra direta (v1.30): origem 'integrada'/'dispensado' → segue como obra
         || (ehEq && resource.data.status == 'atendimento'
             && resource.data.get('etapa', null) != 'obra'
             && request.resource.data.get('etapa', null) == 'obra'
@@ -221,93 +311,74 @@ service cloud.firestore {
             && mudou.hasOnly(['etapa', 'projetoOrigem', 'historico', 'atualizadoEm']))
       );
     }
+    function atualizaDemanda() {
+      let mudou = request.resource.data.diff(resource.data).affectedKeys();
+      return !mudou.hasAny(camposChamado())
+        && request.resource.data.status != 'devolvido'
+        // arquivo morto só para entradas SEM fase de chamado (devolva ou cancele as demais)
+        && (request.resource.data.status != 'excluido' || resource.data.status == 'excluido'
+            || resource.data.get('statusChamado', null) == null)
+        && podeAtualizarDemanda();
+    }
 
-    function chamadoValido(c) {
-      return c.assunto is string && c.assunto.size() > 0 && c.assunto.size() <= 140
-          && c.descricao is string && c.descricao.size() <= 6000
-          && c.campus is string && c.campus.size() <= 8
-          && c.categoria is string
-          && c.status in ['aberto','triagem','diligencia','atendimento','obra','encaminhado','resolvido','improcedente','duplicado','cancelado']
-          && (!('anexos' in c) || (c.anexos is list && c.anexos.size() <= 20))
-          && (!('local' in c) || (c.local is string && c.local.size() <= 160))
-          && (!('processoSuap' in c) || (c.processoSuap is string && c.processoSuap.size() <= 40))
-          && (!('solicitanteRepresentado' in c) || c.solicitanteRepresentado == null
-              || (c.solicitanteRepresentado is string && c.solicitanteRepresentado.size() <= 120))
-          && (!('historico' in c) || (c.historico is list && c.historico.size() <= 400))
-          && (!('obsInterna' in c) || (c.obsInterna is list && c.obsInterna.size() <= 300))
-          && (!('obsExterna' in c) || (c.obsExterna is list && c.obsExterna.size() <= 300))
-          && (!('comentarios' in c) || (c.comentarios is list && c.comentarios.size() <= 300));
-    }
-    // Abertura de chamado (#12): autor = usuário autenticado; esquema fechado.
-    function aberturaChamadoOk(c) {
-      return c.keys().hasOnly(['campus', 'categoria', 'assunto', 'local', 'urgencia', 'descricao',
-                               'autor', 'solicitanteRepresentado', 'historico', 'processoSuap',
-                               'ano', 'seq', 'status', 'aberturaEm', 'atualizadoEm', 'prazoLimite'])
-        && c.autor is map
-        && c.autor.keys().hasOnly(['nome', 'email', 'uid'])
-        && c.autor.get('uid', '') == request.auth.uid
-        && c.autor.get('email', '') == request.auth.token.get('email', '')
-        && c.get('historico', []).size() <= 1
-        && horaPlausivel(c.aberturaEm)
-        && c.prazoLimite is int && c.prazoLimite > c.aberturaEm
-        && c.prazoLimite <= c.aberturaEm + 7776000000; // até 90 dias
-    }
-    // Atualização do chamado pelo CAMPUS DONO (#6): só nos estados iniciais,
-    // transição diligência → triagem ao responder, e recomposição do SLA
-    // limitada ao tempo efetivamente pausado (+10 min de folga).
-    function campusAtualizaChamado() {
+    // ---------- DEVOLUÇÃO (demanda → chamado) -----------------------------------------
+    // Só entrada com fase de chamado; Chefia/Admin até o PLANEJAMENTO; CODIR na
+    // deliberação (codir/fila). A fase de demanda fica preservada como
+    // 'devolvido'; o chamado volta à triagem. Motivo obrigatório.
+    function devolucaoOk() {
       let a = resource.data;
       let d = request.resource.data;
-      let mudou = d.diff(a).affectedKeys();
-      let saiDilig = a.status == 'diligencia' && d.status == 'triagem';
-      let agora = request.time.toMillis();
-      return isCampusDe(a.campus)
-        && a.status in ['aberto', 'triagem', 'diligencia']
-        && (d.status == a.status || saiDilig)
-        && mudou.hasOnly(['descricao', 'assunto', 'local', 'urgencia', 'processoSuap', 'solicitanteRepresentado',
-                          'status', 'obsExterna', 'comentarios', 'anexos', 'historico', 'atualizadoEm',
-                          'prazoLimite', 'diligenciaDesde'])
-        && (!mudou.hasAny(['prazoLimite', 'diligenciaDesde'])
-            || (saiDilig
-                && d.get('diligenciaDesde', null) == null
-                && d.get('prazoLimite', 0) >= a.get('prazoLimite', 0)
-                && d.get('prazoLimite', 0) <= a.get('prazoLimite', 0)
-                     + (agora - a.get('diligenciaDesde', agora)) + 600000));
+      return a.get('statusChamado', null) != null
+        && d.trilha == 'chamado' && d.statusChamado == 'triagem' && d.status == 'devolvido'
+        && d.get('devolucao', null) is map && d.devolucao.get('motivo', '').size() >= 3
+        && d.diff(a).affectedKeys().hasOnly(['trilha', 'statusChamado', 'status', 'statusAnterior', 'devolucao',
+                                             'desfecho', 'historico', 'atualizadoEm'])
+        && ( (isChefe() && (a.status in ['recebido', 'analise', 'diligencia', 'codir', 'fila', 'suspenso']
+                            || (a.status == 'atendimento' && a.get('fase', null) in [null, 'planejamento'])))
+          || (isCodir() && a.status in ['codir', 'fila']) );
     }
 
-    // ---------- demandas (workflow completo — NÃO público desde a v1.31) ------
-    match /demandas/{id} {
+    // ---------- ENTRADAS (registro único) --------------------------------------------
+    match /entradas/{id} {
       allow read: if isInterno() || isApoio()
         || (resource != null && isCampusDe(resource.data.campus));
-
-      // Intake unificado nos CHAMADOS: demandas nascem da triagem da SENG.
-      allow create: if demandaValida(request.resource.data)
-        && request.resource.data.status == 'recebido'
-        && isEng();
-
-      allow update: if demandaValida(request.resource.data)
-        && listasIntegras('demandas', id)
-        && podeAtualizarDemanda();
-
-      // Exclusão: chefe/admin e nunca em atendimento/concluído
+      // Toda entrada nasce como CHAMADO (campus dono ou SENG).
+      allow create: if entradaValida(request.resource.data)
+        && (isEng() || isCampusDe(request.resource.data.campus))
+        && aberturaChamadoOk(id, request.resource.data);
+      allow update: if entradaValida(request.resource.data)
+        && identidadePreservada()
+        && listasIntegras(id)
+        && (resource.data.trilha == 'chamado'
+              ? (request.resource.data.trilha == 'chamado' ? atualizaChamado() : escaladaOk())
+              : (request.resource.data.trilha == 'demanda' ? atualizaDemanda() : devolucaoOk()));
       allow delete: if isChefe() && !travada();
     }
 
-    // ---------- projeção PÚBLICA da fila (#1) -----------------------------------
-    // Ficha resumida aprovada pela SENG (26/10/2026). Qualquer perfil ativo pode
-    // gravar, mas SÓ um espelho fiel da demanda de origem (getAfter: vale também
-    // na mesma transação/lote). Fora da lista: descrição, localização, processo
-    // SUAP, linha do tempo, comentários, anexos e nomes de pessoas.
+    // ---------- números antigos → número novo (somente leitura) ----------------------
+    // Só mapeiam identificadores (sem dados); gravados pela migração administrativa.
+    match /aliases/{antigo} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // ---------- coleções antigas: backup somente leitura (ADR-004) -------------------
+    match /demandas/{id} { allow read: if isAdmin(); allow write: if false; }
+    match /chamados/{id} { allow read: if isAdmin(); allow write: if false; }
+
+    // ---------- projeção PÚBLICA da fila (#1) -----------------------------------------
     function igualOrigem(p, src, campo) { return p.get(campo, null) == src.get(campo, null); }
     function publicaConfere(id) {
-      let src = getAfter(/databases/$(database)/documents/demandas/$(id)).data;
+      let src = getAfter(/databases/$(database)/documents/entradas/$(id)).data;
       let p = request.resource.data;
       let aj = src.get('ajuste', null);
-      return src.get('status', '') != 'excluido'
+      let refs = src.get('refs', null);
+      return src.get('trilha', '') == 'demanda'
+        && !(src.get('status', '') in ['excluido', 'devolvido'])
         && p.keys().hasOnly(['ano', 'seq', 'campus', 'objeto', 'status', 'fase', 'etapa', 'tipoDemanda',
                              'projetoExiste', 'projetoOrigem', 'especialidades', 'emergencial',
                              'prazoEstimado', 'valorEstimado', 'aval', 'ajusteValor', 'codirAprovado',
-                             'criadoEm', 'atualizadoEm', 'concluidoEm'])
+                             'criadoEm', 'atualizadoEm', 'concluidoEm', 'refDemanda'])
         && igualOrigem(p, src, 'ano') && igualOrigem(p, src, 'seq') && igualOrigem(p, src, 'campus')
         && igualOrigem(p, src, 'objeto') && igualOrigem(p, src, 'status') && igualOrigem(p, src, 'fase')
         && igualOrigem(p, src, 'etapa') && igualOrigem(p, src, 'tipoDemanda')
@@ -317,21 +388,21 @@ service cloud.firestore {
         && igualOrigem(p, src, 'aval') && igualOrigem(p, src, 'codirAprovado')
         && igualOrigem(p, src, 'criadoEm') && igualOrigem(p, src, 'atualizadoEm')
         && igualOrigem(p, src, 'concluidoEm')
-        && p.get('ajusteValor', null) == (aj == null ? null : aj.get('valor', null));
+        && p.get('ajusteValor', null) == (aj == null ? null : aj.get('valor', null))
+        && p.get('refDemanda', null) == (refs == null ? null : refs.get('demanda', null));
     }
     match /publicas/{id} {
-      allow read: if true; // dashboard e relatório públicos (ficha resumida)
+      allow read: if true;
       allow create, update: if ativo() && publicaConfere(id);
-      // Remoção do espelho: demanda apagada ou no arquivo morto.
       allow delete: if ativo()
-        && (!exists(/databases/$(database)/documents/demandas/$(id))
-            || get(/databases/$(database)/documents/demandas/$(id)).data.get('status', '') == 'excluido');
+        && (!exists(/databases/$(database)/documents/entradas/$(id))
+            || get(/databases/$(database)/documents/entradas/$(id)).data.get('trilha', '') != 'demanda'
+            || get(/databases/$(database)/documents/entradas/$(id)).data.get('status', '') in ['excluido', 'devolvido']);
     }
 
     // ---------- dados internos (alocação) — nunca públicos ---------------------
     match /internas/{id} {
       allow read: if isInterno() || isApoio();
-      // Chefe/Admin: alocação completa. Engenharia: apenas a observação técnica interna.
       allow write: if isChefe()
         || ( isEng() && (
               ( resource == null && request.resource.data.keys().hasOnly(['obsEngenharia']) )
@@ -345,8 +416,6 @@ service cloud.firestore {
       allow write: if isChefe()
         && request.resource.data.nome is string && request.resource.data.nome.size() <= 80
         && (!('email' in request.resource.data) || request.resource.data.email is string);
-      // Meu espaço (v1.20): o próprio profissional (vínculo por e-mail) atualiza
-      // SOMENTE a foto de perfil e as próprias ausências (controle informativo).
       allow update: if ativo()
         && resource.data.get('email', '') != ''
         && resource.data.get('email', '') == perfil().get('email', '')
@@ -355,7 +424,7 @@ service cloud.firestore {
             || (request.resource.data.ausencias is list && request.resource.data.ausencias.size() <= 50));
     }
 
-    // ---------- tarefas da seção (kanban interno — v1.22) ----------------------
+    // ---------- tarefas da seção (kanban interno) ----------------------------------
     function tarefaValida(t) {
       return t.titulo is string && t.titulo.size() > 0 && t.titulo.size() <= 140
           && t.situacao in ['aberta', 'andamento', 'concluida', 'cancelada']
@@ -364,7 +433,6 @@ service cloud.firestore {
     }
     match /tarefas/{id} {
       allow read: if isEng() || isApoio();
-      // #3: cancelar exige a capacidade da Chefia/Admin (a interface já restringe).
       allow create: if (isEng() || isApoio()) && tarefaValida(request.resource.data)
         && (request.resource.data.situacao != 'cancelada' || isChefe());
       allow update: if (isEng() || isApoio()) && tarefaValida(request.resource.data)
@@ -373,7 +441,7 @@ service cloud.firestore {
       allow delete: if isChefe();
     }
 
-    // ---------- usuários — leitura p/ chefia; gestão pelo admin ------------------
+    // ---------- usuários ---------------------------------------------------------------
     function matriculaValida(d) {
       return !('matricula' in d) || d.matricula == null
           || (d.matricula is string && d.matricula.matches('[0-9]{4,12}'));
@@ -388,16 +456,13 @@ service cloud.firestore {
         && request.resource.data.role in ['campus','engenharia','estagiario','administrativo','chefe','codir','admin']
         && request.resource.data.nome is string && request.resource.data.nome.size() <= 80
         && matriculaValida(request.resource.data)
-        // Revogação/desativação de administrador: só por OUTRO administrador.
         && ( resource.data.role != 'admin'
           || (request.resource.data.role == 'admin' && request.resource.data.get('ativo', true) != false)
           || request.auth.uid != uid );
       allow delete: if isAdmin() && resource.data.role != 'admin';
     }
 
-    // ---------- log de auditoria (#11) — append-only, leitura só admin ----------
-    // Identidade conferida com o token e o perfil; horário plausível; esquema
-    // fechado. A camada de API grava o log NA MESMA transação da operação.
+    // ---------- log de auditoria (#11) ---------------------------------------------------
     match /logs/{id} {
       allow read: if isAdmin();
       allow create: if ativo()
@@ -409,12 +474,10 @@ service cloud.firestore {
         && request.resource.data.acao is string && request.resource.data.acao.size() <= 120
         && request.resource.data.alvo is string && request.resource.data.alvo.size() <= 160
         && request.resource.data.detalhes is string && request.resource.data.detalhes.size() <= 1000;
-      allow update, delete: if false; // imutável (append-only)
+      allow update, delete: if false;
     }
 
-    // ---------- configuração ------------------------------------------------------
-    // params (pesos/limites do cálculo) e transparencia (contagens agregadas) são
-    // públicos; agenda interna da SENG só para a equipe (#1 — antes vazava em params).
+    // ---------- configuração --------------------------------------------------------------
     match /config/{doc} {
       allow read: if doc in ['params', 'transparencia']
         || (doc == 'agenda' && (isEng() || isApoio()))
@@ -423,14 +486,12 @@ service cloud.firestore {
     }
 
     // ---------- diretório de roteamento de notificações (SEM nomes) -------------
-    // Entradas: uid, papel, ativo, pid/disciplina, campi + lista `uidsAtivos`
-    // (destinatários válidos — conferida na criação de notificações, #2).
     match /diretorio/{doc} {
       allow read: if ativo();
       allow write: if isChefe();
     }
 
-    // ---------- notificações (inbox pessoal) — #2 --------------------------------
+    // ---------- notificações (inbox pessoal) — #2 ----------------------------------------
     match /notificacoes/{id} {
       allow read: if signedIn() && resource.data.para == request.auth.uid;
       allow create: if ativo()
@@ -440,13 +501,12 @@ service cloud.firestore {
         && request.resource.data.deNome == perfil().get('nome', '')
         && request.resource.data.para is string
         && request.resource.data.para in get(/databases/$(database)/documents/diretorio/atual).data.get('uidsAtivos', [])
-        && request.resource.data.tipo in ['nova', 'diligencia', 'comentario', 'codir', 'fila', 'concluido',
+        && request.resource.data.tipo in ['nova', 'diligencia', 'comentario', 'codir', 'fila', 'concluido', 'devolvida',
                                           'chamado-novo', 'chamado-diligencia', 'chamado-resolvido',
                                           'chamado-desfecho', 'chamado-atendimento', 'chamado-comentario',
                                           'chamado-anexo', 'chamado-atualizado']
         && request.resource.data.demandaId is string
-        && (exists(/databases/$(database)/documents/demandas/$(request.resource.data.demandaId))
-            || exists(/databases/$(database)/documents/chamados/$(request.resource.data.demandaId)))
+        && exists(/databases/$(database)/documents/entradas/$(request.resource.data.demandaId))
         && request.resource.data.get('link', '') is string
         && (request.resource.data.get('link', '') == ''
             || request.resource.data.link.matches('^#/(demanda|chamado)/[A-Za-z0-9_-]{1,40}$'))
@@ -458,33 +518,6 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lida'])
         && request.resource.data.lida is bool;
       allow delete: if signedIn() && resource.data.para == request.auth.uid;
-    }
-
-    // ---------- chamados (intake da SENG) — ADR-002 -----------------------------
-    match /chamados/{id} {
-      allow read: if isInterno() || isApoio() || (resource != null && isCampusDe(resource.data.campus));
-      allow create: if chamadoValido(request.resource.data)
-        && request.resource.data.status == 'aberto'
-        && ( isEng() || isCampusDe(request.resource.data.campus) )
-        && aberturaChamadoOk(request.resource.data);
-      allow update: if chamadoValido(request.resource.data)
-        && request.resource.data.campus == resource.data.campus
-        && listasIntegras('chamados', id)
-        && (
-          // SENG/Admin: triagem, resolução e status
-          isEng()
-          // Campus dono: estados iniciais (#6)
-          || campusAtualizaChamado()
-          // Campus dono: comentar com o chamado EM ATENDIMENTO, sem mudar status
-          || ( isCampusDe(resource.data.campus)
-               && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['obsExterna','comentarios','historico','atualizadoEm'])
-               && request.resource.data.status == resource.data.status )
-          // Apoio (v1.27): comentários, anexos e observações internas — sem status.
-          || ( isApoio()
-               && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['obsInterna','comentarios','anexos','historico','atualizadoEm'])
-               && request.resource.data.status == resource.data.status )
-        );
-      allow delete: if isChefe();
     }
   }
 }
