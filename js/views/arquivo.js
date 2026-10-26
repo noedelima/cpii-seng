@@ -9,7 +9,7 @@ import { prioridade } from '../calc.js';
 import { store } from '../store.js';
 import { viewChamados } from './chamados.js';
 
-export const TERMINAIS_DEMANDA = ['concluido', 'cancelado', 'nao-enquadrado'];
+export const TERMINAIS_DEMANDA = ['concluido', 'cancelado', 'nao-enquadrado', 'devolvido'];
 
 let tipoArq = 'demandas'; // persiste durante a sessão
 const fd = { status: '', campus: '', texto: '' };
@@ -40,7 +40,7 @@ function demandasArquivadas(s, user, rerender) {
   const filtradas = todas.filter(d =>
     (!fd.status || d.status === fd.status) &&
     (!fd.campus || d.campus === fd.campus) &&
-    (!fd.texto || `${d.id} ${d.objeto || ''} ${d.descricao || ''} ${campusNome(d.campus)}`
+    (!fd.texto || `${d.id} ${d.refs?.demanda || d.refDemanda || ''} ${d.refs?.chamado || ''} ${d.objeto || ''} ${d.descricao || ''} ${campusNome(d.campus)}`
       .toLowerCase().includes(fd.texto.toLowerCase()))
   ).sort((a, b) => (b.atualizadoEm || 0) - (a.atualizadoEm || 0)); // mais recente primeiro
 
@@ -59,7 +59,7 @@ function demandasArquivadas(s, user, rerender) {
 
   let corpo;
   if (!filtradas.length) {
-    corpo = el('p', { class: 'vazio' }, 'Nenhuma demanda arquivada corresponde aos filtros — as encerradas (concluídas, canceladas e não enquadradas) aparecem aqui.');
+    corpo = el('p', { class: 'vazio' }, 'Nenhuma demanda arquivada corresponde aos filtros — as encerradas (concluídas, canceladas, não enquadradas e devolvidas ao chamado) aparecem aqui.');
   } else {
     const linhas = filtradas.map(d => {
       const pr = prioridade(d, params);

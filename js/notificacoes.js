@@ -67,6 +67,13 @@ export function destinatarios(tipo, { diretorio = [], demanda = {}, interna = {}
       return uidsPorRole(diretorio, 'codir');
     case 'fila':
       return uidsPorRole(diretorio, 'chefe');
+    case 'devolvida': {
+      // Equipe envolvida (ou disciplinas), Chefia e o campus dono.
+      const env = uidsEnvolvidos(diretorio, interna);
+      return [...(env.length ? env : uidsPorDisciplina(diretorio, demanda.especialidades)),
+        ...uidsPorRole(diretorio, 'chefe'),
+        ...diretorio.filter(e => ativo(e) && e.role === 'campus' && (e.campi || []).includes(demanda.campus)).map(e => e.uid)];
+    }
     case 'concluido':
       // Todos os perfis internos; o Campus só recebe conclusões do(s) seu(s) campus.
       return diretorio.filter(e => ativo(e) && (e.role !== 'campus' || (e.campi || []).includes(demanda.campus))).map(e => e.uid);
@@ -82,6 +89,7 @@ export const ROTULO_TIPO = {
   codir: 'Envio ao CODIR',
   fila: 'Na fila',
   concluido: 'Concluída',
+  devolvida: 'Devolvida ao chamado',
   'chamado-novo': 'Novo chamado',
   'chamado-diligencia': 'Chamado — diligência',
   'chamado-resolvido': 'Chamado resolvido',
@@ -102,6 +110,7 @@ export function textoNotificacao(tipo, demanda = {}) {
     codir: `Enviada para aprovação do CODIR — ${obj}`,
     fila: `Aprovada pelo CODIR e posicionada na fila — ${obj}`,
     concluido: `Demanda concluída — ${obj}`,
+    devolvida: `Demanda devolvida ao chamado — ${obj}`,
   }[tipo] || obj;
   return t.length > 300 ? t.slice(0, 297) + '…' : t;
 }

@@ -72,6 +72,8 @@ export const STATUS = [
   { id: 'cancelado',   nome: 'Cancelado',                       cor: 'st-cancelado' },
   { id: 'nao-enquadrado', nome: 'Não enquadrado (Art. 18)',     cor: 'st-nao-enquadrado' },
   { id: 'excluido',    nome: 'Excluído',                         cor: 'st-excluido' },
+  // v2.0 (ADR-004): a fase de demanda foi devolvida ao chamado (mesmo registro).
+  { id: 'devolvido',   nome: 'Devolvida ao chamado',             cor: 'st-devolvido' },
 ];
 export const statusNome = (id) => (STATUS.find(s => s.id === id) || {}).nome || id;
 export const statusCor  = (id) => (STATUS.find(s => s.id === id) || {}).cor || '';
@@ -164,7 +166,7 @@ export const TRANSICOES_REVERSAO = {
 // encerrados e o arquivo morto (Excluído) por último. A prioridade ordena dentro de cada status.
 export const STATUS_ORDEM = [
   'atendimento', 'recebido', 'analise', 'diligencia', 'codir', 'fila',
-  'suspenso', 'concluido', 'nao-enquadrado', 'cancelado', 'excluido',
+  'suspenso', 'concluido', 'nao-enquadrado', 'cancelado', 'devolvido', 'excluido',
 ];
 
 // Arquivo morto: dias até a exclusão definitiva de uma demanda excluída.
@@ -303,7 +305,7 @@ export const STATUS_CHAMADO = [
   { id: 'triagem',      nome: 'Em triagem',                   cor: 'st-analise' },
   { id: 'diligencia',   nome: 'Em diligência',                cor: 'st-diligencia' },
   { id: 'atendimento',  nome: 'Em atendimento',               cor: 'st-atendimento' },
-  { id: 'obra',         nome: 'Encaminhado à fila de Obras',  cor: 'st-fila' },
+  { id: 'obra',         nome: 'Em tratamento como demanda',   cor: 'st-fila' },
   { id: 'encaminhado',  nome: 'Encaminhado a outro setor',    cor: 'st-nao-enquadrado' },
   { id: 'resolvido',    nome: 'Resolvido',                    cor: 'st-concluido' },
   { id: 'improcedente', nome: 'Improcedente',                 cor: 'st-cancelado' },
@@ -375,7 +377,7 @@ export const URGENCIA_CHAMADO = [
 
 // Desfechos da triagem (o que a SENG decide fazer com o chamado).
 export const DESFECHO_CHAMADO = [
-  { id: 'obra',         nome: 'Encaminhar à fila de Obras (vira Demanda)', status: 'obra' },
+  { id: 'obra',         nome: 'Escalar para demanda de obra (mesmo registro)', status: 'obra' },
   { id: 'consultoria',  nome: 'Consultoria / assessoria técnica',          status: 'atendimento' },
   { id: 'laudo',        nome: 'Laudo / avaliação técnica',                 status: 'atendimento' },
   { id: 'encaminhado',  nome: 'Encaminhar a outro setor',                  status: 'encaminhado' },

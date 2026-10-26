@@ -76,7 +76,18 @@ export function podeAvaliar(user, demanda) {
   return can(user, 'avaliar') && !travada(demanda);
 }
 export function podeExcluir(user, demanda) {
-  return can(user, 'excluir') && !travada(demanda);
+  // v2.0: demanda vinda de chamado não vai ao arquivo morto — devolve-se ao chamado.
+  return can(user, 'excluir') && !travada(demanda) && !demanda?.statusChamado;
+}
+// v2.0 (ADR-004): devolução da demanda ao chamado (mesmo registro). Chefia/Admin
+// até o planejamento; CODIR na deliberação. Espelha devolucaoOk() das rules.
+export function podeDevolver(user, d) {
+  if (!user || !d || d.trilha !== 'demanda' || !d.statusChamado) return false;
+  if (['chefe', 'admin'].includes(user.role))
+    return ['recebido', 'analise', 'diligencia', 'codir', 'fila', 'suspenso'].includes(d.status)
+      || (d.status === 'atendimento' && (!d.fase || d.fase === 'planejamento'));
+  if (user.role === 'codir') return ['codir', 'fila'].includes(d.status);
+  return false;
 }
 export function podeComplementar(user, demanda) {
   if (!user || !demanda) return false;

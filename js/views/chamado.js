@@ -2,7 +2,9 @@
 // Dossiê do chamado — autocontido: stepper do ciclo, linha do tempo central e
 // cartão contextual "Ação do momento" (somente os próximos passos válidos).
 // SENG triam (desfecho); campus dono complementa, comenta e responde
-// diligências. Desfecho/conversão "obra" transforma o chamado em Demanda.
+// diligências. Desfecho "obra" ESCALA o registro para a fase de demanda — mesmo
+// número, histórico, comentários e anexos (v2.0 — ADR-004); a demanda pode ser
+// devolvida ao chamado (Chefia até o planejamento; CODIR na deliberação).
 // =============================================================================
 import { el, frag, campo, select, toast, confirmar, fmtDataHora, fmtData } from '../ui.js';
 import { renderAnexosCard } from '../anexos.js';
@@ -28,6 +30,9 @@ export function viewChamado(rerender, id) {
   if (!user) { location.hash = '#/login'; return frag(); }
 
   const c = s.getChamado(id);
+  if (c && c.id !== id) history.replaceState(null, '', `#/chamado/${c.id}`); // nº antigo → novo
+  if (!c && typeof s.resolverAlias === 'function')
+    s.resolverAlias(id).then(novo => { if (novo && novo !== id) location.replace(`#/chamado/${novo}`); });
   if (!c) {
     return frag(el('section', { class: 'card' },
       el('h1', {}, 'Chamado não encontrado'),
@@ -127,31 +132,22 @@ export function viewChamado(rerender, id) {
       el('details', { class: 'editar-dados' }, el('summary', {}, 'Abrir edição dos dados'), formEd));
   }
 
-  // Chamado já convertido em demanda — com desfazer (correção de conversão
-  // acidental): a demanda vai ao arquivo morto e o chamado retorna à triagem.
+  // v2.0 (ADR-004): fase de demanda vigente, ou devolução registrada.
   let cartaoDemanda = null;
   if (c.demandaId) {
-    const dem = s.getDemanda(c.demandaId);
-    const podeDesfazer = !!(dem && can(user, 'excluir') && !['atendimento', 'concluido', 'excluido'].includes(dem.status));
     cartaoDemanda = el('section', { class: 'card destaque' },
-      el('h2', {}, 'Encaminhado à fila de Obras'),
-      el('p', {}, 'Este chamado foi convertido na demanda ',
-        el('a', { class: 'link', href: `#/demanda/${c.demandaId}` }, c.demandaId), '.'),
+      el('h2', {}, 'Em tratamento como demanda'),
+      el('p', {}, 'Este registro foi escalado para a fase de demanda (GUT/CODIR) — mesmo número, histórico, comentários e anexos. ',
+        el('a', { class: 'link', href: `#/demanda/${c.id}` }, 'Abrir a demanda'), '.'),
       c.resolucao?.texto ? el('p', { class: 'ch-descricao' }, c.resolucao.texto) : null,
-      podeDesfazer ? el('div', { class: 'form-acoes' },
-        el('button', { class: 'btn ghost sm perigo', onclick: async () => {
-          const ok = await confirmar('Desfazer a conversão?',
-            `A demanda ${dem.id} vai para o arquivo morto (resgatável por ${DIAS_ARQUIVO_MORTO} dias) e o chamado retorna à triagem, para novo desfecho. Use para corrigir uma conversão acidental ou equivocada.`,
-            { ok: 'Desfazer conversão', perigo: true });
-          if (!ok) return;
-          try {
-            await s.arquivarDemanda(dem.id);
-            await s.atualizarChamado(c.id, { status: 'triagem', desfecho: null, demandaId: null },
-              `Conversão desfeita — demanda ${dem.id} arquivada; chamado retorna à triagem`);
-            toast('Conversão desfeita — o chamado voltou à triagem.');
-          } catch (err) { toast(err.message || 'Falha ao desfazer.', 'erro'); }
-        } }, 'Desfazer conversão'),
-        el('span', { class: 'sub' }, 'Chefia — disponível enquanto a demanda não entra em atendimento.')) : null);
+      el('p', { class: 'sub' }, 'A Chefia (até o planejamento) ou o CODIR (na deliberação) pode devolvê-lo ao chamado.'));
+  } else if (c.statusDemanda === 'devolvido' && c.devolucao) {
+    const dv = c.devolucao;
+    cartaoDemanda = el('section', { class: 'card aviso-travada' },
+      el('h2', {}, 'Devolvido ao chamado'),
+      el('p', {}, `A fase de demanda foi devolvida em ${fmtDataHora(dv.em)}${dv.por ? ' por ' + dv.por : ''}${dv.papel === 'codir' ? ' (CODIR)' : ''}.`),
+      dv.motivo ? el('p', { class: 'ch-descricao' }, dv.motivo) : null,
+      el('p', { class: 'sub' }, 'Resolva aqui pelo desfecho adequado ou, se for o caso, escale de novo — volta à análise com nova deliberação do CODIR.'));
   }
 
   // ---------------------------------------------------------------- anexos
@@ -220,12 +216,12 @@ function stepperChamado(c) {
   if (pos != null) {
     passos = rotulos.map((r, i) => ({ rotulo: r, estado: i < pos ? 'feito' : i === pos ? 'atual' : 'pendente' }));
     if (c.status === 'diligencia') nota = 'Em diligência — aguardando complemento do campus para retomar a triagem.';
-    else nota = 'Ramo alternativo: triagem “Obra” converte o chamado em demanda vinculada (fila de Obras).';
+    else nota = 'Ramo alternativo: o desfecho “Obra” escala este mesmo registro para a fase de demanda (GUT/CODIR).';
   } else {
     const feitos = new Set([0, 1]); // aberto + triagem concluídos nos desfechos
     passos = rotulos.map((r, i) => ({ rotulo: r, estado: feitos.has(i) ? 'feito' : 'pendente' }));
     aviso = c.status === 'obra'
-      ? 'Convertido em demanda de obra — o ciclo segue no dossiê da demanda vinculada.'
+      ? 'Escalado para a fase de demanda — o ciclo segue na demanda (mesmo registro).'
       : `Encerrado como “${statusChamadoNome(c.status)}”.`;
   }
   return renderStepper(passos, { aviso, nota });
@@ -406,48 +402,46 @@ function blocoCancelar(c, user, acao) {
 function blocoConversao(c, s, user) {
   const obra = camposObra(c);
   return el('details', { class: 'triagem-bloco' },
-    el('summary', { class: 'sub-titulo' }, 'Converter em demanda de obra'),
-    el('p', { class: 'sub' }, 'O chamado passa a “Encaminhado à fila de Obras” e nasce uma demanda vinculada, que entra no fluxo de priorização (GUT/CODIR).'),
+    el('summary', { class: 'sub-titulo' }, 'Escalar para demanda de obra'),
+    el('p', { class: 'sub' }, 'O registro passa à fase de demanda — mesmo número, histórico, comentários e anexos — e entra no fluxo de priorização (GUT/CODIR).'),
     obra.node,
     el('div', { class: 'form-acoes' }, el('button', { class: 'btn primario', onclick: () =>
-      converterEmDemanda(c, s, user, { obra: obra.ler(), parecer: c.resolucao?.texto || '' }) }, 'Converter em demanda')));
+      converterEmDemanda(c, s, user, { obra: obra.ler(), parecer: c.resolucao?.texto || '' }) }, 'Escalar para demanda')));
 }
 
 // ----------------------------------------------------------------------------
-// Conversão chamado → demanda (triagem “obra” ou escalada em atendimento/
-// resolvido). A demanda nasce classificada e vinculada (chamadoOrigem).
+// Escalada chamado → demanda (v2.0 — ADR-004): triagem “obra” ou escalada em
+// atendimento/resolvido. O MESMO registro passa à fase de demanda; reescalada
+// de chamado devolvido volta à análise com nova deliberação.
 // ----------------------------------------------------------------------------
 async function converterEmDemanda(c, s, user, { obra = {}, parecer = '' }) {
   const esp = (obra.especialidades && obra.especialidades.length)
     ? obra.especialidades : espDaDisciplina((categoriaChamado(c.categoria) || {}).disciplina);
   if (!esp.length) { toast('Selecione ao menos uma especialidade.', 'erro'); return; }
-  const ok = await confirmar('Converter em demanda de obra',
-    `O chamado ${c.id} passará a "Encaminhado à fila de Obras" e será criada uma nova demanda vinculada, com a classificação informada, que entra no fluxo de priorização (GUT/CODIR). Confirmar?`,
-    { ok: 'Converter em demanda' });
+  const reescalada = c.statusDemanda === 'devolvido';
+  const ok = await confirmar(reescalada ? 'Escalar de novo para demanda' : 'Escalar para demanda de obra',
+    `O registro ${c.id} passa à fase de demanda com a classificação informada — mesmo número, histórico, comentários e anexos — e entra no fluxo de priorização (GUT/CODIR)${reescalada ? ', com nova deliberação' : ''}. Confirmar?`,
+    { ok: 'Escalar para demanda' });
   if (!ok) return;
   try {
     const tipoDemanda = obra.tipoDemanda || 'obra';
     const projetoExiste = obra.projetoExiste || 'nao';
-    const did = await s.criarDemanda({
-      campus: c.campus, local: c.local || '', tipoDemanda, projetoExiste,
+    const classificacao = {
+      local: c.local || '', tipoDemanda, projetoExiste,
       etapa: precisaEtapaProjeto({ tipoDemanda, projetoExiste }) ? 'projeto' : null,
       tombado: obra.tombado || 'ns', prazoEstimado: obra.prazoEstimado || null,
       valorEstimado: obra.valorEstimado ? Number(obra.valorEstimado) : null,
-      processoSuap: obra.processoSuap || '',
-      objeto: (c.assunto || 'Demanda de obra').slice(0, 120),
-      descricao: `${c.descricao || ''}${parecer ? '\n\nParecer da triagem: ' + parecer : ''}\n\n[Originado do chamado ${c.id}]`,
-      emergencial: c.urgencia === 'emergencial', especialidades: esp, status: 'recebido',
-      chamadoOrigem: c.id,
+      processoSuap: obra.processoSuap || c.processoSuap || '',
+      objeto: (c.objeto || c.assunto || 'Demanda de obra').slice(0, 120),
+      emergencial: c.urgencia === 'emergencial', especialidades: esp,
       solicitante: { nome: c.solicitanteRepresentado || c.autor?.nome || user.nome, email: c.autor?.email || '' },
-      historico: [{ ts: Date.now(), user: user.nome, acao: `Solicitação registrada (originada do chamado ${c.id})` }],
-    });
-    await s.atualizarChamado(c.id, { status: 'obra', desfecho: 'obra', demandaId: did, resolucao: parecer ? { texto: parecer } : null },
-      `Convertido na demanda ${did} (fila de Obras)`);
-    await notificar(s, 'nova', { id: did, objeto: c.assunto, especialidades: esp });
+    };
+    await s.escalarChamado(c.id, classificacao, parecer);
+    await notificar(s, 'nova', { id: c.id, objeto: classificacao.objeto, especialidades: esp, campus: c.campus });
     await notificarChamado(s, 'chamado-desfecho', c);
-    toast(`Demanda ${did} criada a partir do chamado.`);
-    location.hash = `#/demanda/${did}`;
-  } catch (err) { toast(err.message || 'Falha ao converter.', 'erro'); }
+    toast(reescalada ? 'Escalado de novo — volta à análise.' : 'Escalado para demanda.');
+    location.hash = `#/demanda/${c.id}`;
+  } catch (err) { toast(err.message || 'Falha ao escalar.', 'erro'); }
 }
 
 async function aplicarDesfecho(c, s, user, { desfecho, setor, parecer, obra = {}, atendentes = [] }, acao) {

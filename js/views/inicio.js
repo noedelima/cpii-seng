@@ -16,7 +16,7 @@ export function viewInicio() {
   const s = store();
   const user = s.user;
   const params = s.getParams();
-  const todas = s.listDemandas().filter(d => d.status !== 'excluido');
+  const todas = s.listDemandas().filter(d => !['excluido', 'devolvido'].includes(d.status));
   const t = (typeof s.getTransparencia === 'function' ? s.getTransparencia() : null) || null;
   const anoAtual = new Date().getFullYear();
 

@@ -52,7 +52,7 @@ export function viewChamados(rerender, modo = 'ativos') {
     if (f.categoria && c.categoria !== f.categoria) return false;
     if (f.texto) {
       const q = f.texto.toLowerCase();
-      const alvo = `${c.id} ${c.assunto || ''} ${c.local || ''}`.toLowerCase();
+      const alvo = `${c.id} ${c.refs?.chamado || ''} ${c.refs?.demanda || ''} ${c.assunto || ''} ${c.local || ''}`.toLowerCase();
       if (!alvo.includes(q)) return false;
     }
     return true;

@@ -131,7 +131,7 @@ export function viewConta() {
     const internas = s.getInternas();
     const itens = [];
     s.listDemandas().forEach(d => {
-      if (['concluido', 'cancelado', 'nao-enquadrado', 'excluido'].includes(d.status)) return;
+      if (['concluido', 'cancelado', 'nao-enquadrado', 'excluido', 'devolvido'].includes(d.status)) return;
       const i = internas[d.id] || {};
       const { titulares, substitutos } = fiscaisDe(i);
       const papeis = [];

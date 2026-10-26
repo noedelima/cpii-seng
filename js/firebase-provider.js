@@ -386,7 +386,10 @@ export class FirebaseProvider {
   }
 
   listDemandas() { return this._demandas; }
-  getDemanda(id) { return this._demandas.find(d => d.id === id) || this._demandas.find(d => d.refs?.demanda === id) || null; }
+  getDemanda(id) {
+    return this._demandas.find(d => d.id === id)
+      || this._demandas.find(d => d.refs?.demanda === id || d.refDemanda === id) || null;
+  }
 
   // --- Chamados (intake da SENG) ------------------------------------------
   listChamados() { return this._chamados; }

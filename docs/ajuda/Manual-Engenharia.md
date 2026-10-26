@@ -46,7 +46,7 @@ Princípios de projeto:
 - **Segurança por design**: dados públicos e internos separados; permissões validadas no servidor.
 - **Rastreabilidade total**: histórico por demanda + log de auditoria.
 
-> [!importante] **Porta de entrada: o Chamado.** O campus **abre um chamado**; a SENG **tria** e define o desfecho, inclusive **converter em Demanda** de obra (com a classificação preenchida na triagem). O passo a passo do módulo está no **Fluxo 11**.
+> [!importante] **Porta de entrada: o Chamado.** O campus **abre um chamado**; a SENG **tria** e define o desfecho, inclusive **escalar para Demanda** de obra (com a classificação preenchida na triagem). **Chamado e demanda são fases de um mesmo registro** (v2.0): o número, o histórico, os comentários e os anexos são os mesmos do início ao fim — e a escalada pode ser **devolvida** ao chamado. O passo a passo do módulo está no **Fluxo 11**.
 
 ---
 
@@ -157,7 +157,7 @@ O cálculo segue o modelo de priorização da Seção (art. 5º, II):
 
 Clique em uma linha do painel para abrir o detalhe. No topo, o **stepper** mostra o ciclo completo — da origem (chamado, quando houver) até o recebimento — com a etapa atual destacada. A página é dividida em duas colunas:
 
-- **Esquerda:** dados da solicitação e a **Linha do tempo** — comentários, anexos e eventos em ordem cronológica. Em demandas originadas de chamado, a linha do tempo **incorpora o histórico do chamado de origem** (eventos prefixados) e o topo traz o vínculo `origem: CH…`.
+- **Esquerda:** dados da solicitação e a **Linha do tempo** — comentários, anexos e eventos em ordem cronológica. Em demandas originadas de chamado, a linha do tempo é **a mesma do chamado** (registro único) e o topo traz o selo **veio de chamado**, que abre a fase de chamado. Registros anteriores à unificação exibem também o **nº anterior** (o número antigo citado no SUAP e em atas continua encontrável na busca e nos links).
 - **Direita:** **Fase atual** (em atendimento), **Priorização**, **Avaliação técnica**, **Gestão**, **Alocação** e **Anexos**.
 
 @fig eng-demanda
@@ -374,8 +374,8 @@ A página do chamado também ganhou o **stepper** (Aberto → Triagem → Atendi
 1. **Aberto** → **Iniciar triagem**.
 2. **Em triagem** → **Desfecho da triagem** (abaixo) e, se faltar informação, **Solicitar diligência**: escreva o que falta; o chamado vai a **Em diligência**, o campus é avisado e o **SLA pausa** (o selo passa a **“SLA pausado”** e o prazo é **recomposto** automaticamente na retomada da triagem — o tempo em diligência não conta).
 3. **Desfecho** — escolha e aplique:
-   - **Obra (vira Demanda)** — abre o bloco de **classificação** (tipo de demanda, projeto existe, tombado, prazo, valor, Processo SUAP e **especialidades**, já pré-marcadas pela disciplina da categoria). Ao confirmar, cria-se a **Demanda** (status Recebido) vinculada ao chamado, que segue o fluxo **GUT → CODIR → fila**. O chamado passa a **“Encaminhado à fila de Obras”**, com link para a demanda.
-   - **Consultoria** / **Laudo** — selecione os **responsáveis pelo atendimento** (lista de seleção + Incluir); o chamado vai a **Em atendimento**. Nesse status, a Ação do momento oferece **Concluir o atendimento** (registra a orientação/NT e marca **Resolvido**; o campus é avisado), o ajuste dos **responsáveis** e — se a orientação concluir pela necessidade de contratação — **Converter em demanda de obra** (disponível também com o chamado **Resolvido**), levando o histórico para o dossiê da demanda.
+   - **Obra (vira Demanda)** — abre o bloco de **classificação** (tipo de demanda, projeto existe, tombado, prazo, valor, Processo SUAP e **especialidades**, já pré-marcadas pela disciplina da categoria). Ao confirmar, o **mesmo registro** passa à fase de **Demanda** (status Recebido) — com o mesmo número, histórico, comentários e anexos — e segue o fluxo **GUT → CODIR → fila**. Na vista de chamado, o status passa a **“Em tratamento como demanda”**, com link para a demanda.
+   - **Consultoria** / **Laudo** — selecione os **responsáveis pelo atendimento** (lista de seleção + Incluir); o chamado vai a **Em atendimento**. Nesse status, a Ação do momento oferece **Concluir o atendimento** (registra a orientação/NT e marca **Resolvido**; o campus é avisado), o ajuste dos **responsáveis** e — se a orientação concluir pela necessidade de contratação — **Escalar para demanda de obra** (disponível também com o chamado **Resolvido**) — o registro segue o mesmo, com todo o histórico.
    - **Encaminhar a outro setor** — selecione o setor e registre a orientação (status **Encaminhado**).
    - **Improcedente** / **Duplicado** — encerra com o motivo.
 4. **Cancelar chamado** — nos status Aberto, Em triagem e Em diligência, o bloco recolhível **Cancelar chamado** encerra sem atendimento (ex.: aberto por engano, desistência do campus), com **motivo obrigatório** registrado no histórico e aviso ao campus.
@@ -392,7 +392,9 @@ A página do chamado também ganhou o **stepper** (Aberto → Triagem → Atendi
 
 Nos desfechos **consultoria/laudo**, elabore a Nota Técnica no fluxo institucional e **anexe o documento pronto** ao chamado (cartão **Anexos**) — assim ele integra o dossiê e fica visível ao campus. A referência da NT também é registrada ao **concluir o atendimento**. *(Um ambiente de elaboração de Notas Técnicas, com numeração automática, está no plano de evolução do Portal.)*
 
-> **Desfazer uma conversão (Chefia).** Um chamado convertido em demanda por engano pode ser **desfeito** no cartão “Encaminhado à fila de Obras”, enquanto a demanda não entra em atendimento: a demanda vai ao **arquivo morto** e o chamado **retorna à triagem**, com registro no histórico.
+> **Devolver ao chamado (Chefia e CODIR).** A escalada é reversível no cartão **Devolver ao chamado**, na página da demanda, com **motivo obrigatório**: a **Chefia/Administração** pode devolver até a fase de **planejamento** (escalada indevida, entendimento do campus); o **CODIR**, durante a deliberação (*Aguardando aprovação* ou *Na fila*). O registro volta à **triagem** do chamado com o mesmo número; a fase de demanda fica como **“Devolvida ao chamado”** (em **Arquivados**), com a avaliação, a deliberação anterior e o histórico preservados. A partir daí, o chamado pode ser resolvido pelo desfecho adequado ou **escalado de novo** — quando volta à análise, com **nova deliberação do CODIR**.
+>
+> **Arquivo morto.** Demandas vindas de chamado não vão ao arquivo morto: use a devolução (ou o cancelamento do chamado).
 
 ### Notificações do chamado
 

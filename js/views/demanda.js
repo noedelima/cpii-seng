@@ -8,7 +8,7 @@ import { ehApoio, faseCurtaDe } from '../config.js';
 import { renderStepper } from '../stepper.js';
 import { prioridade, pontosArt11, faixaValorLabel, cargaProfissionais, fiscaisDe } from '../calc.js';
 import { store } from '../store.js';
-import { can, podeAvaliar, podeExcluir, podeComplementar, podeDeliberarCodir, transicoesPermitidas, travada, ehReversaoStatus, podeEditarDados, ehCampusDe } from '../auth.js';
+import { can, podeAvaliar, podeExcluir, podeComplementar, podeDeliberarCodir, transicoesPermitidas, travada, ehReversaoStatus, podeEditarDados, ehCampusDe, podeDevolver } from '../auth.js';
 import { notificar } from '../notificacoes.js';
 import { renderAnexosCard } from '../anexos.js';
 import { renderLinhaTempo } from '../timeline.js';
@@ -19,7 +19,14 @@ export function viewDemanda(rerender, id) {
   const s = store();
   const user = s.user;
   const d = s.getDemanda(id);
-  if (!d) return frag(el('section', { class: 'card' }, el('h1', {}, 'Demanda não encontrada'), el('a', { class: 'btn ghost', href: '#/' }, 'Voltar')));
+  if (!d) {
+    // v2.0: número antigo sem registro carregado — consulta o mapa público (aliases).
+    if (typeof s.resolverAlias === 'function')
+      s.resolverAlias(id).then(novo => { if (novo && novo !== id) location.replace(`#/demanda/${novo}`); });
+    return frag(el('section', { class: 'card' }, el('h1', {}, 'Demanda não encontrada'), el('a', { class: 'btn ghost', href: '#/' }, 'Voltar')));
+  }
+  // Endereço canônico: links com o número antigo passam a exibir o número novo.
+  if (d.id !== id) history.replaceState(null, '', `#/demanda/${d.id}`);
   // Arquivo morto: demanda excluída só é visível a quem pode gerenciá-la (Chefe/Admin).
   if (d.status === 'excluido' && !(user && can(user, 'excluir')))
     return frag(el('section', { class: 'card' }, el('h1', {}, 'Demanda não encontrada'), el('a', { class: 'btn ghost', href: '#/' }, 'Voltar')));
@@ -32,6 +39,7 @@ export function viewDemanda(rerender, id) {
   const pts = pontosArt11(d.aval, params.valorRef);
   const bloqueada = travada(d);
   const excluida = d.status === 'excluido';
+  const devolvida = d.status === 'devolvido';
 
   // ---------- stepper do ciclo completo (workflow v2) ------------------------
   const stepper = excluida ? null : stepperDemanda(d, user);
@@ -45,7 +53,8 @@ export function viewDemanda(rerender, id) {
       el('div', { class: 'detalhe-badges' },
         badgeStatus(d.status),
         (d.status === 'atendimento' && d.fase) ? el('span', { class: 'fase-badge' }, faseCurtaDe(d)) : null,
-        (user && d.chamadoOrigem) ? el('a', { class: 'fase-badge', href: `#/chamado/${d.chamadoOrigem}`, title: 'Abrir o chamado de origem' }, `origem: ${d.chamadoOrigem}`) : null)),
+        (user && d.chamadoOrigem) ? el('a', { class: 'fase-badge', href: `#/chamado/${d.id}`, title: 'Abrir a fase de chamado deste mesmo registro' }, 'veio de chamado') : null,
+        (d.refs?.demanda || d.refDemanda) ? el('span', { class: 'fase-badge', title: 'Número anterior à unificação (pode constar no SUAP e em atas)' }, `nº anterior: ${d.refs?.demanda || d.refDemanda}`) : null)),
     linha('Campus', campusNome(d.campus)),
     user ? linha('Localização', d.local || '—') : null,
     linha('Tipo de demanda', nomeDe(TIPOS_DEMANDA, d.tipoDemanda)),
@@ -483,7 +492,7 @@ export function viewDemanda(rerender, id) {
   // ---------- anexos (componente unificado com os chamados) ---------------------------
   const ehCampusDono = ehCampusDe(user, d.campus);
   let cartaoAnexos = null;
-  if (user && !excluida) {
+  if (user && !excluida && !devolvida) {
     const podeAnexar = can(user, 'avaliar') || ehCampusDono; // Eng/Chefe/Admin + campus dono
     cartaoAnexos = renderAnexosCard({
       lista: () => ((s.getDemanda(d.id) || d).anexos || []),
@@ -497,19 +506,11 @@ export function viewDemanda(rerender, id) {
   }
 
   // ---------- linha do tempo (fio único de comentários + anexos + eventos) -----------
-  const podeComentar = !!(user && !excluida && (can(user, 'avaliar') || can(user, 'codir') || ehCampusDono));
-  // Dossiê autocontido: o histórico do chamado de origem entra na linha do tempo
-  // (somente leitura, eventos prefixados) — nada se perde na conversão.
-  let docTempo = d;
-  if (user && d.chamadoOrigem && typeof s.getChamado === 'function') {
-    const cOrig = s.getChamado(d.chamadoOrigem);
-    if (cOrig) {
-      const histCh = (cOrig.historico || []).map(h => ({ ...h, acao: `[chamado ${cOrig.id}] ${h.acao}` }));
-      docTempo = { ...d, historico: [...(d.historico || []), ...histCh] };
-    }
-  }
+  const podeComentar = !!(user && !excluida && !devolvida && (can(user, 'avaliar') || can(user, 'codir') || ehCampusDono));
+  // v2.0 (ADR-004): registro único — histórico, comentários e anexos do chamado
+  // e da demanda já são os MESMOS; não há mais o que mesclar.
   const linhaTempo = !user ? null : renderLinhaTempo({
-    doc: docTempo, user, rerender,
+    doc: d, user, rerender,
     extras: { obsEngenharia: interna.obsEngenharia },
     anexos: (d.anexos || []),
     podeComentar,
@@ -532,12 +533,54 @@ export function viewDemanda(rerender, id) {
       } }, 'Resgatar demanda'));
   }
 
+  // ---------- devolução ao chamado (v2.0 — ADR-004) ----------------------------------
+  let cartaoDevolucao = null;
+  if (devolvida) {
+    const dv = d.devolucao || {};
+    cartaoDevolucao = el('section', { class: 'card aviso-travada' },
+      el('h2', {}, 'Devolvida ao chamado'),
+      el('p', {}, `Em ${fmtDataHora(dv.em)}${dv.por ? ' por ' + dv.por : ''}${dv.papel === 'codir' ? ' (CODIR)' : ''}. O tratamento segue no chamado `,
+        el('a', { class: 'link', href: `#/chamado/${d.id}` }, d.id), '.'),
+      dv.motivo ? el('p', { class: 'ch-descricao' }, dv.motivo) : null,
+      el('p', { class: 'sub' }, 'A avaliação, a deliberação anterior e todo o histórico ficam preservados. Se o chamado for escalado de novo, volta à análise com nova deliberação do CODIR.'));
+  } else if (podeDevolver(user, d)) {
+    const txMotivo = el('textarea', { rows: 3, maxlength: 1000, placeholder: 'Motivo da devolução (obrigatório)' });
+    cartaoDevolucao = el('section', { class: 'card' },
+      el('h2', {}, 'Devolver ao chamado'),
+      el('p', { class: 'sub' }, user.role === 'codir'
+        ? 'Quando o CODIR entende que a solicitação deve ser tratada como chamado (manutenção, orientação etc.).'
+        : 'Para corrigir uma escalada indevida ou atender a entendimento do CODIR ou do campus — disponível até a fase de planejamento.'),
+      el('label', { class: 'campo' }, el('span', { class: 'campo-label' }, 'Motivo'), txMotivo),
+      el('div', { class: 'form-acoes' }, el('button', { class: 'btn ghost perigo', onclick: async () => {
+        const motivo = txMotivo.value.trim();
+        if (motivo.length < 3) { toast('Informe o motivo da devolução.', 'erro'); return; }
+        const ok = await confirmar('Devolver ao chamado?',
+          `O registro ${d.id} volta à triagem do chamado, com o mesmo número, histórico, comentários e anexos. A fase de demanda fica registrada como “Devolvida ao chamado” e sai da fila.`,
+          { ok: 'Devolver ao chamado', perigo: true });
+        if (!ok) return;
+        try {
+          await s.devolverDemanda(d.id, motivo);
+          await notificar(s, 'devolvida', d, interna);
+          toast('Devolvida ao chamado.');
+          location.hash = `#/chamado/${d.id}`;
+        } catch (err) { toast(err.message || 'Falha ao devolver.', 'erro'); }
+      } }, 'Devolver ao chamado')));
+  }
+
+  if (devolvida) {
+    return frag(
+      el('a', { class: 'voltar', href: '#/chamados' }, '← Voltar aos chamados'),
+      el('div', { class: 'detalhe-grid' },
+        el('div', { class: 'col' }, dados, linhaTempo),
+        el('div', { class: 'col' }, cartaoDevolucao)));
+  }
+
   return frag(
     el('a', { class: 'voltar', href: '#/chamados' }, '← Voltar aos chamados'),
     stepper,
     el('div', { class: 'detalhe-grid' },
       el('div', { class: 'col' }, dados, cartaoEditarDados, linhaTempo),
-      el('div', { class: 'col' }, cartaoArquivo, cartaoFase, cartaoPontuacao, cartaoCodir, cartaoAvaliacao, cartaoGestao, cartaoEquipe, cartaoAnexos)));
+      el('div', { class: 'col' }, cartaoArquivo, cartaoFase, cartaoPontuacao, cartaoCodir, cartaoAvaliacao, cartaoGestao, cartaoEquipe, cartaoAnexos, cartaoDevolucao)));
 }
 
 // ----------------------------------------------------------------------------

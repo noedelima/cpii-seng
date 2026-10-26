@@ -36,7 +36,7 @@ export function viewDashboard(rerender) {
   // ---- aplicação dos filtros ------------------------------------------------
   // Encerradas (concluídas, canceladas e não enquadradas) moram no recorte
   // Arquivados — a fila lista apenas as ativas (e o arquivo morto p/ Chefia).
-  const ARQUIVADAS = ['concluido', 'cancelado', 'nao-enquadrado'];
+  const ARQUIVADAS = ['concluido', 'cancelado', 'nao-enquadrado', 'devolvido'];
   const txt = filtros.busca.trim().toLowerCase();
   let lista = todas.filter(d =>
     !ARQUIVADAS.includes(d.status) &&
@@ -51,7 +51,7 @@ export function viewDashboard(rerender) {
     (!filtros.esp || (d.especialidades || []).includes(filtros.esp)) &&
     (!filtros.fase || (filtros.fase === 'sem-fase' ? (d.status === 'atendimento' && !d.fase) : d.fase === filtros.fase)) &&
     (!filtros.ano || anoRef(d) === +filtros.ano) &&
-    (!txt || `${d.id} ${d.objeto || ''} ${d.descricao || ''} ${campusNome(d.campus)}`.toLowerCase().includes(txt))
+    (!txt || `${d.id} ${d.refs?.demanda || d.refDemanda || ''} ${d.refs?.chamado || ''} ${d.objeto || ''} ${d.descricao || ''} ${campusNome(d.campus)}`.toLowerCase().includes(txt))
   );
   // Profissional vinculado ao usuário pelo e-mail de login
   const meuProf = user ? s.profissionalDoUsuario(user) : null;
@@ -152,7 +152,7 @@ export function viewDashboard(rerender) {
     chamadosFila = s.listChamados()
       .filter(ch => ch.status === 'atendimento')
       .filter(ch => (!filtros.campus || ch.campus === filtros.campus)
-        && (!busca || `${ch.assunto || ''} ${ch.descricao || ''} ${ch.id} ${campusNome(ch.campus)}`.toLowerCase().includes(busca))
+        && (!busca || `${ch.assunto || ''} ${ch.descricao || ''} ${ch.id} ${ch.refs?.chamado || ''} ${ch.refs?.demanda || ''} ${campusNome(ch.campus)}`.toLowerCase().includes(busca))
         && (!filtros.esp || ((categoriaChamado(ch.categoria) || {}).disciplina && filtros.esp.includes((categoriaChamado(ch.categoria) || {}).disciplina)))
         && (!filtros.minhas || (meuProf && (ch.atendentes || []).includes(meuProf.id))))
       .sort((a, b) => (slaChamado(a).dias ?? 999) - (slaChamado(b).dias ?? 999));

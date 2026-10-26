@@ -68,7 +68,7 @@ O sistema é o **canal único e on-line** para o campus solicitar e acompanhar o
 
 @fig fluxo-chamado
 
-Na página do chamado, a **trilha de etapas** no topo (Aberto → Triagem → Atendimento → Resolvido) mostra onde ele está; quando vira demanda de obra, a trilha continua no dossiê da demanda vinculada — do planejamento da contratação ao recebimento.
+Na página do chamado, a **trilha de etapas** no topo (Aberto → Triagem → Atendimento → Resolvido) mostra onde ele está; quando vira demanda de obra, **o mesmo registro** (mesmo número, comentários e anexos) passa à fase de demanda e a trilha continua na página da demanda — do planejamento da contratação ao recebimento.
 
 **Abrir chamado → Em triagem →** *desfecho*:
 
@@ -231,11 +231,13 @@ Tipicamente **não** são obras/serviços de engenharia e podem ser **encaminhad
 | **Em triagem** | A SENG está analisando e classificando. | Acompanhar. |
 | **Em diligência** | A SENG precisa de um complemento. | **Responder** (Fluxo 5). O SLA pausa. |
 | **Em atendimento** | Consultoria/laudo em andamento pela SENG — aparece também na fila da aba Chamados, junto às demandas em atendimento. | Acompanhar. |
-| **Encaminhado à fila de Obras** | Virou **Demanda**; segue na fila pública (GUT/CODIR). | Acompanhar a **demanda** vinculada. |
+| **Em tratamento como demanda** | Foi **escalado** para a fase de demanda de obra (mesmo número); segue na fila pública (GUT/CODIR). | Acompanhar pela página da **demanda**. |
 | **Encaminhado a outro setor** | Não é caso da SENG; foi direcionado (ex.: manutenção). | Seguir a orientação. |
 | **Resolvido** | Consultoria/laudo concluído (orientação/NT). | Ver a orientação; encerrar. |
 | **Improcedente / Duplicado** | Encerrado sem atendimento, com o motivo no histórico. | Ver o motivo. |
 | **Cancelado** | Encerrado sem atendimento. | Ver o motivo. |
+
+> **Devolvido ao chamado.** Se a Chefia da SENG ou o CODIR entender que a solicitação deve ser tratada como chamado (por exemplo, manutenção ou orientação), a demanda é **devolvida** com motivo registrado: o chamado volta à **triagem**, com o mesmo número e todo o histórico, e o campus é avisado. Números antigos (de antes da unificação) continuam valendo nos links e na busca.
 
 > **A consultoria pode virar obra.** Se a orientação técnica concluir que é preciso **contratar** (obra/serviço), a própria SENG converte o chamado em **demanda de obra** — **sem** que você precise abrir um novo chamado. Isso vale com o chamado **em atendimento** ou já **resolvido**; a página do chamado passa a mostrar o link da demanda criada.
 

@@ -235,7 +235,7 @@ export async function gerarNotaTecnicaChamado({ chamado, assinante = {} }) {
 
   const catNome = categoriaChamadoNome(chamado.categoria);
   par(`Assunto: ${chamado.assunto || '—'} (${catNome}).`, { style: 'bold', gap: 2 });
-  par(`Referência: Chamado ${chamado.id} — Campus ${campusNome(chamado.campus)}${chamado.demandaId ? ' — Demanda ' + chamado.demandaId : ''}. Solicitante: ${chamado.solicitanteRepresentado ? chamado.solicitanteRepresentado + ' (registrado por ' + (chamado.autor?.nome || '—') + ')' : (chamado.autor?.nome || '—')}.`, { gap: 6 });
+  par(`Referência: Chamado ${chamado.id} — Campus ${campusNome(chamado.campus)}${chamado.demandaId ? ' — em tratamento como demanda' : ''}. Solicitante: ${chamado.solicitanteRepresentado ? chamado.solicitanteRepresentado + ' (registrado por ' + (chamado.autor?.nome || '—') + ')' : (chamado.autor?.nome || '—')}.`, { gap: 6 });
 
   secao('1. DA INTRODUÇÃO E DO HISTÓRICO');
   par(`Trata-se de chamado registrado nesta Seção de Engenharia em ${chamado.aberturaEm ? new Date(chamado.aberturaEm).toLocaleDateString('pt-BR') : '—'}, referente a ${chamado.assunto || '—'}, no âmbito do Campus ${campusNome(chamado.campus)}. Relato do solicitante: ${chamado.descricao || '—'}`);

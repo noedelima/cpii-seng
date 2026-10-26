@@ -63,12 +63,14 @@ O CODIR atua a partir do status **“Aguardando aprovação do CODIR”** (após
 
 > **Trilha de etapas (stepper).** No topo da página da demanda, a trilha mostra o ciclo completo — chamado de origem (quando houver), análise GUT, deliberação do CODIR, fila e as fases do atendimento (planejamento → licitação → execução → recebimento) — com a etapa atual destacada. É leitura rápida do contexto antes de deliberar.
 
-> **Origem por chamado.** As demandas chegam ao CODIR a partir da **triagem de um chamado**: quando a SENG classifica um chamado como **obra**, ele é convertido em demanda (status Recebido), avaliado (GUT) e então enviado para a sua aprovação. Para o CODIR, o fluxo de deliberação é o mesmo — muda apenas a **porta de entrada** (o chamado unificou a antiga “Nova solicitação”).
+> **Origem por chamado.** As demandas chegam ao CODIR a partir da **triagem de um chamado**: quando a SENG classifica um chamado como **obra**, o **mesmo registro** passa à fase de demanda (status Recebido) — com o mesmo número, histórico, comentários e anexos —, é avaliado (GUT) e então enviado para a sua aprovação. Para o CODIR, o fluxo de deliberação é o mesmo — muda apenas a **porta de entrada** (o chamado unificou a antiga “Nova solicitação”).
 
 > **Desfechos da deliberação (fluxograma v2).** No cartão **Deliberação do CODIR**, além de **Aprovar — posicionar na fila**, o Conselho registra os demais desfechos do gateway:
 > - **Aprovar — aguardar dotação**: a demanda é aprovada, mas fica **Suspensa** com o motivo *Aguardando dotação orçamentária*. A suspensão **não encerra o ciclo** — havendo orçamento, a Chefia a retorna à fila.
 > - **Não aprovar — reanálise**: volta para **Em análise** na SENG, com **justificativa obrigatória** registrada no histórico.
 > - **Não aprovar — encerrar**: a demanda é encerrada como **Cancelado** (não aprovada), também com justificativa.
+
+> **Devolver ao chamado.** Se o Conselho entender que a solicitação não é caso de demanda de obra (por exemplo, manutenção do campus ou orientação técnica), use o cartão **Devolver ao chamado**, disponível enquanto a demanda está *Aguardando aprovação do CODIR* ou *Na fila*. O **motivo é obrigatório** e fica na linha do tempo; o registro volta à triagem do chamado na SENG, com o mesmo número, e a fase de demanda fica como **“Devolvida ao chamado”** (consultável em Arquivados). Se for escalado de novo, retorna para **nova deliberação**.
 
 > **Projeto + Obra.** Uma demanda que exigia projeto e obra **volta ao CODIR como obra** (com projeto existente) quando a etapa de projeto é concluída — a **aprovação anterior é zerada** (repriorização): delibere novamente, conferindo o GUT e o valor reavaliados para a obra.
 
