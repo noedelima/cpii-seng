@@ -47,20 +47,23 @@ export function viewDemanda(rerender, id) {
         (d.status === 'atendimento' && d.fase) ? el('span', { class: 'fase-badge' }, faseCurtaDe(d)) : null,
         (user && d.chamadoOrigem) ? el('a', { class: 'fase-badge', href: `#/chamado/${d.chamadoOrigem}`, title: 'Abrir o chamado de origem' }, `origem: ${d.chamadoOrigem}`) : null)),
     linha('Campus', campusNome(d.campus)),
-    linha('Localização', d.local || '—'),
+    user ? linha('Localização', d.local || '—') : null,
     linha('Tipo de demanda', nomeDe(TIPOS_DEMANDA, d.tipoDemanda)),
     linha('Projeto existente', nomeDe(PROJETO_EXISTE, d.projetoExiste)),
     linha('Atividade da SENG', d.aval?.tipoAtividade ? nomeDe(TIPOS_ATIVIDADE, d.aval.tipoAtividade) : '—'),
     linha('Especialidades', (d.especialidades || []).join(', ') || '—'),
-    linha('Bem tombado (informado)', { sim: 'Sim', nao: 'Não', ns: 'Não informado' }[d.tombado] || '—'),
+    !user ? null : linha('Bem tombado (informado)', { sim: 'Sim', nao: 'Não', ns: 'Não informado' }[d.tombado] || '—'),
     linha('Valor estimado', fmtMoeda(d.valorEstimado)),
     linha('Prazo estimado', d.prazoEstimado ? nomeDe(PRAZOS, d.prazoEstimado) : '—'),
-    linha('Processo SUAP', d.processoSuap || '—'),
+    user ? linha('Processo SUAP', d.processoSuap || '—') : null,
     (d.status === 'atendimento' && d.fase) ? linha('Fase do atendimento', faseCurtaDe(d) === 'Elaboração do projeto' ? 'Elaboração do projeto (interna — sem licitação da etapa de projeto)' : faseNome(d.fase)) : null,
     d.projetoOrigem ? linha('Origem do projeto', nomeDe(PROJETO_ORIGEM, d.projetoOrigem)) : null,
     linha('Emergencial (solicitado)', d.emergencial ? 'Sim — art. 11, §5º' : 'Não'),
     linha('Registrada em', fmtDataHora(d.criadoEm) + (d.solicitante?.nome && user ? ` por ${d.solicitante.nome}` : '')),
-    el('div', { class: 'detalhe-desc' }, el('h3', {}, 'Descrição'), el('p', {}, d.descricao || '—')),
+    // v1.31 (#1): visitante vê a FICHA RESUMIDA — sem descrição, localização,
+    // processo, linha do tempo, comentários, anexos ou nomes.
+    user ? el('div', { class: 'detalhe-desc' }, el('h3', {}, 'Descrição'), el('p', {}, d.descricao || '—'))
+      : el('p', { class: 'nota' }, 'Ficha pública resumida. Descrição, documentos e linha do tempo ficam disponíveis aos usuários autenticados.'),
   );
 
   // Complemento em diligência (campus da demanda ou equipe)
@@ -333,7 +336,7 @@ export function viewDemanda(rerender, id) {
               : `A demanda volta para “${statusNome(st)}”; os pontos do art. 12 deixam de ser contabilizados. A ação fica registrada no histórico.`;
             const okRev = await confirmar(`Reverter “${statusNome(d.status)}”?`, msg, { ok: 'Reverter', perigo: true });
             if (!okRev) return;
-            await s.atualizarDemanda(d.id, { status: st }, `Reversão de status: “${statusNome(d.status)}” → “${statusNome(st)}”`);
+            await s.atualizarDemanda(d.id, { status: st, ...(d.status === 'concluido' ? { concluidoEm: null } : {}) }, `Reversão de status: “${statusNome(d.status)}” → “${statusNome(st)}”`);
             toast(`Status: ${statusNome(st)}.`);
             return;
           }
@@ -356,6 +359,7 @@ export function viewDemanda(rerender, id) {
             if (!okConf) return;
           }
           const patchSt = { status: st };
+          if (st === 'concluido') patchSt.concluidoEm = Date.now();
           let eventoSt = `Status alterado para “${statusNome(st)}”`;
           if (d.status === 'suspenso' && d.suspensao) {
             patchSt.suspensao = null;
@@ -504,7 +508,7 @@ export function viewDemanda(rerender, id) {
       docTempo = { ...d, historico: [...(d.historico || []), ...histCh] };
     }
   }
-  const linhaTempo = renderLinhaTempo({
+  const linhaTempo = !user ? null : renderLinhaTempo({
     doc: docTempo, user, rerender,
     extras: { obsEngenharia: interna.obsEngenharia },
     anexos: (d.anexos || []),
@@ -862,7 +866,7 @@ function cartaoFaseAtual(d, s, user, interna) {
       filhos.push(el('div', { class: 'form-acoes' }, el('button', { class: 'btn primario', onclick: async () => {
         const ok = await confirmar('Concluir a demanda?', 'Recebimento definitivo registrado — a demanda será marcada como Concluída.', { ok: 'Concluir demanda' });
         if (!ok) return;
-        await salvar({ status: 'concluido' }, 'Recebimento definitivo — demanda concluída');
+        await salvar({ status: 'concluido', concluidoEm: Date.now() }, 'Recebimento definitivo — demanda concluída');
         await notificar(s, 'concluido', d, interna);
       } }, 'Receber e concluir a demanda')));
     } else {

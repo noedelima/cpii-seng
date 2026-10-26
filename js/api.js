@@ -26,7 +26,8 @@ async function req(method, path, body) {
   });
   let data = null;
   try { data = await r.json(); } catch { /* resposta sem corpo */ }
-  if (!r.ok) throw new Error((data && (data.error || data.detalhe)) || ('HTTP ' + r.status));
+  // v1.31 (#15): a API não devolve detalhes internos — só a mensagem e um código.
+  if (!r.ok) throw new Error((data && data.error ? data.error + (data.codigo ? ` (código ${data.codigo})` : '') : null) || ('HTTP ' + r.status));
   return data;
 }
 
@@ -46,6 +47,8 @@ export const api = {
   // Custom claims (hardening do Storage — ADR-002): copia /usuarios/{uid} → token.
   claimsSelf: () => req('POST', '/claims/self'),
   claimsSync: (uid) => req('POST', '/claims/sync', { uid }),
+  // v1.31: criação de credenciais pelo servidor (cadastro público desativado).
+  criarCredencial: (email, senha) => req('POST', '/usuarios/credencial', { email, senha }),
 };
 
 // Roteamento híbrido. Fase 2 concluída: a API é o caminho de escrita PADRÃO

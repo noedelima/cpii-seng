@@ -11,7 +11,7 @@
 // =============================================================================
 const { app } = require('@azure/functions');
 const { json, withAuth } = require('../shared/http');
-const { docGet, logAudit } = require('../shared/firestore');
+const { docGet, commitComLog } = require('../shared/firestore');
 const { claimsDisponiveis, setCustomClaims } = require('../shared/adminAuth');
 
 const ROLES = ['campus', 'engenharia', 'estagiario', 'administrativo', 'chefe', 'codir', 'admin'];
@@ -54,7 +54,7 @@ app.http('claimsSync', {
     if (!perfil) return json(404, { error: 'usuário sem perfil em /usuarios' });
     const claims = claimsDoPerfil(perfil);
     await setCustomClaims(uid, claims);
-    await logAudit(user, chamador.nome, 'Claims sincronizadas [via API]', uid, JSON.stringify(claims));
+    await commitComLog(user, [], 'Claims sincronizadas [via API]', uid, JSON.stringify(claims));
     return json(200, { ok: true, uid, claims });
   }),
 });

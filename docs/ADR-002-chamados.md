@@ -79,6 +79,16 @@ só pode **estender** `prazoLimite`, nunca reduzir.
 
 ### Anexos (Cloud Storage) — limitação cross-service e controles compensatórios
 
+> **Atualização v1.31.0 (26/10/2026) — supera a seção abaixo.** A auditoria de
+> segurança (Codex, 05–06/10/2026) mostrou que a falha de 07/07 não era de
+> região, e sim a ausência do papel `roles/firebaserules.firestoreServiceAgent`
+> para o agente do Storage. Com o papel concedido, as Storage rules passaram a
+> consultar o Firestore: perfil **ao vivo** (desativação vale na hora — fim da
+> janela de ~1 h das claims), registro pai **existente e do campus do caminho**,
+> estado do chamado, envio carimbado com o `uid` do autor e sem sobrescrita.
+> As custom claims continuam sincronizadas, mas deixaram de ser a autoridade.
+> Registro completo: `docs/SEGURANCA-v1.31.md`.
+
 O ideal seria espelhar as regras do Firestore no Storage com `firestore.get`
 (papel do usuário + campus do chamado). Porém as **regras cross-service** do
 Storage exigem bucket e Firestore em **local compatível**; aqui o bucket está em

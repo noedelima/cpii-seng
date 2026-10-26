@@ -24,17 +24,26 @@ export class FirebaseProvider {
     this._diretorio = [];
     this._chamados = [];
     this._params = null;
+    // v1.31 (#1): ficha pública (/publicas) + documentos completos autorizados.
+    this._publicas = {};
+    this._completas = {};
+    this._veTodasDemandas = false;
+    this._agenda = null;
     this._unsubPriv = [];
     this.ready = this._init(config);
   }
 
   // --- Log de auditoria (gravado a cada modificação; leitura só de admin) ---
+  // v1.31 (#11): identidade/horário conferidos pelas rules (nome do perfil,
+  // e-mail do token, ts plausível). Pela API, o log entra no mesmo commit.
   async _log(acao, alvo, detalhes = '') {
+    if (!this.user?.uid) return;
     const fs = this._F;
     try {
       await fs.addDoc(fs.collection(this.db, 'logs'), {
-        ts: Date.now(), uid: this.user?.uid || 'anon', nome: this.user?.nome || 'Sistema',
-        email: this.user?.email || '', acao, alvo, detalhes,
+        ts: Date.now(), uid: this.user.uid, nome: this.user.nome || '', email: this.user.email || '',
+        acao: String(acao || '').slice(0, 120), alvo: String(alvo || '').slice(0, 160),
+        detalhes: String(detalhes || '').slice(0, 1000),
       });
     } catch (e) { console.warn('log', e); }
   }
@@ -61,11 +70,15 @@ export class FirebaseProvider {
     this.db = fs.getFirestore(app);
     this.storage = storage.getStorage(app);
 
-    // Públicos: demandas e parâmetros
-    fs.onSnapshot(fs.query(fs.collection(this.db, 'demandas')), (snap) => {
-      this._demandas = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      this._emit();
-    });
+    // Público (v1.31 — auditoria #1): a fila aberta lê a PROJEÇÃO /publicas
+    // (ficha resumida). O documento completo /demandas só é lido por perfis
+    // autorizados (ver _assinarPrivados) e sobrepõe a ficha na mesclagem.
+    fs.onSnapshot(fs.collection(this.db, 'publicas'), (snap) => {
+      this._publicas = {};
+      snap.docs.forEach(d => { this._publicas[d.id] = { id: d.id, ...d.data(), _publica: true }; });
+      this._mesclarDemandas();
+      this._talvezSincronizarPublicas();
+    }, (e) => console.warn('publicas', e));
     fs.onSnapshot(fs.doc(this.db, 'config', 'params'), (snap) => {
       this._params = snap.exists() ? snap.data() : null;
       this._emit();
@@ -82,12 +95,15 @@ export class FirebaseProvider {
         if (u) {
           const prof = await fs.getDoc(fs.doc(this.db, 'usuarios', u.uid));
           this.user = { uid: u.uid, email: u.email, ...(prof.exists() ? prof.data() : { role: 'campus', nome: u.email }) };
+          this._completas = {}; this._veTodasDemandas = false; this._agenda = null;
           await this._sincronizarClaims(u);
           this._assinarPrivados();
         } else {
           this.user = null;
           this._internas = {}; this._profissionais = []; this._usuarios = []; this._tarefas = [];
           this._notificacoes = []; this._diretorio = []; this._chamados = [];
+          this._completas = {}; this._veTodasDemandas = false; this._agenda = null;
+          this._mesclarDemandas();
         }
         this._emit();
         resolve();
@@ -110,10 +126,39 @@ export class FirebaseProvider {
     }, () => {}));
     // Diretório de roteamento (sem nomes) — todo perfil lê; só chefe/admin grava.
     this._unsubPriv.push(fs.onSnapshot(fs.doc(this.db, 'diretorio', 'atual'), (snap) => {
-      this._diretorio = snap.exists() ? (snap.data().entradas || []) : []; this._emit();
+      this._diretorio = snap.exists() ? (snap.data().entradas || []) : [];
+      this._diretorioTemUids = snap.exists() && Array.isArray(snap.data().uidsAtivos);
+      this._emit();
     }, () => {}));
     // chamados: interno vê todos; campus vê os do(s) seu(s) campus.
     const rl = this.user?.role;
+    // Demandas COMPLETAS (v1.31 — #1): equipe, CODIR e apoio veem todas; o
+    // campus, as do(s) seu(s) campus. Sobrepõem a ficha pública na mesclagem.
+    const aplicarCompletas = (docs, substituir) => {
+      if (substituir) this._completas = {};
+      docs.forEach(d => { this._completas[d.id] = { id: d.id, ...d.data() }; });
+      this._mesclarDemandas();
+      this._talvezSincronizarPublicas();
+    };
+    if (['engenharia', 'estagiario', 'administrativo', 'chefe', 'codir', 'admin'].includes(rl)) {
+      this._veTodasDemandas = true;
+      this._unsubPriv.push(fs.onSnapshot(fs.collection(this.db, 'demandas'),
+        (snap) => aplicarCompletas(snap.docs, true), (e) => console.warn('demandas', e)));
+    } else if (rl === 'campus') {
+      const campiD = (Array.isArray(this.user.campi) && this.user.campi.length) ? this.user.campi : (this.user.campus ? [this.user.campus] : []);
+      const porBlocoD = [];
+      for (let i = 0; i < campiD.length; i += 10) {
+        const ix = porBlocoD.length; porBlocoD.push([]);
+        this._unsubPriv.push(fs.onSnapshot(fs.query(fs.collection(this.db, 'demandas'), fs.where('campus', 'in', campiD.slice(i, i + 10))),
+          (snap) => { porBlocoD[ix] = snap.docs; aplicarCompletas(porBlocoD.flat(), true); }, (e) => console.warn('demandas', e)));
+      }
+    }
+    // Agenda interna (v1.31): saiu de config/params (público) para config/agenda.
+    if (['engenharia', 'estagiario', 'administrativo', 'chefe', 'admin'].includes(rl)) {
+      this._unsubPriv.push(fs.onSnapshot(fs.doc(this.db, 'config', 'agenda'), (snap) => {
+        this._agenda = snap.exists() ? (snap.data().eventos || []) : null; this._emit();
+      }, () => {}));
+    }
     if (['engenharia', 'estagiario', 'administrativo', 'chefe', 'codir', 'admin'].includes(rl)) {
       this._unsubPriv.push(fs.onSnapshot(fs.collection(this.db, 'chamados'), (snap) => {
         this._chamados = snap.docs.map(d => ({ id: d.id, ...d.data() })); this._emit();
@@ -154,6 +199,65 @@ export class FirebaseProvider {
   }
 
   _emit() { this._subs.forEach(cb => { try { cb(); } catch (e) { console.error(e); } }); }
+
+  // --- Fila pública por projeção (v1.31 — auditoria #1) ---------------------
+  _mesclarDemandas() {
+    const m = { ...this._publicas };
+    Object.values(this._completas).forEach(d => { m[d.id] = d; });
+    this._demandas = Object.values(m);
+    this._emit();
+  }
+  // Ficha resumida aprovada pela SENG (26/10/2026). As Security Rules exigem que
+  // cada campo seja IGUAL ao da demanda de origem — este método e as rules
+  // precisam listar os mesmos campos.
+  static CAMPOS_PUBLICOS = ['ano', 'seq', 'campus', 'objeto', 'status', 'fase', 'etapa', 'tipoDemanda',
+    'projetoExiste', 'projetoOrigem', 'especialidades', 'emergencial', 'prazoEstimado', 'valorEstimado',
+    'aval', 'codirAprovado', 'criadoEm', 'atualizadoEm', 'concluidoEm'];
+  _projecaoPublica(d) {
+    const p = {};
+    FirebaseProvider.CAMPOS_PUBLICOS.forEach(k => { if (d[k] !== undefined) p[k] = d[k]; });
+    p.ajusteValor = d.ajuste ? (d.ajuste.valor ?? null) : null;
+    return p;
+  }
+  // Mantém /publicas espelhando as demandas que ESTE usuário enxerga por
+  // completo. Qualquer perfil ativo grava, mas as rules só aceitam espelho fiel.
+  // Lotes pequenos: cada gravação consulta a origem (limite de 20 acessos por lote).
+  async _talvezSincronizarPublicas() {
+    if (!this.user?.uid || !this._F) return;
+    if (this._syncPub) { this._syncPubPendente = true; return; }
+    // serialização estável (ordem de chaves dos mapas do Firestore não é garantida)
+    const est = (o) => {
+      const ks = new Set();
+      const walk = (x) => { if (x && typeof x === 'object') { if (!Array.isArray(x)) Object.keys(x).forEach(k => ks.add(k)); Object.values(x).forEach(walk); } };
+      walk(o);
+      return JSON.stringify(o, [...ks].sort());
+    };
+    const ops = [];
+    for (const d of Object.values(this._completas)) {
+      if (d.status === 'excluido') { if (this._publicas[d.id]) ops.push(['del', d.id]); continue; }
+      const p = this._projecaoPublica(d);
+      const atual = this._publicas[d.id];
+      const { id: _i, _publica: _p, ...semMeta } = atual || {};
+      if (!atual || est(semMeta) !== est(p)) ops.push(['set', d.id, p]);
+    }
+    if (this._veTodasDemandas) Object.keys(this._publicas).forEach(id => { if (!this._completas[id]) ops.push(['del', id]); });
+    if (!ops.length) return;
+    this._syncPub = true;
+    const fs = this._F;
+    try {
+      for (let i = 0; i < ops.length; i += 8) {
+        const lote = fs.writeBatch(this.db);
+        ops.slice(i, i + 8).forEach(([op, id, p]) => op === 'del'
+          ? lote.delete(fs.doc(this.db, 'publicas', id))
+          : lote.set(fs.doc(this.db, 'publicas', id), p));
+        await lote.commit();
+      }
+    } catch (e) { console.warn('sincronizar publicas', e); }
+    finally {
+      this._syncPub = false;
+      if (this._syncPubPendente) { this._syncPubPendente = false; setTimeout(() => this._talvezSincronizarPublicas(), 0); }
+    }
+  }
   subscribe(cb) { this._subs.add(cb); return () => this._subs.delete(cb); }
 
   // --- Notificações + diretório de roteamento -----------------------------
@@ -176,9 +280,11 @@ export class FirebaseProvider {
   async _talvezSincronizarDiretorio() {
     if (!['admin', 'chefe'].includes(this.user?.role) || !this._usuarios.length) return;
     const novo = this._montarDiretorio();
-    if (JSON.stringify(novo) === JSON.stringify(this._diretorio || [])) return;
+    if (JSON.stringify(novo) === JSON.stringify(this._diretorio || []) && this._diretorioTemUids) return;
     const fs = this._F;
-    try { await fs.setDoc(fs.doc(this.db, 'diretorio', 'atual'), { entradas: novo, atualizadoEm: Date.now() }); }
+    // uidsAtivos (#2): lista de destinatários válidos conferida pelas rules.
+    const uidsAtivos = novo.filter(e => e.ativo && e.uid).map(e => e.uid);
+    try { await fs.setDoc(fs.doc(this.db, 'diretorio', 'atual'), { entradas: novo, uidsAtivos, atualizadoEm: Date.now() }); }
     catch (e) { console.warn('diretorio', e); }
   }
   listNotificacoes() {
@@ -193,7 +299,7 @@ export class FirebaseProvider {
       const ref = fs.doc(fs.collection(this.db, 'notificacoes'));
       batch.set(ref, {
         para: it.para, de: this.user.uid, deNome: this.user.nome || '',
-        tipo: it.tipo, demandaId: it.demandaId, objeto: it.objeto || '', texto: it.texto || '',
+        tipo: it.tipo, demandaId: it.demandaId, objeto: String(it.objeto || '').slice(0, 160), texto: String(it.texto || '').slice(0, 300),
         link: it.link || '', criadoEm: base, lida: false,
       });
     });
@@ -304,7 +410,11 @@ export class FirebaseProvider {
     const id = `CH${ano}${c.campus}${String(seq).padStart(3, '0')}`;
     const cat = CATEGORIAS_CHAMADO.find(k => k.id === c.categoria);
     const now = Date.now();
-    const data = { ...c, ano, seq, status: 'aberto', aberturaEm: now, atualizadoEm: now, prazoLimite: now + (cat ? cat.slaDias : 15) * 86400000 };
+    // #12: autor = usuário autenticado (rules e API conferem); quem registra por
+    // outra pessoa informa `solicitanteRepresentado` (campo descritivo).
+    const data = { ...c, autor: { nome: this.user?.nome || '', email: this.user?.email || '', uid: this.user?.uid },
+      ano, seq, status: 'aberto', aberturaEm: now, atualizadoEm: now, prazoLimite: now + (cat ? cat.slaDias : 15) * 86400000 };
+    if (!data.solicitanteRepresentado) delete data.solicitanteRepresentado;
     if (apiLigada()) { await api.criarChamado(id, data); return id; }
     await this._F.setDoc(this._F.doc(this.db, 'chamados', id), data);
     await this._log('Chamado aberto', id, c.assunto || '');
@@ -327,13 +437,13 @@ export class FirebaseProvider {
     const path = `chamados/${campus}/${chamadoId}/${Date.now()}_${nome}`;
     const ref = st.ref(this.storage, path);
     await new Promise((resolve, reject) => {
-      const task = st.uploadBytesResumable(ref, file, { contentType: file.type || 'application/octet-stream' });
+      const task = st.uploadBytesResumable(ref, file, { contentType: file.type || 'application/octet-stream', customMetadata: { uid: this.user.uid } });
       task.on('state_changed',
         (snap) => { if (onProgress) onProgress(snap.totalBytes ? snap.bytesTransferred / snap.totalBytes : 0); },
         reject, resolve);
     });
     const url = await st.getDownloadURL(ref);
-    return { nome: file.name || nome, path, url, tipo: file.type || '', tamanho: file.size || 0, ts: Date.now(), por: this.user?.nome || '' };
+    return { nome: file.name || nome, path, url, tipo: file.type || '', tamanho: file.size || 0, ts: Date.now(), por: this.user?.nome || '', porUid: this.user.uid };
   }
   async removerAnexoChamado(path) {
     if (!path) return;
@@ -352,13 +462,13 @@ export class FirebaseProvider {
     const path = `demandas/${campus}/${demandaId}/${Date.now()}_${nome}`;
     const ref = st.ref(this.storage, path);
     await new Promise((resolve, reject) => {
-      const task = st.uploadBytesResumable(ref, file, { contentType: file.type || 'application/octet-stream' });
+      const task = st.uploadBytesResumable(ref, file, { contentType: file.type || 'application/octet-stream', customMetadata: { uid: this.user.uid } });
       task.on('state_changed',
         (snap) => { if (onProgress) onProgress(snap.totalBytes ? snap.bytesTransferred / snap.totalBytes : 0); },
         reject, resolve);
     });
     const url = await st.getDownloadURL(ref);
-    return { nome: file.name || nome, path, url, tipo: file.type || '', tamanho: file.size || 0, ts: Date.now(), por: this.user?.nome || '' };
+    return { nome: file.name || nome, path, url, tipo: file.type || '', tamanho: file.size || 0, ts: Date.now(), por: this.user?.nome || '', porUid: this.user.uid };
   }
   async uploadThumbDemanda(demandaId, campus, blob, baseNome) {
     return this._uploadThumb(`demandas/${campus}/${demandaId}`, blob, baseNome);
@@ -406,7 +516,7 @@ export class FirebaseProvider {
     const nome = String(baseNome || 'thumb').replace(/[^\w.\-]+/g, '_').slice(-60);
     const path = `${prefixo}/${Date.now()}_${nome}.thumb.jpg`;
     const ref = st.ref(this.storage, path);
-    await st.uploadBytesResumable(ref, blob, { contentType: 'image/jpeg' });
+    await st.uploadBytesResumable(ref, blob, { contentType: 'image/jpeg', customMetadata: { uid: this.user.uid } });
     return { path, url: await st.getDownloadURL(ref) };
   }
 
@@ -535,36 +645,33 @@ export class FirebaseProvider {
     await this._log(existente ? 'Usuário atualizado' : 'Usuário criado', u.email || uid, `perfil: ${u.role}${u.ativo === false ? ' (desativado)' : ''}`);
   }
 
+  // v1.31 (#2): o cadastro público de contas foi DESATIVADO no Firebase Auth —
+  // a credencial é criada pela API (service account; somente administradores).
   async _criarCredencial(email, senha) {
     if (!senha || senha.length < 6) throw new Error('Defina uma senha inicial com ao menos 6 caracteres.');
-    const nome = 'sec-' + Date.now();
-    const app2 = this._App.initializeApp(this._config, nome);
-    try {
-      const auth2 = this._A.getAuth(app2);
-      const cred = await this._A.createUserWithEmailAndPassword(auth2, email.trim(), senha);
-      const uid = cred.user.uid;
-      await this._A.signOut(auth2);
-      return uid;
-    } catch (e) {
-      if (e?.code === 'auth/email-already-in-use')
-        throw new Error('Este e-mail já possui credencial. Edite o usuário existente ou use a redefinição de senha.');
-      if (e?.code === 'auth/admin-restricted-operation')
-        throw new Error('Criação de credenciais desativada no projeto (Identity Toolkit). Reative o cadastro de clientes ou crie pelo console.');
-      throw e;
-    } finally {
-      this._App.deleteApp(app2).catch(() => {});
-    }
+    if (!apiLigada()) throw new Error('A criação de credenciais exige a camada de API (Azure).');
+    const r = await api.criarCredencial(email.trim(), senha);
+    return r.uid;
   }
 
   getParams() {
     // Mescla com os defaults: parâmetros novos ganham valor padrão mesmo em
-    // docs de produção antigos (ex.: limites de referência).
-    return { ...PARAMS_DEFAULT, ...(this._params || {}) };
+    // docs de produção antigos (ex.: limites de referência). A Agenda interna
+    // vem de config/agenda (v1.31) e é exposta no mesmo formato de antes.
+    const p = { ...PARAMS_DEFAULT, ...(this._params || {}) };
+    if (this._agenda) p.eventosAgenda = this._agenda;
+    return p;
   }
   async setParams(p) {
-    if (apiLigada()) return api.setParams(p);
+    const { eventosAgenda, ...resto } = p || {};
     const fs = this._F;
-    await fs.setDoc(fs.doc(this.db, 'config', 'params'), p, { merge: true });
-    await this._log('Parâmetros alterados', 'config', JSON.stringify(p));
+    if (eventosAgenda !== undefined) {
+      await fs.setDoc(fs.doc(this.db, 'config', 'agenda'), { eventos: eventosAgenda, atualizadoEm: Date.now() }, { merge: true });
+      await this._log('Agenda atualizada', 'config/agenda', `${eventosAgenda.length} evento(s)`);
+    }
+    if (!Object.keys(resto).length) return;
+    if (apiLigada()) return api.setParams(resto);
+    await fs.setDoc(fs.doc(this.db, 'config', 'params'), resto, { merge: true });
+    await this._log('Parâmetros alterados', 'config', JSON.stringify(resto));
   }
 }

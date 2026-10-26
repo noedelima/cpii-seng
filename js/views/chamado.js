@@ -85,7 +85,7 @@ export function viewChamado(rerender, id) {
       linhaMeta('Localização', c.local),
       linhaMeta('Aberto em', fmtDataHora(c.aberturaEm)),
       linhaMeta('Prazo (SLA)', c.prazoLimite ? fmtData(c.prazoLimite) : '—'),
-      linhaMeta('Solicitante', c.autor?.nome),
+      linhaMeta('Solicitante', c.solicitanteRepresentado ? `${c.solicitanteRepresentado} (registrado por ${c.autor?.nome || '—'})` : c.autor?.nome),
       c.processoSuap ? linhaMeta('Processo SUAP', c.processoSuap) : null,
       c.desfecho ? linhaMeta('Desfecho da triagem', desfechoNome(c.desfecho)) : null,
       c.resolucao?.setor ? linhaMeta('Encaminhado a', c.resolucao.setor) : null),
@@ -191,7 +191,7 @@ export function viewChamado(rerender, id) {
     cartaoPessoas = el('section', { class: 'card' },
       el('h2', {}, 'Pessoas'),
       el('div', { class: 'meta-grid' },
-        linhaMeta('Solicitante', `${c.autor?.nome || '—'} (${campusNome(c.campus)})`),
+        linhaMeta('Solicitante', `${c.solicitanteRepresentado ? c.solicitanteRepresentado + ' — registrado por ' + (c.autor?.nome || '—') : (c.autor?.nome || '—')} (${campusNome(c.campus)})`),
         linhaMeta('Responsáveis pelo atendimento', nomes.length ? nomes.join(', ') : '—')));
   }
 
@@ -438,7 +438,7 @@ async function converterEmDemanda(c, s, user, { obra = {}, parecer = '' }) {
       descricao: `${c.descricao || ''}${parecer ? '\n\nParecer da triagem: ' + parecer : ''}\n\n[Originado do chamado ${c.id}]`,
       emergencial: c.urgencia === 'emergencial', especialidades: esp, status: 'recebido',
       chamadoOrigem: c.id,
-      solicitante: { nome: c.autor?.nome || user.nome, email: c.autor?.email || '' },
+      solicitante: { nome: c.solicitanteRepresentado || c.autor?.nome || user.nome, email: c.autor?.email || '' },
       historico: [{ ts: Date.now(), user: user.nome, acao: `Solicitação registrada (originada do chamado ${c.id})` }],
     });
     await s.atualizarChamado(c.id, { status: 'obra', desfecho: 'obra', demandaId: did, resolucao: parecer ? { texto: parecer } : null },

@@ -18,6 +18,7 @@ export function aplicarFiltrosExternos(obj = {}) {
 // Ano de referência de uma demanda para o filtro `ano`: conclusão (evento
 // "conclu…" do histórico) quando concluída; senão, a última atualização.
 function anoRef(d) {
+  if (d.status === 'concluido' && d.concluidoEm) return new Date(d.concluidoEm).getFullYear();
   const h = d.status === 'concluido' ? (d.historico || []).filter(x => /conclu/i.test(x.acao || '')).pop() : null;
   return new Date((h && h.ts) || d.atualizadoEm || d.criadoEm || 0).getFullYear();
 }
@@ -50,7 +51,7 @@ export function viewDashboard(rerender) {
     (!filtros.esp || (d.especialidades || []).includes(filtros.esp)) &&
     (!filtros.fase || (filtros.fase === 'sem-fase' ? (d.status === 'atendimento' && !d.fase) : d.fase === filtros.fase)) &&
     (!filtros.ano || anoRef(d) === +filtros.ano) &&
-    (!txt || `${d.id} ${d.objeto} ${d.descricao} ${campusNome(d.campus)}`.toLowerCase().includes(txt))
+    (!txt || `${d.id} ${d.objeto || ''} ${d.descricao || ''} ${campusNome(d.campus)}`.toLowerCase().includes(txt))
   );
   // Profissional vinculado ao usuário pelo e-mail de login
   const meuProf = user ? s.profissionalDoUsuario(user) : null;

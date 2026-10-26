@@ -7,6 +7,7 @@
       "/css/*",
       "/js/*",
       "/docs/*",
+      "/vendor/*",
       "/*.{css,js,mjs,json,md,svg,png,jpg,jpeg,gif,ico,webp,woff,woff2,ttf,map,txt}"
     ]
   },
@@ -14,6 +15,9 @@
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "SAMEORIGIN",
     "Referrer-Policy": "strict-origin-when-cross-origin"
+  },
+  "mimeTypes": {
+    ".mjs": "text/javascript"
   },
   "responseOverrides": {
     "404": { "rewrite": "/index.html", "statusCode": 200 }

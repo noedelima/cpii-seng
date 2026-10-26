@@ -1,5 +1,10 @@
 name: Azure Static Web Apps CI/CD
 
+# v1.31 (auditoria #13): toda Action fixada por SHA de commit (imutável), com a
+# versão no comentário. Sem `npm install` em tempo de deploy — o github-script v7
+# já embute o @actions/core usado para obter o token OIDC.
+# Atualizar: conferir o novo SHA da tag em github.com/<action>/releases.
+
 on:
   push:
     branches:
@@ -8,6 +13,9 @@ on:
     types: [opened, synchronize, reopened, closed]
     branches:
       - main
+
+permissions:
+  contents: read
 
 jobs:
   build_and_deploy_job:
@@ -18,30 +26,27 @@ jobs:
        id-token: write
        contents: read
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           submodules: true
           lfs: false
-      - name: Install OIDC Client from Core Package
-        run: npm install @actions/core@1.6.0 @actions/http-client
+          persist-credentials: false
       - name: Get Id Token
-        uses: actions/github-script@v6
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         id: idtoken
         with:
            script: |
-               const coredemo = require('@actions/core')
-               return await coredemo.getIDToken()
+               return await core.getIDToken()
            result-encoding: string
       - name: Build And Deploy
         id: builddeploy
-        uses: Azure/static-web-apps-deploy@v1
+        uses: Azure/static-web-apps-deploy@1a947af9992250f3bc2e68ad0754c0b0c11566c9 # v1
         with:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_POLITE_FOREST_0F8E6FE10 }}
           action: "upload"
-          ###### Repository/Build Configurations - These values can be configured to match your app requirements. ######
-          # For more information regarding Static Web App workflow configurations, please visit: https://aka.ms/swaworkflowconfig
+          ###### Repository/Build Configurations ######
           app_location: "/" # App source code path
-          api_location: "api" # Api source code path (Azure Functions, Fase 2)
+          api_location: "api" # Api source code path (Azure Functions)
           output_location: "" # Built app content directory - optional
           skip_app_build: true # app estatico sem build (sem package.json): nao rodar Oryx, so publicar os arquivos
           github_id_token: ${{ steps.idtoken.outputs.result }}
@@ -54,6 +59,6 @@ jobs:
     steps:
       - name: Close Pull Request
         id: closepullrequest
-        uses: Azure/static-web-apps-deploy@v1
+        uses: Azure/static-web-apps-deploy@1a947af9992250f3bc2e68ad0754c0b0c11566c9 # v1
         with:
           action: "close"

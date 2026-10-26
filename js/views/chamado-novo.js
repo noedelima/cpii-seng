@@ -24,6 +24,7 @@ export function viewChamadoNovo() {
   const inLocal = el('input', { type: 'text', maxlength: 160, placeholder: 'Bloco, pavimento, sala…' });
   const selUrg = select(URGENCIA_CHAMADO, { value: 'media', placeholder: null });
   const inDesc = el('textarea', { rows: 5, maxlength: 4000, required: true, placeholder: 'Descreva o problema/necessidade e onde ocorre.' });
+  const inRep = el('input', { type: 'text', maxlength: 120, placeholder: 'Nome e função — ex.: Maria Silva, coordenadora do NAPNE' });
 
   // Dica dinâmica: prazo (SLA) estimado da categoria selecionada.
   const dicaSla = el('span', { class: 'campo-hint' }, '');
@@ -47,7 +48,7 @@ export function viewChamadoNovo() {
         local: inLocal.value.trim(),
         urgencia: selUrg.value || 'media',
         descricao: inDesc.value.trim(),
-        autor: { nome: user.nome, email: user.email, uid: user.uid },
+        ...(inRep.value.trim() ? { solicitanteRepresentado: inRep.value.trim() } : {}),
         historico: [{ ts: Date.now(), user: user.nome, acao: 'Chamado aberto' }],
       });
       // Notifica os engenheiros/arquitetos da disciplina (ou toda a SENG, se sem disciplina).
@@ -67,6 +68,7 @@ export function viewChamadoNovo() {
       campo('Localização', inLocal),
       campo('Urgência', selUrg, 'Percepção inicial — a SENG confirma na triagem.')),
     campo('Descrição *', inDesc),
+    campo('Em nome de (opcional)', inRep, 'Preencha se estiver registrando o pedido por outra pessoa. O chamado continua registrado em seu nome, como autor.'),
     el('div', { class: 'form-acoes' },
       el('a', { class: 'btn ghost', href: '#/chamados' }, 'Cancelar'), btn),
   );

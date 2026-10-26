@@ -50,6 +50,10 @@ contratação** (workflow v2 — BPMN “Atendimento de Chamados v2”).
 
 ## Arquitetura
 
+> **Segurança:** remediação completa da auditoria de outubro/2026 (15 achados) na
+> v1.31.0 — ver [`docs/SEGURANCA-v1.31.md`](docs/SEGURANCA-v1.31.md). A fila
+> pública lê a projeção `/publicas` (ficha resumida); `/demandas` exige perfil.
+
 SPA estática (ES Modules, **sem build**). **Produção no Azure Static Web Apps**
 (CI/CD por GitHub Actions; o endereço antigo no GitHub Pages apenas redireciona —
 ver `docs/AZURE-SWA-SETUP.md`). Backend em **Firebase Auth + Cloud Firestore +

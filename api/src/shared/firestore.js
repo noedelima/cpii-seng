@@ -1,10 +1,17 @@
 // =============================================================================
 // Acesso ao Firestore via REST, COM o ID token do usuário (Authorization: Bearer).
 // As Security Rules continuam mandando — a API não eleva privilégio (sem service
-// account). Espelha o "token → PostgREST → RLS" do SANE.
+// account nos dados).
+//
+// v1.31 (auditoria #11): o registro de auditoria entra NA MESMA transação
+// (commit atômico) da operação de negócio — não existe mais escrita sem log
+// pela API, nem log de operação que falhou. Nome/e-mail do log vêm do perfil e
+// do token (as rules conferem).
 // =============================================================================
+const crypto = require('crypto');
 const { PROJECT_ID } = require('./auth');
-const BASE = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
+const RAIZ = `projects/${PROJECT_ID}/databases/(default)/documents`;
+const BASE = `https://firestore.googleapis.com/v1/${RAIZ}`;
 const COMMIT = `${BASE}:commit`;
 
 // ---- Decodificação (formato tipado do Firestore → valor JS) -----------------
@@ -52,68 +59,59 @@ async function docGetRaw(path, token) {
   return r.json();
 }
 
-// ---- Escrita (sob o token; as rules aprovam/negam) --------------------------
-// PATCH com updateMask: define os campos de `fields`; campos no mask e ausentes
-// de `fields` são apagados (deleteField). Cria o doc se não existir (merge/upsert).
-async function patchDoc(path, fields, maskPaths, token) {
-  const qs = maskPaths.map((p) => 'updateMask.fieldPaths=' + encodeURIComponent(p)).join('&');
-  const r = await fetch(`${BASE}/${path}?${qs}`, {
-    method: 'PATCH',
-    headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ fields }),
-  });
-  if (!r.ok) throw new Error('firestore PATCH ' + r.status + ': ' + (await r.text()).slice(0, 300));
-  return r.json();
-}
-async function createDoc(collection, fields, token) {
-  const r = await fetch(`${BASE}/${collection}`, {
-    method: 'POST',
-    headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ fields }),
-  });
-  if (!r.ok) throw new Error('firestore POST ' + r.status + ': ' + (await r.text()).slice(0, 200));
-  return r.json();
-}
-async function commitWrite(write, token) {
+// ---- Escrita atômica (sob o token; as rules aprovam/negam o conjunto) --------
+async function commitWrites(writes, token) {
   const r = await fetch(COMMIT, {
     method: 'POST',
     headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ writes: [write] }),
+    body: JSON.stringify({ writes }),
   });
   if (!r.ok) throw new Error('firestore commit ' + r.status + ': ' + (await r.text()).slice(0, 300));
   return r.json();
 }
 // Atualiza doc existente: só os campos do mask; `historyEvent` (opcional) faz o
 // arrayUnion em `historico` (appendMissingElements) — igual ao SDK.
-async function commitPatch(path, fields, maskPaths, historyEvent, token) {
-  const name = `projects/${PROJECT_ID}/databases/(default)/documents/${path}`;
-  const write = { update: { name, fields }, currentDocument: { exists: true } };
+function writePatch(path, fields, maskPaths, historyEvent) {
+  const write = { update: { name: `${RAIZ}/${path}`, fields }, currentDocument: { exists: true } };
   if (maskPaths && maskPaths.length) write.updateMask = { fieldPaths: maskPaths };
   if (historyEvent) write.updateTransforms = [{ fieldPath: 'historico', appendMissingElements: { values: [historyEvent] } }];
-  return commitWrite(write, token);
+  return write;
+}
+// Merge (cria se não existir) — só os campos do mask.
+function writeMerge(path, fields, maskPaths) {
+  return { update: { name: `${RAIZ}/${path}`, fields }, updateMask: { fieldPaths: maskPaths } };
 }
 // Cria doc num id definido; falha se já existir.
-async function commitCreate(path, fields, token) {
-  const name = `projects/${PROJECT_ID}/databases/(default)/documents/${path}`;
-  return commitWrite({ update: { name, fields }, currentDocument: { exists: false } }, token);
+function writeCreate(path, fields) {
+  return { update: { name: `${RAIZ}/${path}`, fields }, currentDocument: { exists: false } };
 }
 
-// ---- Auxiliares (nome do usuário + auditoria append-only) -------------------
-async function nomeDoUsuario(user) {
-  try { const p = await docGet('usuarios/' + user.uid, user.token); return (p && p.nome) || user.email || 'Sistema'; }
-  catch { return user.email || 'Sistema'; }
+// ---- Auditoria (#11) ----------------------------------------------------------
+// Perfil do chamador (nome exato do cadastro — conferido pelas rules do log).
+async function perfilDe(user) {
+  try { return (await docGet('usuarios/' + user.uid, user.token)) || {}; } catch { return {}; }
 }
-async function logAudit(user, nome, acao, alvo, detalhes) {
-  try {
-    await createDoc('logs', encFields({
-      ts: Date.now(), uid: user.uid, nome: nome || user.email || 'Sistema', email: user.email || '',
-      acao: String(acao || '').slice(0, 120), alvo: String(alvo || '').slice(0, 160), detalhes: String(detalhes || '').slice(0, 1000),
-    }), user.token);
-  } catch { /* auditoria best-effort */ }
+async function nomeDoUsuario(user) {
+  const p = await perfilDe(user);
+  return p.nome || user.email || 'Sistema';
+}
+const idAleatorio = () => crypto.randomBytes(15).toString('base64url').slice(0, 20);
+// Write do log, para entrar no MESMO commit da operação.
+function writeLog(user, perfil, acao, alvo, detalhes) {
+  return writeCreate('logs/' + idAleatorio(), encFields({
+    ts: Date.now(), uid: user.uid, nome: (perfil && perfil.nome) || '', email: user.email || '',
+    acao: String(acao || '').slice(0, 120), alvo: String(alvo || '').slice(0, 160),
+    detalhes: String(detalhes || '').slice(0, 1000),
+  }));
+}
+// Operação + log em transação única.
+async function commitComLog(user, writes, acao, alvo, detalhes) {
+  const perfil = await perfilDe(user);
+  return commitWrites([...writes, writeLog(user, perfil, acao, alvo, detalhes)], user.token);
 }
 
 module.exports = {
   BASE, val, unwrap, enc, encFields,
-  docGet, docGetRaw, patchDoc, createDoc, commitPatch, commitCreate,
-  nomeDoUsuario, logAudit,
+  docGet, docGetRaw, commitWrites, writePatch, writeMerge, writeCreate,
+  perfilDe, nomeDoUsuario, writeLog, commitComLog, idAleatorio,
 };

@@ -109,7 +109,7 @@ A **consulta à fila** e o **relatório em PDF** são **públicos** — não exi
 
 ## 5. Fluxo 2 — Consultar a fila (aba Chamados)
 
-A aba **Chamados** (recorte **Fila e atendimento**) lista todas as demandas de obras e serviços, com campus, objeto, status, índice GUT, prioridade e data de atualização. *(Sem login, a fila mostra só as demandas; **autenticado**, você também vê os **chamados em atendimento** da sua unidade, agrupados com as demandas do mesmo status e marcados com a etiqueta CHAMADO. Chamados recém-abertos ou em triagem ficam no menu **Chamados** até a SENG concluir a triagem.)*
+A aba **Chamados** (recorte **Fila e atendimento**) lista todas as demandas de obras e serviços, com campus, objeto, status, índice GUT, prioridade e data de atualização. *(Sem login, a fila mostra só as demandas, em **ficha resumida** — objeto, campus, status/fase, prioridade e datas; descrição, documentos e linha do tempo exigem login. **Autenticado**, você vê o detalhe completo das demandas da sua unidade e também os **chamados em atendimento** dela, agrupados com as demandas do mesmo status e marcados com a etiqueta CHAMADO. Chamados recém-abertos ou em triagem ficam no menu **Chamados** até a SENG concluir a triagem.)*
 
 @fig campus-fila
 
@@ -139,6 +139,7 @@ Este é o fluxo mais importante para o campus. O formulário é **curto e direto
 | **Localização** | Onde ocorre: bloco, pavimento, sala. |
 | **Urgência** | *Baixa / Média / Alta / Emergencial (risco iminente)*. É só a **percepção inicial** — a SENG confirma na triagem. |
 | **Descrição *** | O problema, onde ocorre e o resultado esperado. Quanto melhor descrito, mais rápida a triagem. |
+| **Em nome de (opcional)** | Use quando estiver registrando o pedido **por outra pessoa** (ex.: *Maria Silva, coordenadora do NAPNE*). O chamado continua registrado **em seu nome, como autor** — o campo apenas identifica quem originou o pedido. |
 
 4. Clique em **Abrir chamado**.
 5. O chamado é criado com status **Aberto** e recebe um identificador automático no padrão `CH + ANO + SIGLA DO CAMPUS + SEQUENCIAL` (ex.: `CH2026CSCII001`). Você é levado direto à página do chamado, onde pode **anexar fotos** (Fluxo 4).
@@ -262,7 +263,7 @@ Confira o e-mail institucional e a senha. Persistindo, peça a redefinição à 
 Ele aparece após o login. Sem login, você só consulta a fila pública.
 
 **Posso anexar fotos?**
-Sim — na página do chamado, cartão **Anexos** (imagens ou PDF, até 10 MB). Você pode anexar enquanto o chamado está aberto, em triagem ou em diligência.
+Sim — na página do chamado, cartão **Anexos** (imagens ou PDF, até 10 MB cada, **no máximo 5 arquivos por envio**). Cada anexo fica registrado em nome de quem o enviou; você pode remover os que **você** enviou. Você pode anexar enquanto o chamado está aberto, em triagem ou em diligência.
 
 **Meu chamado sumiu / virou outro número.**
 Se a SENG o converteu em obra, ele passou a ser uma **Demanda** (número no padrão `2026...`) na fila pública; a página do chamado traz o link.

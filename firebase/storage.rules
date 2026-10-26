@@ -1,64 +1,91 @@
 rules_version = '2';
 // =============================================================================
-// SENG Demandas — Security Rules (Cloud Storage) — anexos de chamados — v2
-// Publicar: npx -y firebase-tools@latest deploy --only storage --project cpii-seng
+// Portal da Engenharia (cpii-seng) — Security Rules (Cloud Storage) — v3 (v1.31)
+// Publicar: firebase deploy --only storage --project cpii-seng
 //
-// ISOLAMENTO POR PAPEL/CAMPUS VIA CUSTOM CLAIMS (hardening do ADR-002):
-//   As claims (role/campi) são copiadas de /usuarios/{uid} para o ID token pela
-//   camada de API (POST /api/claims/self|sync — service account dedicada, papel
-//   somente "Firebase Authentication Admin"). Aqui as regras leem
-//   request.auth.token — SEM cross-service, que não funciona entre o bucket
-//   (us-central1) e o Firestore (southamerica-east1); testado em 07/07/2026.
-//
-//   ⚠️ ORDEM DE ATIVAÇÃO (ver docs/ADR-002-chamados.md): publicar estas regras
-//   somente APÓS configurar FB_SA_JSON no SWA e os usuários renovarem o token
-//   (o app sincroniza e renova sozinho no login). Token sem claims = negado.
-//
-// Controles mantidos: base de usuários fechada; restrito ao prefixo chamados/;
-// apenas imagem comum/PDF até 10 MB; descoberta dos arquivos controlada no
-// Firestore (lista `anexos` no doc do chamado); URLs de download tokenizadas.
+// v1.31 (auditoria Codex #8/#9): as regras passam a consultar o FIRESTORE
+// (cross-service, papel roles/firebaserules.firestoreServiceAgent concedido ao
+// agente do Storage em 26/10/2026 — ver docs/ADR-002-chamados.md):
+//   • #9 o perfil é lido AO VIVO em /usuarios/{uid} — desativar ou mudar o
+//     papel vale na hora (fim da janela de ~1 h das custom claims);
+//   • #8 o anexo só é gravado em registro EXISTENTE, do campus do caminho, e
+//     no estado em que a interface permite (chamado do campus: aberto,
+//     triagem ou diligência; demanda: qualquer estado fora do arquivo morto);
+//   • sem sobrescrita (cada envio tem nome único); o campus só remove o que ele
+//     mesmo enviou (metadado `uid` gravado no envio); a SENG técnica remove tudo.
+// Tipos: imagem comum ou PDF, até 10 MB.
 // =============================================================================
 service firebase.storage {
   match /b/{bucket}/o {
-    function role() { return request.auth != null ? request.auth.token.get('role', '') : ''; }
-    function meusCampi() { return request.auth != null ? request.auth.token.get('campi', []) : []; }
-    // Espelham as rules do Firestore: interno (inclui CODIR) lê tudo; anexa e
-    // remove a SENG (eng/chefe/admin) ou o campus dono; CODIR lê, não anexa.
-    function isInterno() { return role() in ['engenharia', 'chefe', 'codir', 'admin', 'estagiario', 'administrativo']; }
-    function isSeng() { return role() in ['engenharia', 'chefe', 'admin']; }
-    // Apoio (v1.27): anexa como a equipe; a remoção segue restrita à SENG técnica.
-    function isEquipe() { return role() in ['engenharia', 'chefe', 'admin', 'estagiario', 'administrativo']; }
-    function isCampusDe(c) { return role() == 'campus' && c in meusCampi(); }
+    function perfil() {
+      return firestore.get(/databases/(default)/documents/usuarios/$(request.auth.uid)).data;
+    }
+    function papel() {
+      return request.auth == null ? ''
+        : (perfil().get('ativo', true) == false ? '' : perfil().get('role', ''));
+    }
+    function campiDoPerfil() {
+      return perfil().get('campi', []).concat([perfil().get('campus', '')]);
+    }
+    function isInterno() { return papel() in ['engenharia', 'chefe', 'codir', 'admin', 'estagiario', 'administrativo']; }
+    function isSeng() { return papel() in ['engenharia', 'chefe', 'admin']; }
+    function isEquipe() { return papel() in ['engenharia', 'chefe', 'admin', 'estagiario', 'administrativo']; }
+    function isCampusDe(c) { return papel() == 'campus' && c in campiDoPerfil(); }
     function tipoOk() {
       return request.resource.contentType.matches('image/(jpeg|png|webp|heic|heif)')
           || request.resource.contentType == 'application/pdf';
     }
+    function envioOk() {
+      return request.resource.size < 10 * 1024 * 1024 && tipoOk()
+          && request.resource.metadata != null
+          && request.resource.metadata.get('uid', '') == request.auth.uid;
+    }
+    function registro(col, id) {
+      return firestore.get(/databases/(default)/documents/$(col)/$(id)).data;
+    }
+    function enviadoPorMim() {
+      return resource.metadata != null && resource.metadata.get('uid', '') == request.auth.uid;
+    }
+
     // anexos de chamados: chamados/{campus}/{chamadoId}/{arquivo}
     match /chamados/{campus}/{chamadoId}/{arquivo} {
-      allow read:           if isInterno() || isCampusDe(campus);
-      allow create, update: if (isEquipe() || isCampusDe(campus))
-                            && request.resource.size < 10 * 1024 * 1024
-                            && tipoOk();
-      allow delete:         if isSeng() || isCampusDe(campus);
+      allow read:   if isInterno() || isCampusDe(campus);
+      allow create: if envioOk()
+                    && registro('chamados', chamadoId).get('campus', '') == campus
+                    && (isEquipe()
+                        || (isCampusDe(campus)
+                            && registro('chamados', chamadoId).get('status', '') in ['aberto', 'triagem', 'diligencia']));
+      allow update: if false;
+      allow delete: if isSeng()
+                    || (isCampusDe(campus) && enviadoPorMim()
+                        && registro('chamados', chamadoId).get('status', '') in ['aberto', 'triagem', 'diligencia']);
     }
-    // anexos de demandas (unificação dos workflows): demandas/{campus}/{demandaId}/{arquivo}
+    // anexos de demandas: demandas/{campus}/{demandaId}/{arquivo}
     match /demandas/{campus}/{demandaId}/{arquivo} {
-      allow read:           if isInterno() || isCampusDe(campus);
-      allow create, update: if (isEquipe() || isCampusDe(campus))
-                            && request.resource.size < 10 * 1024 * 1024
-                            && tipoOk();
-      allow delete:         if isSeng() || isCampusDe(campus);
+      allow read:   if isInterno() || isCampusDe(campus);
+      allow create: if envioOk()
+                    && registro('demandas', demandaId).get('campus', '') == campus
+                    && registro('demandas', demandaId).get('status', '') != 'excluido'
+                    && (isEquipe() || isCampusDe(campus));
+      allow update: if false;
+      allow delete: if isSeng() || (isCampusDe(campus) && enviadoPorMim());
     }
     // Fotos de perfil (Meu espaço v1.20): perfis/{uid}.jpg — gravável só pelo
-    // próprio usuário; leitura por qualquer autenticado (exibição interna).
+    // próprio usuário ativo; leitura por perfis ativos (exibição interna).
     match /perfis/{arquivo} {
-      allow read:           if request.auth != null;
-      allow create, update: if request.auth != null
+      allow read:           if papel() != '';
+      allow create, update: if papel() != ''
                             && arquivo == request.auth.uid + '.jpg'
                             && request.resource.contentType == 'image/jpeg'
                             && request.resource.size < 300 * 1024;
-      allow delete:         if request.auth != null
-                            && (arquivo == request.auth.uid + '.jpg' || role() == 'admin');
+      allow delete:         if papel() != ''
+                            && (arquivo == request.auth.uid + '.jpg' || papel() == 'admin');
+    }
+    // Diagnóstico da integração Storage↔Firestore (sem dados): leitura de um
+    // objeto inexistente responde 404 se a consulta cross-service funcionar e
+    // 403 se falhar. Mantido para verificação após mudanças de IAM/região.
+    match /diag/crossservice {
+      allow read: if firestore.exists(/databases/(default)/documents/config/params);
     }
     // Tudo o mais: negado.
     match /{allPaths=**} { allow read, write: if false; }

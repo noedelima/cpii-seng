@@ -75,12 +75,13 @@ export function renderAnexosCard(cfg) {
 
   const adicionar = async (files, btn) => {
     if (enviando) { toast('Aguarde — já há um envio em andamento.'); return; }
-    const validos = files.filter(f => {
+    let validos = files.filter(f => {
       if ((f.size || 0) > 10 * 1048576) { toast(`${f.name}: acima de 10 MB.`, 'erro'); return false; }
       if (!tipoAnexoOk(f.type)) { toast(`${f.name}: use imagem (JPG/PNG/WebP) ou PDF.`, 'erro'); return false; }
       return true;
     });
     if (!validos.length) return;
+    if (validos.length > 5) { toast('Envie no máximo 5 arquivos por vez — os 5 primeiros foram mantidos.'); validos = validos.slice(0, 5); }
     const metas = await pedirMetaAnexos(validos);
     if (!metas) return;
     enviando = true;

@@ -1,19 +1,18 @@
 // =============================================================================
-// LDAP "simple bind" mínimo — ZERO dependências (BER/ASN.1 artesanal + net/tls
-// nativos). Suficiente para AUTENTICAR (bind) contra Active Directory / OpenLDAP;
+// LDAP "simple bind" mínimo — ZERO dependências (BER/ASN.1 artesanal + tls
+// nativo). Suficiente para AUTENTICAR (bind) contra Active Directory / OpenLDAP;
 // não faz busca nem leitura de atributos. Base da futura autenticação
-// Matrícula/Senha de rede do CPII (ADR-003) — dormente até LDAP_URL ser
+// Matrícula/Senha de rede do CPII (ADR-003) — DORMENTE até LDAP_URL ser
 // configurada no SWA pela DTI.
 //
-//   await ldapBind('ldaps://ad.cp2.g12.br:636', '3304702@cp2.g12.br', 'senha')
-//     → resolve { ok: true } (credencial válida)
-//     → resolve { ok: false, codigo, mensagem } (credencial inválida — código 49)
-//     → rejeita (erro de rede/servidor)
+// v1.31 (auditoria #7): FALHA FECHADA para qualquer transporte sem TLS. Só
+// `ldaps://` é aceito (o simple bind envia a senha em claro dentro do canal);
+// certificado validado normalmente (rejectUnauthorized), TLS ≥ 1.2. Não há
+// opção de desligar a validação.
 //
-// BindRequest (RFC 4511): SEQUENCE { messageID(1), [APPLICATION 0] {
-//   version(3), name OCTET STRING, [CONTEXT 0] senha } }
+//   await ldapBind('ldaps://ad.cp2.g12.br:636', '3304702@cp2.g12.br', 'senha')
+//     → resolve { ok: true } | { ok: false, codigo } ; rejeita em erro de rede
 // =============================================================================
-const net = require('net');
 const tls = require('tls');
 
 // ---- BER (encode) -----------------------------------------------------------
@@ -24,66 +23,73 @@ function berLen(n) {
   return Buffer.from([0x80 | bytes.length, ...bytes]);
 }
 const berTLV = (tag, valor) => Buffer.concat([Buffer.from([tag]), berLen(valor.length), valor]);
-const berInt = (n) => berTLV(0x02, Buffer.from([n]));            // inteiros pequenos (1/3)
+const berInt = (n) => berTLV(0x02, Buffer.from([n]));
 const berStr = (s) => berTLV(0x04, Buffer.from(String(s), 'utf8'));
 
 function bindRequest(dn, senha) {
-  const op = berTLV(0x60, Buffer.concat([                        // [APPLICATION 0]
-    berInt(3),                                                   // version 3
+  const op = berTLV(0x60, Buffer.concat([
+    berInt(3),
     berStr(dn),
-    berTLV(0x80, Buffer.from(String(senha), 'utf8')),            // [0] simple
+    berTLV(0x80, Buffer.from(String(senha), 'utf8')),
   ]));
-  return berTLV(0x30, Buffer.concat([berInt(1), op]));           // { messageID=1, op }
+  return berTLV(0x30, Buffer.concat([berInt(1), op]));
 }
 
 // ---- BER (decode do BindResponse) ------------------------------------------
 function lerTLV(buf, off) {
+  if (off + 2 > buf.length) throw new Error('incompleto');
   const tag = buf[off];
   let len = buf[off + 1], ini = off + 2;
   if (len & 0x80) {
     const n = len & 0x7f; len = 0;
+    if (n > 4 || ini + n > buf.length) throw new Error('incompleto');
     for (let i = 0; i < n; i++) len = (len << 8) | buf[ini + i];
     ini += n;
   }
+  if (ini + len > buf.length) throw new Error('incompleto');
   return { tag, len, ini, fim: ini + len };
 }
 function parseBindResponse(buf) {
-  const seq = lerTLV(buf, 0);                       // SEQUENCE
-  const msgId = lerTLV(buf, seq.ini);               // messageID
-  const op = lerTLV(buf, msgId.fim);                // [APPLICATION 1] BindResponse
-  if (op.tag !== 0x61) throw new Error('resposta LDAP inesperada (tag 0x' + op.tag.toString(16) + ')');
-  const cod = lerTLV(buf, op.ini);                  // resultCode (ENUMERATED)
-  const codigo = buf[cod.ini];
-  const dn = lerTLV(buf, cod.fim);                  // matchedDN
-  const msg = lerTLV(buf, dn.fim);                  // diagnosticMessage
-  const mensagem = buf.slice(msg.ini, msg.fim).toString('utf8');
-  return { codigo, mensagem };
+  const seq = lerTLV(buf, 0);
+  const msgId = lerTLV(buf, seq.ini);
+  const op = lerTLV(buf, msgId.fim);
+  if (op.tag !== 0x61) throw new Error('resposta LDAP inesperada');
+  const cod = lerTLV(buf, op.ini);
+  return { codigo: buf[cod.ini] };
+}
+
+// Valida a URL: somente ldaps:// com host — qualquer outra coisa é recusada.
+function urlSegura(url) {
+  let u;
+  try { u = new URL(url); } catch { throw new Error('LDAP_URL inválida'); }
+  if (u.protocol !== 'ldaps:') throw new Error('LDAP_URL recusada: somente ldaps:// (TLS) é permitido');
+  if (!u.hostname) throw new Error('LDAP_URL sem host');
+  return u;
 }
 
 // ---- Bind -------------------------------------------------------------------
 function ldapBind(url, dn, senha, timeoutMs = 8000) {
   return new Promise((resolve, reject) => {
     let u;
-    try { u = new URL(url); } catch { return reject(new Error('LDAP_URL inválida')); }
-    if (!senha) return resolve({ ok: false, codigo: 49, mensagem: 'senha vazia (bind anônimo recusado)' });
-    const ldaps = u.protocol === 'ldaps:';
-    const porta = Number(u.port) || (ldaps ? 636 : 389);
-    const conectar = ldaps
-      ? (cb) => tls.connect({ host: u.hostname, port: porta, servername: u.hostname }, cb)
-      : (cb) => net.connect({ host: u.hostname, port: porta }, cb);
+    try { u = urlSegura(url); } catch (e) { return reject(e); }
+    if (!senha) return resolve({ ok: false, codigo: 49 });
+    const porta = Number(u.port) || 636;
 
     let socket, feito = false;
     const fim = (fn, v) => { if (!feito) { feito = true; try { socket.destroy(); } catch { } fn(v); } };
     const timer = setTimeout(() => fim(reject, new Error('LDAP: tempo esgotado')), timeoutMs);
 
-    socket = conectar(() => socket.write(bindRequest(dn, senha)));
+    socket = tls.connect({
+      host: u.hostname, port: porta, servername: u.hostname,
+      rejectUnauthorized: true, minVersion: 'TLSv1.2',
+    }, () => socket.write(bindRequest(dn, senha)));
     const partes = [];
     socket.on('data', (d) => {
       partes.push(d);
       try {
-        const { codigo, mensagem } = parseBindResponse(Buffer.concat(partes));
+        const { codigo } = parseBindResponse(Buffer.concat(partes));
         clearTimeout(timer);
-        fim(resolve, { ok: codigo === 0, codigo, mensagem });
+        fim(resolve, { ok: codigo === 0, codigo });
       } catch { /* resposta ainda incompleta — aguarda mais dados */ }
     });
     socket.on('error', (e) => { clearTimeout(timer); fim(reject, e); });
@@ -91,6 +97,9 @@ function ldapBind(url, dn, senha, timeoutMs = 8000) {
   });
 }
 
-const ldapDisponivel = () => !!process.env.LDAP_URL;
+// Disponível somente com URL ldaps:// válida — configuração insegura = dormente.
+const ldapDisponivel = () => {
+  try { return !!process.env.LDAP_URL && !!urlSegura(process.env.LDAP_URL); } catch { return false; }
+};
 
-module.exports = { ldapBind, ldapDisponivel };
+module.exports = { ldapBind, ldapDisponivel, urlSegura };
