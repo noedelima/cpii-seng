@@ -380,7 +380,12 @@ class DemoProvider {
   //     gestão (escrita) apenas pelo admin. Salvaguarda: sempre ≥1 admin. ------
   listUsuarios() { return ['admin', 'chefe'].includes(this.user?.role) ? this.db.usuarios.map(u => this._pub(u)) : []; }
   async salvarUsuario(u) {
-    if (this.user?.role !== 'admin') throw new Error('Apenas administradores gerenciam usuários.');
+    if (!['admin', 'chefe'].includes(this.user?.role)) throw new Error('Apenas administradores e a Chefia gerenciam usuários.');
+    if (this.user.role === 'chefe') {
+      const alvo = u.uid ? this.db.usuarios.find(x => x.uid === u.uid) : null;
+      if (u.role === 'admin' || alvo?.role === 'admin') throw new Error('Contas de administrador são geridas por um administrador.');
+      if (alvo && alvo.uid === this.user.uid && (u.role !== alvo.role || (u.ativo ?? true) !== (alvo.ativo ?? true))) throw new Error('Seu próprio perfil só pode ser alterado por um administrador.');
+    }
     const i = this.db.usuarios.findIndex(x => x.uid === u.uid);
     const existente = i >= 0 ? this.db.usuarios[i] : null;
     if (u.email && this.db.usuarios.some(x => x.uid !== u.uid && x.email.toLowerCase() === u.email.toLowerCase()))

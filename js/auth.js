@@ -14,7 +14,8 @@ const CAPS = {
   estagiario:     ['criar', 'complementar', 'verInterno'],
   administrativo: ['criar', 'complementar', 'verInterno'],
   chefe:      ['criar', 'complementar', 'verInterno', 'avaliar', 'statusBasico',
-               'statusTotal', 'alocar', 'excluir', 'profissionais', 'pontosManual', 'params'],
+               'statusTotal', 'alocar', 'excluir', 'profissionais', 'pontosManual', 'params',
+               'usuarios'],   // v2.0.2: gerencia usuários, exceto Administradores
   codir:      ['verInterno', 'codir', 'ajuste'],
   admin:      ['criar', 'complementar', 'verInterno', 'avaliar', 'statusBasico',
                'statusTotal', 'alocar', 'excluir', 'profissionais', 'pontosManual',

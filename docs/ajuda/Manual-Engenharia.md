@@ -24,7 +24,7 @@ Guia operacional completo para a equipe da Seção de Engenharia (perfis **Engen
 11. Fluxo 7 — Carga da equipe (art. 12)
 12. Fluxo 8 — Profissionais (cadastro e art. 13)
 13. Fluxo 9 — Parâmetros do sistema (Chefia)
-14. Fluxo 10 — Administração: usuários e log (Administrador)
+14. Fluxo 10 — Administração: usuários e log (Administrador e Chefia)
 15. Fluxo 11 — Módulo de Chamados (intake, triagem e desfechos)
 16. Apêndice A — Escalas GUT completas
 17. Apêndice B — Status e transições por perfil
@@ -312,9 +312,9 @@ Em **Administração**, o cartão **Parâmetros do sistema** controla o cálculo
 
 ---
 
-## 14. Fluxo 10 — Administração: usuários e log (Administrador)
+## 14. Fluxo 10 — Administração: usuários e log (Administrador e Chefia)
 
-**Perfil necessário: Administrador.** A página de **Administração** é organizada em **abas**: **Usuários**, **Parâmetros do sistema** e **Log de auditoria** — clique na aba desejada para alternar.
+**Perfil necessário: Administrador ou Chefe de Seção.** A **Chefia** gerencia os usuários (cadastrar, editar, desativar) — exceto contas de **Administrador**, que não pode criar, promover nem editar; também não altera o próprio perfil nem a própria situação. O **Log de auditoria** continua exclusivo do Administrador. A página de **Administração** é organizada em **abas**: **Usuários**, **Parâmetros do sistema** e **Log de auditoria** — clique na aba desejada para alternar.
 
 **Localizar usuários (v1.25).** A lista vem em **ordem alfabética** e tem **filtros**: busca por **nome, e-mail ou matrícula**, e seleções de **Perfil**, **Campus** e **Situação** (ativos/inativos) — combináveis; o botão **Limpar filtros** restaura a lista completa.
 

@@ -122,31 +122,36 @@ function secaoUsuarios(s, user, rerender) {
     inBusca, selFRole, selFCampus, selFSit,
     temFiltro ? el('button', { class: 'btn ghost sm', type: 'button', onclick: () => { filtroUsu = { busca: '', role: '', campus: '', situacao: '' }; rerender(); } }, 'Limpar filtros') : null);
 
+  const souAdmin = user.role === 'admin';
+  // v2.0.2: a Chefia não atribui o perfil Administrador.
+  const rolesDisponiveis = souAdmin ? ROLES : ROLES.filter(r => r.id !== 'admin');
   function abrirForm(u = {}) {
     const ehProprioAdmin = u.uid && u.uid === user.uid && u.role === 'admin';
     const ultimoAdmin = u.role === 'admin' && adminsAtivos.length <= 1;
     const travaAdmin = ehProprioAdmin || ultimoAdmin;
+    const travaProprio = !souAdmin && !!u.uid && u.uid === user.uid; // Chefia não altera o próprio perfil
     const inNome = el('input', { type: 'text', required: true, maxlength: 80, value: u.nome || '' });
     const inEmail = el('input', { type: 'email', required: true, maxlength: 120, value: u.email || '', ...(u.uid ? { disabled: true } : {}) });
     const inMatricula = el('input', { type: 'text', inputmode: 'numeric', pattern: '[0-9]{4,12}', maxlength: 12, value: u.matricula || '', ...(u.uid ? {} : { required: true }), placeholder: 'Somente números' });
-    const selRole = select(ROLES, { value: u.role || '', required: true, ...(travaAdmin ? { disabled: true } : {}) });
+    const selRole = select(travaProprio ? ROLES : rolesDisponiveis, { value: u.role || '', required: true, ...((travaAdmin || travaProprio) ? { disabled: true } : {}) });
     const campiAtuais = u.campi && u.campi.length ? u.campi : (u.campus ? [u.campus] : []);
     const campiChecks = CAMPI.map(c => {
       const ck = el('input', { type: 'checkbox', value: c.id, ...(campiAtuais.includes(c.id) ? { checked: true } : {}) });
       return el('label', { class: 'chip-check' }, ck, ' ' + c.nome);
     });
-    const ckAtivo = el('input', { type: 'checkbox', ...((u.ativo ?? true) ? { checked: true } : {}), ...(travaAdmin ? { disabled: true } : {}) });
+    const ckAtivo = el('input', { type: 'checkbox', ...((u.ativo ?? true) ? { checked: true } : {}), ...((travaAdmin || travaProprio) ? { disabled: true } : {}) });
     const inSenha = !u.uid ? el('input', { type: 'text', value: '', minlength: 6, maxlength: 40, required: true, placeholder: 'Mínimo 6 caracteres' }) : null;
 
     formWrap.replaceChildren(el('section', { class: 'card' },
       el('h2', {}, u.uid ? `Editar — ${u.nome}` : 'Novo usuário'),
       !u.uid ? el('p', { class: 'nota' }, 'A credencial é criada aqui mesmo. Informe a senha inicial à pessoa, que poderá trocá-la em "Minha conta" (nome no topo da página).') : null,
+      travaProprio ? el('p', { class: 'nota' }, 'Seu próprio perfil e sua situação só podem ser alterados por um administrador.') : null,
       travaAdmin ? el('p', { class: 'nota' }, ehProprioAdmin
         ? 'Você não pode revogar o próprio perfil de administrador — somente outro administrador pode fazê-lo.'
         : 'Único administrador ativo: cadastre outro administrador antes de alterar este perfil.') : null,
       el('form', { class: 'form-grid', onsubmit: async (e) => {
         e.preventDefault();
-        const papel = travaAdmin ? 'admin' : selRole.value;
+        const papel = travaAdmin ? 'admin' : (travaProprio ? u.role : selRole.value);
         const campiSel = campiChecks.map(l => l.querySelector('input')).filter(c => c.checked).map(c => c.value);
         try {
           const mat = inMatricula.value.trim();
@@ -158,7 +163,7 @@ function secaoUsuarios(s, user, rerender) {
             role: papel,
             campi: papel === 'campus' ? campiSel : [],
             campus: papel === 'campus' ? (campiSel[0] || null) : null,
-            ativo: travaAdmin ? true : ckAtivo.checked,
+            ativo: travaAdmin ? true : (travaProprio ? (u.ativo ?? true) : ckAtivo.checked),
             ...(inSenha ? { senha: inSenha.value } : {}),
           });
           toast('Usuário salvo.');
@@ -190,7 +195,9 @@ function secaoUsuarios(s, user, rerender) {
         el('td', {}, roleNome(u.role)),
         el('td', {}, campiDe(u).length ? campiDe(u).map(campusNome).join(', ') : '—'),
         el('td', {}, u.ativo === false ? 'Inativo' : 'Ativo'),
-        el('td', {}, el('button', { class: 'btn ghost sm', onclick: () => abrirForm(u) }, 'Editar'))))
+        el('td', {}, (!souAdmin && u.role === 'admin')
+          ? el('span', { class: 'sub', title: 'Contas de administrador são geridas por um administrador.' }, 'Somente admin')
+          : el('button', { class: 'btn ghost sm', onclick: () => abrirForm(u) }, 'Editar'))))
         : el('tr', {}, el('td', { colspan: 7, class: 'vazio' }, 'Nenhum usuário com esses filtros.')))))),
     formWrap);
 }

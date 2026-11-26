@@ -469,19 +469,29 @@ service cloud.firestore {
       return !('matricula' in d) || d.matricula == null
           || (d.matricula is string && d.matricula.matches('[0-9]{4,12}'));
     }
+    // v2.0.2: o Chefe de Seção também gerencia usuários — exceto Administradores
+    // (não cria/promove admin, não edita conta de admin) e sem alterar o próprio
+    // perfil/situação. Exclusão continua só com o Admin.
+    function usuarioValido(d) {
+      return d.role in ['campus','engenharia','estagiario','administrativo','chefe','codir','admin']
+        && d.nome is string && d.nome.size() <= 80
+        && matriculaValida(d);
+    }
+    function isSoChefe() { return ativo() && role() == 'chefe'; }
     match /usuarios/{uid} {
       allow read: if isChefe() || (signedIn() && request.auth.uid == uid);
-      allow create: if isAdmin()
-        && request.resource.data.role in ['campus','engenharia','estagiario','administrativo','chefe','codir','admin']
-        && request.resource.data.nome is string && request.resource.data.nome.size() <= 80
-        && matriculaValida(request.resource.data);
-      allow update: if isAdmin()
-        && request.resource.data.role in ['campus','engenharia','estagiario','administrativo','chefe','codir','admin']
-        && request.resource.data.nome is string && request.resource.data.nome.size() <= 80
-        && matriculaValida(request.resource.data)
-        && ( resource.data.role != 'admin'
-          || (request.resource.data.role == 'admin' && request.resource.data.get('ativo', true) != false)
-          || request.auth.uid != uid );
+      allow create: if usuarioValido(request.resource.data)
+        && (isAdmin() || (isSoChefe() && request.resource.data.role != 'admin'));
+      allow update: if usuarioValido(request.resource.data)
+        && ( (isAdmin()
+              && ( resource.data.role != 'admin'
+                || (request.resource.data.role == 'admin' && request.resource.data.get('ativo', true) != false)
+                || request.auth.uid != uid ))
+          || (isSoChefe()
+              && resource.data.role != 'admin' && request.resource.data.role != 'admin'
+              && (request.auth.uid != uid
+                  || (request.resource.data.role == resource.data.role
+                      && request.resource.data.get('ativo', true) == resource.data.get('ativo', true)))) );
       allow delete: if isAdmin() && resource.data.role != 'admin';
     }
 

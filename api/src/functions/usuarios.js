@@ -21,8 +21,9 @@ app.http('criarCredencial', {
   handler: withAuth(async ({ request, user }) => {
     if (!claimsDisponiveis()) return json(501, { error: 'Service account (FB_SA_JSON) não configurada.' });
     const chamador = await perfilDe(user);
-    if (chamador.role !== 'admin' || chamador.ativo === false)
-      return json(403, { error: 'Somente administradores criam credenciais.' });
+    // v2.0.2: Administrador ou Chefe de Seção (o perfil gravado depois passa pelas rules).
+    if (!['admin', 'chefe'].includes(chamador.role) || chamador.ativo === false)
+      return json(403, { error: 'Somente administradores e a Chefia criam credenciais.' });
 
     const body = await request.json().catch(() => ({}));
     const email = String((body && body.email) || '').trim().toLowerCase();

@@ -48,7 +48,7 @@ app.http('claimsSync', {
     const uid = body && body.uid;
     if (!uid || typeof uid !== 'string') return json(400, { error: 'uid obrigatório' });
     const chamador = await docGet('usuarios/' + user.uid, user.token);
-    if (!chamador || chamador.role !== 'admin' || chamador.ativo === false)
+    if (!chamador || !['admin', 'chefe'].includes(chamador.role) || chamador.ativo === false)
       return json(403, { error: 'somente administradores' });
     const perfil = await docGet('usuarios/' + uid, user.token); // admin lê qualquer usuário (rules)
     if (!perfil) return json(404, { error: 'usuário sem perfil em /usuarios' });
