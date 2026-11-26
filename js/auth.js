@@ -79,6 +79,14 @@ export function podeExcluir(user, demanda) {
   // v2.0: demanda vinda de chamado não vai ao arquivo morto — devolve-se ao chamado.
   return can(user, 'excluir') && !travada(demanda) && !demanda?.statusChamado;
 }
+// v2.0.1: demanda cadastrada direto (sem fase de chamado) → chamado em triagem,
+// no mesmo registro. Chefia/Admin. Espelha conversaoOk() das rules.
+export function podeConverterEmChamado(user, d) {
+  if (!user || !d || d.trilha !== 'demanda' || d.statusChamado) return false;
+  if (!['chefe', 'admin'].includes(user.role)) return false;
+  return ['recebido', 'analise', 'diligencia', 'codir', 'fila', 'suspenso', 'nao-enquadrado', 'cancelado'].includes(d.status)
+    || (d.status === 'atendimento' && (!d.fase || d.fase === 'planejamento'));
+}
 // v2.0 (ADR-004): devolução da demanda ao chamado (mesmo registro). Chefia/Admin
 // até o planejamento; CODIR na deliberação. Espelha devolucaoOk() das rules.
 export function podeDevolver(user, d) {

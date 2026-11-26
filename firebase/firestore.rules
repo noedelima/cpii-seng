@@ -167,8 +167,10 @@ service cloud.firestore {
       return d.campus == a.campus
           && d.get('ano', null) == a.get('ano', null) && d.get('seq', null) == a.get('seq', null)
           && d.get('refs', null) == a.get('refs', null)
-          && d.get('autor', null) == a.get('autor', null)
-          && d.get('aberturaEm', null) == a.get('aberturaEm', null);
+          // autor/abertura: imutáveis depois de definidos (a conversão de demanda
+          // cadastrada direto define-os uma única vez — ver conversaoOk)
+          && (a.get('autor', null) == null || d.get('autor', null) == a.get('autor', null))
+          && (a.get('aberturaEm', null) == null || d.get('aberturaEm', null) == a.get('aberturaEm', null));
     }
 
     // ---------- fase CHAMADO ----------------------------------------------------
@@ -338,6 +340,26 @@ service cloud.firestore {
           || (isCodir() && a.status in ['codir', 'fila']) );
     }
 
+    // ---------- CONVERSÃO (demanda cadastrada direto → chamado) — v2.0.1 ---------------
+    // Demandas anteriores à porta única (sem fase de chamado) ganham a fase de
+    // chamado no MESMO registro, em triagem. Chefia/Admin; até o planejamento ou
+    // a partir de "Não enquadrado"/"Cancelado". Motivo obrigatório.
+    function conversaoOk() {
+      let a = resource.data;
+      let d = request.resource.data;
+      return isChefe()
+        && a.get('statusChamado', null) == null
+        && (a.status in ['recebido', 'analise', 'diligencia', 'codir', 'fila', 'suspenso', 'nao-enquadrado', 'cancelado']
+            || (a.status == 'atendimento' && a.get('fase', null) in [null, 'planejamento']))
+        && d.trilha == 'chamado' && d.statusChamado == 'triagem' && d.status == 'devolvido'
+        && d.get('devolucao', null) is map && d.devolucao.get('motivo', '').size() >= 3
+        && d.autor is map && d.autor.keys().hasOnly(['nome', 'email', 'uid'])
+        && horaPlausivel(d.aberturaEm)
+        && d.prazoLimite is int && d.prazoLimite > d.aberturaEm && d.prazoLimite <= d.aberturaEm + 7776000000
+        && d.diff(a).affectedKeys().hasOnly(['trilha', 'statusChamado', 'status', 'statusAnterior', 'devolucao',
+             'desfecho', 'assunto', 'categoria', 'urgencia', 'autor', 'aberturaEm', 'prazoLimite', 'historico', 'atualizadoEm']);
+    }
+
     // ---------- ENTRADAS (registro único) --------------------------------------------
     match /entradas/{id} {
       allow read: if isInterno() || isApoio()
@@ -351,7 +373,8 @@ service cloud.firestore {
         && listasIntegras(id)
         && (resource.data.trilha == 'chamado'
               ? (request.resource.data.trilha == 'chamado' ? atualizaChamado() : escaladaOk())
-              : (request.resource.data.trilha == 'demanda' ? atualizaDemanda() : devolucaoOk()));
+              : (request.resource.data.trilha == 'demanda' ? atualizaDemanda()
+                 : (resource.data.get('statusChamado', null) == null ? conversaoOk() : devolucaoOk())));
       allow delete: if isChefe() && !travada();
     }
 

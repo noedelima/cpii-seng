@@ -8,7 +8,8 @@ import { ehApoio, faseCurtaDe } from '../config.js';
 import { renderStepper } from '../stepper.js';
 import { prioridade, pontosArt11, faixaValorLabel, cargaProfissionais, fiscaisDe } from '../calc.js';
 import { store } from '../store.js';
-import { can, podeAvaliar, podeExcluir, podeComplementar, podeDeliberarCodir, transicoesPermitidas, travada, ehReversaoStatus, podeEditarDados, ehCampusDe, podeDevolver } from '../auth.js';
+import { can, podeAvaliar, podeExcluir, podeComplementar, podeDeliberarCodir, transicoesPermitidas, travada, ehReversaoStatus, podeEditarDados, ehCampusDe, podeDevolver, podeConverterEmChamado } from '../auth.js';
+import { CATEGORIAS_CHAMADO } from '../config.js';
 import { notificar } from '../notificacoes.js';
 import { renderAnexosCard } from '../anexos.js';
 import { renderLinhaTempo } from '../timeline.js';
@@ -538,11 +539,35 @@ export function viewDemanda(rerender, id) {
   if (devolvida) {
     const dv = d.devolucao || {};
     cartaoDevolucao = el('section', { class: 'card aviso-travada' },
-      el('h2', {}, 'Devolvida ao chamado'),
+      el('h2', {}, dv.tipo === 'conversao' ? 'Convertida em chamado' : 'Devolvida ao chamado'),
       el('p', {}, `Em ${fmtDataHora(dv.em)}${dv.por ? ' por ' + dv.por : ''}${dv.papel === 'codir' ? ' (CODIR)' : ''}. O tratamento segue no chamado `,
         el('a', { class: 'link', href: `#/chamado/${d.id}` }, d.id), '.'),
       dv.motivo ? el('p', { class: 'ch-descricao' }, dv.motivo) : null,
       el('p', { class: 'sub' }, 'A avaliação, a deliberação anterior e todo o histórico ficam preservados. Se o chamado for escalado de novo, volta à análise com nova deliberação do CODIR.'));
+  } else if (podeConverterEmChamado(user, d)) {
+    // v2.0.1: demanda cadastrada direto (sem fase de chamado) → chamado em triagem.
+    const selCat = select(CATEGORIAS_CHAMADO.map(c => ({ id: c.id, nome: c.nome })), { placeholder: 'Selecione a categoria' });
+    const txMot = el('textarea', { rows: 3, maxlength: 1000, placeholder: 'Motivo da conversão (obrigatório)' });
+    cartaoDevolucao = el('section', { class: 'card' },
+      el('h2', {}, 'Converter em chamado'),
+      el('p', { class: 'sub' }, 'Para demandas cadastradas diretamente que devem ser tratadas como chamado (consultoria, laudo, orientação, encaminhamento). O registro mantém número, histórico, comentários e anexos e passa à triagem do chamado.'),
+      el('label', { class: 'campo' }, el('span', { class: 'campo-label' }, 'Categoria do chamado'), selCat),
+      el('label', { class: 'campo' }, el('span', { class: 'campo-label' }, 'Motivo'), txMot),
+      el('div', { class: 'form-acoes' }, el('button', { class: 'btn ghost', onclick: async () => {
+        const motivo = txMot.value.trim();
+        if (!selCat.value) { toast('Selecione a categoria do chamado.', 'erro'); return; }
+        if (motivo.length < 3) { toast('Informe o motivo da conversão.', 'erro'); return; }
+        const ok = await confirmar('Converter em chamado?',
+          `O registro ${d.id} passa à triagem do chamado, com o mesmo número, histórico, comentários e anexos. A fase de demanda fica registrada como “Convertida em chamado” e sai da fila.`,
+          { ok: 'Converter em chamado' });
+        if (!ok) return;
+        try {
+          const cat = CATEGORIAS_CHAMADO.find(c => c.id === selCat.value);
+          await s.converterEmChamado(d.id, { motivo, categoria: selCat.value, slaDias: cat ? cat.slaDias : 15 });
+          toast('Convertida em chamado — em triagem.');
+          location.hash = `#/chamado/${d.id}`;
+        } catch (err) { toast(err.message || 'Falha ao converter.', 'erro'); }
+      } }, 'Converter em chamado')));
   } else if (podeDevolver(user, d)) {
     const txMotivo = el('textarea', { rows: 3, maxlength: 1000, placeholder: 'Motivo da devolução (obrigatório)' });
     cartaoDevolucao = el('section', { class: 'card' },

@@ -563,6 +563,24 @@ export class FirebaseProvider {
     await this._log(reescalada ? 'Chamado reescalado' : 'Chamado escalado', id, classificacao.objeto || '');
     return { id, reescalada };
   }
+  // v2.0.1: demanda cadastrada direto → fase de chamado (triagem), mesmo registro.
+  async converterEmChamado(id, { motivo, categoria, slaDias = 15 }) {
+    if (apiLigada()) return api.converterEmChamado(id, motivo, categoria, slaDias);
+    const fs = this._F;
+    const e = this._entradas.find(x => x.id === id); if (!e) throw new Error('Registro não encontrado.');
+    const now = Date.now();
+    const sol = e.solicitante || {};
+    await fs.updateDoc(fs.doc(this.db, 'entradas', id), {
+      trilha: 'chamado', statusChamado: 'triagem', status: 'devolvido', statusAnterior: e.status, desfecho: null,
+      assunto: String(e.objeto || 'Solicitação').slice(0, 140), categoria, urgencia: e.emergencial ? 'emergencial' : 'media',
+      autor: { nome: sol.nome || this.user?.nome || '', email: sol.email || '', uid: '' },
+      aberturaEm: now, prazoLimite: now + Math.min(90, Math.max(1, slaDias)) * 86400000,
+      devolucao: { tipo: 'conversao', motivo: String(motivo || '').slice(0, 1000), por: this.user?.nome || '', papel: this.user?.role || '', em: now },
+      atualizadoEm: now,
+      historico: fs.arrayUnion({ ts: now, user: this.user?.nome || 'Sistema', acao: `Convertida em chamado (triagem) — ${motivo}`.slice(0, 300) }),
+    });
+    await this._log('Demanda convertida em chamado', id, motivo);
+  }
   // Devolução (demanda → chamado, MESMO registro): Chefia/Admin até o
   // planejamento; CODIR na deliberação (as rules conferem). Motivo obrigatório.
   async devolverDemanda(id, motivo) {

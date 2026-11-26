@@ -50,6 +50,43 @@ app.http('escalarEntrada', {
   }),
 });
 
+// POST /api/entradas/{id}/converter-em-chamado — v2.0.1: demanda cadastrada
+// direto (sem fase de chamado) ganha a fase de chamado em triagem. Chefia (rules).
+// body: { motivo, categoria, slaDias? }
+app.http('converterEmChamado', {
+  methods: ['POST'], authLevel: 'anonymous', route: 'entradas/{id}/converter-em-chamado',
+  handler: withAuth(async ({ request, user }) => {
+    const id = request.params.id; exigirId(id);
+    const body = await request.json().catch(() => ({}));
+    const motivo = String((body && body.motivo) || '').trim().slice(0, 1000);
+    const categoria = String((body && body.categoria) || '').trim().slice(0, 40);
+    const slaDias = Math.min(90, Math.max(1, Number(body && body.slaDias) || 15));
+    if (motivo.length < 3) throw new ErroPublico(400, 'Informe o motivo da conversão.');
+    if (!/^[a-z0-9-]{2,40}$/.test(categoria)) throw new ErroPublico(400, 'Informe a categoria do chamado.');
+    const e = await docGet('entradas/' + id, user.token);
+    if (!e) return json(404, { error: 'Registro não encontrado.' });
+    if (e.trilha !== 'demanda' || e.statusChamado)
+      return json(409, { error: 'Só demandas cadastradas diretamente (sem fase de chamado) podem ser convertidas.' });
+    const perfil = await perfilDe(user);
+    const now = Date.now();
+    const sol = e.solicitante || {};
+    const patch = {
+      trilha: 'chamado', statusChamado: 'triagem', status: 'devolvido', statusAnterior: e.status, desfecho: null,
+      assunto: String(e.objeto || 'Solicitação').slice(0, 140), categoria, urgencia: e.emergencial ? 'emergencial' : 'media',
+      autor: { nome: sol.nome || perfil.nome || '', email: sol.email || '', uid: '' },
+      aberturaEm: now, prazoLimite: now + slaDias * 86400000,
+      devolucao: { tipo: 'conversao', motivo, por: perfil.nome || user.email || '', papel: perfil.role || '', em: now },
+    };
+    const ev = enc({ ts: now, user: perfil.nome || user.email || 'Sistema', acao: `Convertida em chamado (triagem) — ${motivo}`.slice(0, 300) });
+    const fields = encFields(patch);
+    const mask = Object.keys(patch);
+    fields.atualizadoEm = enc(now); mask.push('atualizadoEm');
+    await commitComLog(user, [writePatch('entradas/' + id, fields, mask, ev)],
+      'Demanda convertida em chamado [via API]', id, motivo);
+    return json(200, { ok: true, id });
+  }),
+});
+
 // POST /api/entradas/{id}/devolver — demanda → chamado (mesmo registro).
 // body: { motivo: string }. Chefia/Admin até o planejamento; CODIR na deliberação (rules).
 app.http('devolverEntrada', {

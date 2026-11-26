@@ -8,7 +8,7 @@ export const APP = {
   orgao: 'Colégio Pedro II',
   setor: 'Seção de Engenharia — SENG/DECOF',
   portaria: 'Portaria nº 7503/REITORIA/CPII, de 24/11/2025',
-  versao: '2.0.0',
+  versao: '2.0.1',
 };
 
 // --- Parâmetros ajustáveis pelo Administrador (defaults) ---------------------
@@ -160,6 +160,9 @@ export const PROJETO_ORIGEM = [
 export const TRANSICOES_REVERSAO = {
   'atendimento': ['fila', 'codir', 'analise'],
   'concluido':   ['atendimento'],
+  // v2.0.1: encerramentos sem atendimento podem voltar à análise (correção).
+  'nao-enquadrado': ['analise'],
+  'cancelado':      ['analise'],
 };
 
 // Ordem de exibição no Painel — sequência operacional (workflow). Ativos primeiro;

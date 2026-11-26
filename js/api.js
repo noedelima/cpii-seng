@@ -38,6 +38,7 @@ export const api = {
   // v2.0 (ADR-004): transições de fase da entrada única
   escalar: (id, classificacao, parecer) => req('POST', '/entradas/' + encodeURIComponent(id) + '/escalar', { classificacao, parecer }),
   devolver: (id, motivo) => req('POST', '/entradas/' + encodeURIComponent(id) + '/devolver', { motivo }),
+  converterEmChamado: (id, motivo, categoria, slaDias) => req('POST', '/entradas/' + encodeURIComponent(id) + '/converter-em-chamado', { motivo, categoria, slaDias }),
   atualizarDemanda: (id, patch, evento) => req('PATCH', '/demandas/' + encodeURIComponent(id), { patch, evento }),
   arquivar: (id) => req('POST', '/demandas/' + encodeURIComponent(id) + '/arquivar'),
   resgatar: (id) => req('POST', '/demandas/' + encodeURIComponent(id) + '/resgatar'),

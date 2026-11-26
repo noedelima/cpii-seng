@@ -395,6 +395,10 @@ Nos desfechos **consultoria/laudo**, elabore a Nota Técnica no fluxo institucio
 > **Devolver ao chamado (Chefia e CODIR).** A escalada é reversível no cartão **Devolver ao chamado**, na página da demanda, com **motivo obrigatório**: a **Chefia/Administração** pode devolver até a fase de **planejamento** (escalada indevida, entendimento do campus); o **CODIR**, durante a deliberação (*Aguardando aprovação* ou *Na fila*). O registro volta à **triagem** do chamado com o mesmo número; a fase de demanda fica como **“Devolvida ao chamado”** (em **Arquivados**), com a avaliação, a deliberação anterior e o histórico preservados. A partir daí, o chamado pode ser resolvido pelo desfecho adequado ou **escalado de novo** — quando volta à análise, com **nova deliberação do CODIR**.
 >
 > **Arquivo morto.** Demandas vindas de chamado não vão ao arquivo morto: use a devolução (ou o cancelamento do chamado).
+>
+> **Converter em chamado (Chefia).** Demandas cadastradas diretamente — anteriores à porta única do chamado — não têm fase de chamado para "devolver". Para tratá-las como chamado (consultoria, laudo, orientação), use o cartão **Converter em chamado** na página da demanda: escolha a **categoria** e registre o **motivo**. O registro passa à **triagem** do chamado, com o mesmo número, histórico, comentários e anexos; a fase de demanda fica como **"Convertida em chamado"** (em Arquivados). Disponível até a fase de planejamento e também a partir de **Não enquadrado** ou **Cancelado**.
+>
+> **Reabrir um encerramento (Chefia).** Demandas marcadas como **Não enquadrado** ou **Cancelado** por engano podem voltar a **Em análise** pelo cartão **Gestão** (reversão registrada no histórico).
 
 ### Notificações do chamado
 

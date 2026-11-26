@@ -144,8 +144,8 @@ export function viewChamado(rerender, id) {
   } else if (c.statusDemanda === 'devolvido' && c.devolucao) {
     const dv = c.devolucao;
     cartaoDemanda = el('section', { class: 'card aviso-travada' },
-      el('h2', {}, 'Devolvido ao chamado'),
-      el('p', {}, `A fase de demanda foi devolvida em ${fmtDataHora(dv.em)}${dv.por ? ' por ' + dv.por : ''}${dv.papel === 'codir' ? ' (CODIR)' : ''}.`),
+      el('h2', {}, dv.tipo === 'conversao' ? 'Convertido em chamado' : 'Devolvido ao chamado'),
+      el('p', {}, `${dv.tipo === 'conversao' ? 'A demanda (cadastrada diretamente) foi convertida em chamado' : 'A fase de demanda foi devolvida'} em ${fmtDataHora(dv.em)}${dv.por ? ' por ' + dv.por : ''}${dv.papel === 'codir' ? ' (CODIR)' : ''}.`),
       dv.motivo ? el('p', { class: 'ch-descricao' }, dv.motivo) : null,
       el('p', { class: 'sub' }, 'Resolva aqui pelo desfecho adequado ou, se for o caso, escale de novo — volta à análise com nova deliberação do CODIR.'));
   }

@@ -188,6 +188,19 @@ class DemoProvider {
     this._log(reescalada ? 'Chamado reescalado' : 'Chamado escalado', id, classificacao.objeto || '');
     this._save(); return { id, reescalada };
   }
+  async converterEmChamado(id, { motivo, categoria, slaDias = 15 }) {
+    const e = this._entrada(id); if (!e || e.trilha !== 'demanda' || e.statusChamado) throw new Error('Só demandas cadastradas direto podem ser convertidas.');
+    if (!['chefe', 'admin'].includes(this.user?.role)) throw new Error('Conversão restrita à Chefia.');
+    const now = Date.now(); const sol = e.solicitante || {};
+    Object.assign(e, { trilha: 'chamado', statusChamado: 'triagem', statusAnterior: e.status, status: 'devolvido', desfecho: null,
+      assunto: String(e.objeto || 'Solicitação').slice(0, 140), categoria, urgencia: e.emergencial ? 'emergencial' : 'media',
+      autor: { nome: sol.nome || this.user?.nome || '', email: sol.email || '', uid: '' }, aberturaEm: now,
+      prazoLimite: now + slaDias * 86400000,
+      devolucao: { tipo: 'conversao', motivo, por: this.user?.nome || '', papel: this.user?.role || '', em: now }, atualizadoEm: now });
+    (e.historico = e.historico || []).push(this._ev(`Convertida em chamado (triagem) — ${motivo}`));
+    this._log('Demanda convertida em chamado', id, motivo);
+    this._save();
+  }
   async devolverDemanda(id, motivo) {
     const e = this._entrada(id); if (!e || e.trilha !== 'demanda' || !e.statusChamado) throw new Error('Só demandas originadas de chamado podem ser devolvidas.');
     const ok = (['chefe', 'admin'].includes(this.user?.role)
